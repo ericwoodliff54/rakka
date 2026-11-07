@@ -705,8 +705,12 @@
       // 2. Text heuristics from product name, clean name, brand, ingredients, raw line
       const text = `${item.productName || item.product || ''} ${item.cleanName || ''} ${item.rawLine || ''} ${item.brand || item.receiptStore || ''} ${item.ingredients || ''}`.toLowerCase();
 
-      // Gluten & Wheat
-      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pie|pies|pastry|pastries|turnover|turnovers|tart|tarts|strudel|croissant|croissants|biscuit|biscuits|muffin|muffins|scone|scones|danish|cobbler|crisp)\b/i.test(text)) {
+      // Gluten & Wheat (strictly exclude "gluten-free", "wheat-free", and word-boundary tartrate false positives)
+      const glutenClean = text
+        .replace(/\b(?:gluten|wheat|grain)[-_\s]*free\b/gi, '')
+        .replace(/\bnon[-_\s]*(?:gluten|wheat)\b/gi, '')
+        .replace(/\bwithout\s+(?:gluten|wheat)\b/gi, '');
+      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pies?|pastr(?:y|ies)|turnovers?|tarts?|strudels?|croissants?|biscuits?|muffins?|scones?|danish|cobblers?|crisps?)\b/i.test(glutenClean)) {
         detected.add('gluten');
       }
 
@@ -2762,6 +2766,50 @@
     // EMBEDDED HIGH-SPEED OFFLINE STAPLES REGISTRY
     // ==========================================
     const STAPLES_CATALOG_EMBEDDED = {
+  "810169600023": {
+    "product": "Ghost Energy Drink Strawbango (16 fl oz Can)",
+    "brand": "Ghost Energy",
+    "upc": "810169600023",
+    "ingredients": "Carbonated Water, Citric Acid, Natural and Artificial Flavor, L-Carnitine L-Tartrate, Taurine, Caffeine, Sucralose, Sodium Benzoate (Preservative), Potassium Sorbate (Preservative), Alpha-Glyceryl Phosphoryl Choline, Acesulfame Potassium, Ascorbic Acid, Coffee (Coffea Arabica) Fruit Extract, Niacinamide, Astragalus Membranaceus Root Extract, Panax Notoginseng Root Extract, Pyridoxal-5-Phosphate, Methylcobalamin.",
+    "allergens": [],
+    "additives_tags": [
+      "en:e211",
+      "en:e202",
+      "en:e955",
+      "en:e950",
+      "en:e330"
+    ],
+    "stores": [
+      "Target",
+      "GNC",
+      "Vitamin Shoppe",
+      "Walmart",
+      "Kroger"
+    ],
+    "isRecalled": false
+  },
+  "0810169600023": {
+    "product": "Ghost Energy Drink Strawbango (16 fl oz Can)",
+    "brand": "Ghost Energy",
+    "upc": "810169600023",
+    "ingredients": "Carbonated Water, Citric Acid, Natural and Artificial Flavor, L-Carnitine L-Tartrate, Taurine, Caffeine, Sucralose, Sodium Benzoate (Preservative), Potassium Sorbate (Preservative), Alpha-Glyceryl Phosphoryl Choline, Acesulfame Potassium, Ascorbic Acid, Coffee (Coffea Arabica) Fruit Extract, Niacinamide, Astragalus Membranaceus Root Extract, Panax Notoginseng Root Extract, Pyridoxal-5-Phosphate, Methylcobalamin.",
+    "allergens": [],
+    "additives_tags": [
+      "en:e211",
+      "en:e202",
+      "en:e955",
+      "en:e950",
+      "en:e330"
+    ],
+    "stores": [
+      "Target",
+      "GNC",
+      "Vitamin Shoppe",
+      "Walmart",
+      "Kroger"
+    ],
+    "isRecalled": false
+  },
   "4069365314173": {
     "product": "Mini Apple Pies (6-Pack)",
     "brand": "Aldi (Baker's Treat)",
@@ -6349,8 +6397,12 @@
         const offCats = `${(offProductData?.categories || '')} ${(offProductData?.categories_tags || []).join(' ')} ${(offProductData?.labels || '')} ${(offProductData?.labels_tags || []).join(' ')}`;
         const combinedFoodText = `${productName} ${brandName} ${ingredientsSummary} ${offCats} ${(offProductData?.allergens || '')} ${(offProductData?.allergens_tags || []).join(' ')}`.toLowerCase();
 
-        // 1. Gluten & Wheat (Includes farro, durum, graham, kamut, triticale, spelt, semolina, malt extract)
-        if (/gluten|wheat|barley|rye|malt|flour|bread|pasta|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|einkorn|emmer|pie|pastry|turnover|tart|strudel|croissant|biscuit|muffin|scone|danish|cobbler/.test(combinedFoodText)) {
+        // 1. Gluten & Wheat (strictly exclude "gluten-free" claims and use word boundaries so L-Tartrate is never matched as tart)
+        const glutenCleanText = combinedFoodText
+          .replace(/\b(?:gluten|wheat|grain)[-_\s]*free\b/gi, '')
+          .replace(/\bnon[-_\s]*(?:gluten|wheat)\b/gi, '')
+          .replace(/\bwithout\s+(?:gluten|wheat)\b/gi, '');
+        if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|pasta|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|einkorn|emmer|pies?|pastr(?:y|ies)|turnovers?|tarts?|strudels?|croissants?|biscuits?|muffins?|scones?|danish|cobblers?)\b/i.test(glutenCleanText)) {
           if (!detectedAllergenIds.includes('gluten')) detectedAllergenIds.push('gluten');
         }
         // 2. Dairy & Milk (Includes casein, caseinate, sodium/calcium caseinate, lactalbumin, ghee, curds, butterfat, buttermilk; excludes cocoa/cacao/shea/apple/peanut butter)

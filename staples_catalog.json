@@ -20641,5 +20641,27 @@
       "Aldi"
     ],
     "isRecalled": false
+  },
+  "810169600023": {
+    "product": "Ghost Energy Drink Strawbango (16 fl oz Can)",
+    "brand": "Ghost Energy",
+    "upc": "810169600023",
+    "ingredients": "Carbonated Water, Citric Acid, Natural and Artificial Flavor, L-Carnitine L-Tartrate, Taurine, Caffeine, Sucralose, Sodium Benzoate (Preservative), Potassium Sorbate (Preservative), Alpha-Glyceryl Phosphoryl Choline, Acesulfame Potassium, Ascorbic Acid, Coffee (Coffea Arabica) Fruit Extract, Niacinamide, Astragalus Membranaceus Root Extract, Panax Notoginseng Root Extract, Pyridoxal-5-Phosphate, Methylcobalamin.",
+    "allergens": [],
+    "additives_tags": [
+      "en:e211",
+      "en:e202",
+      "en:e955",
+      "en:e950",
+      "en:e330"
+    ],
+    "stores": [
+      "Target",
+      "GNC",
+      "Vitamin Shoppe",
+      "Walmart",
+      "Kroger"
+    ],
+    "isRecalled": false
   }
 }
