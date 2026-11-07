@@ -10291,234 +10291,23 @@
       return `<span class="${sizeCls} rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm shrink-0">👤</span>`;
     }
 
-    function buildUnifiedFamilyVerdictCard(data) {
-      const isRecalled = Boolean(data.isRecalled && data.recallRecord);
-      const isTerminated = Boolean(data.terminatedNotice);
-      const hasFamilyMatches = Boolean(data.familyMatches && data.familyMatches.length > 0);
-      const hasAdditives = Boolean(data.detectedAdditives && data.detectedAdditives.length > 0);
-      const additivesCount = (data.detectedAdditives || []).length;
-      const detectedAllergensCount = (data.detectedAllergens || []).length;
-      const hasIndexedIngredients = Boolean(data.ingredients && String(data.ingredients).trim().length > 0);
-      
-      const activeProf = (typeof getActiveProfile === 'function') ? getActiveProfile() : (familyProfiles[0] || { id: 'me', name: 'Me', allergens: [] });
-      const totalProfiles = (familyProfiles && familyProfiles.length) ? familyProfiles.length : 1;
-      const isMultiMember = totalProfiles > 1;
+    // Toggle Expand/Collapse for Barcode Result Windows (Recalls, Allergens, Additives, Ingredients)
+    function toggleResultCardDrawer(sectionKey) {
+      triggerHaptic([20]);
+      const drawer = document.getElementById(`result-drawer-${sectionKey}`);
+      const chevron = document.getElementById(`result-chevron-${sectionKey}`);
+      if (!drawer) return;
 
-      // Compute safe and conflict members
-      const conflictingMembers = data.familyMatches || [];
-      const safeMembers = (familyProfiles || []).filter(p => !conflictingMembers.some(m => (m.id && m.id === p.id) || m.name === p.name));
-
-      // CASE A: Active Federal Recall (Critical Warning)
-      if (isRecalled) {
-        return `
-          <div class="family-verdict-card rounded-2xl border-2 border-rose-500 bg-gradient-to-b from-rose-950/90 via-slate-900 to-slate-900 p-4 shadow-xl shadow-rose-950/60 space-y-3">
-            <div class="flex items-center justify-between pb-2 border-b border-rose-900/60">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-xl bg-rose-500/25 text-rose-300 border border-rose-500/50 shrink-0 ">
-                  ${UI_ICONS.alertTriangle}
-                </span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-rose-300 font-semibold">Do Not Consume • Active Federal Recall Alert</span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500 text-white shadow-sm shrink-0">
-                Unsafe
-              </span>
-            </div>
-            <p class="text-xs text-rose-200 leading-relaxed font-medium">
-              This product matches an active FDA/USDA safety recall for <strong>${data.recallRecord.reason || 'contamination/safety risk'}</strong>. Do not serve to any household member.
-            </p>
-          </div>
-        `;
+      const isHidden = drawer.classList.contains('hidden');
+      if (isHidden) {
+        drawer.classList.remove('hidden');
+        if (chevron) chevron.textContent = '▲';
+      } else {
+        drawer.classList.add('hidden');
+        if (chevron) chevron.textContent = '▼';
       }
-
-      // CASE B: Free Mode - Informative function statement explaining Allergen Guard (matches Additives window)
-      if (!isPlusActive) {
-        const detectedAllergensList = (data.detectedAllergens || []).map(formatAllergenName);
-        const hasDetectedAllergens = detectedAllergensList.length > 0;
-
-        return `
-          <div class="family-verdict-card rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl space-y-3">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                  ${UI_ICONS.lock}
-                </span>
-                <div>
-                  <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-slate-400">
-                    ${hasDetectedAllergens ? `${detectedAllergensList.length} Common Allergen${detectedAllergensList.length > 1 ? 's' : ''} Cataloged` : 'Personalized Screening Locked'}
-                  </span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-md shrink-0">
-                Pro Feature
-              </span>
-            </div>
-
-            ${hasDetectedAllergens ? `
-              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
-                <span class="font-bold text-slate-200 block">Cataloged Allergens in this Product:</span>
-                <span class="text-amber-300 font-semibold">${detectedAllergensList.join(', ')}</span>
-              </div>
-            ` : ''}
-
-            <p class="text-xs text-slate-300 leading-relaxed">
-              Household Allergen Guard automatically screens food ingredients against personalized dietary profiles across 12 major allergens for every family member. Customized profile screening requires RAKKA Pro.
-            </p>
-
-            <button type="button" class="open-paywall-trigger w-full mt-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
-              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Allergen Guard</span></span>
-            </button>
-          </div>
-        `;
-      }
-
-      // CASE C: Pro Mode - Allergen Conflicts Detected (Takes absolute top priority over unindexed ingredients!)
-      if (hasFamilyMatches) {
-        return `
-          <div class="family-verdict-card rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-950/70 via-slate-900 to-slate-900 p-4 shadow-xl shadow-amber-950/40 space-y-3">
-            <div class="flex items-center justify-between pb-2.5 border-b border-amber-900/50">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-                  ${UI_ICONS.alertTriangle}
-                </span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-amber-300 font-semibold">
-                    Unsafe for ${conflictingMembers.length} Household Member${conflictingMembers.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 shadow-sm shrink-0">
-                Allergen Conflict
-              </span>
-            </div>
-
-            <!-- Section 1: Unsafe for these Members -->
-            <div class="space-y-1.5">
-              <span class="text-[10px] uppercase tracking-wider font-bold text-amber-400 flex items-center gap-1">
-                <span>⚠️ Allergen Alert (${conflictingMembers.length}):</span>
-              </span>
-              <div class="space-y-1.5">
-                ${conflictingMembers.map(m => `
-                  <div class="flex items-center justify-between bg-amber-950/60 border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs">
-                    <div class="flex items-center gap-2 font-bold text-white">
-                      ${renderMemberAvatar(m.icon, m.photo, m.name, "w-6 h-6", "w-3.5 h-3.5")}
-                      <span>${m.name}</span>
-                    </div>
-                    <span class="font-semibold text-amber-200 text-right text-[11px]">Contains ${m.allergens.join(', ')}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-
-            <!-- Section 2: Safe for these Members -->
-            ${safeMembers.length > 0 ? `
-              <div class="pt-2 border-t border-slate-800/80 space-y-1.5">
-                <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-400 flex items-center gap-1">
-                  <span>✓ Safe For (${safeMembers.length}):</span>
-                </span>
-                <div class="flex flex-wrap gap-1.5">
-                  ${safeMembers.map(p => `
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/70 text-emerald-300 border border-emerald-500/30">
-                      ${renderMemberAvatar(p.icon, p.photo, p.name, "w-4 h-4", "w-3 h-3")}
-                      <span>${p.name}</span>
-                    </span>
-                  `).join('')}
-                </div>
-              </div>
-            ` : `
-              <div class="pt-1.5 border-t border-slate-800/80 text-[11px] text-amber-300/90 italic">
-                All screened household profiles have matching allergen alerts for this item.
-              </div>
-            `}
-
-            <!-- Section 3: Household Allergen Status -->
-            <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
-              <span class="text-amber-300 font-medium flex items-center gap-1">
-                ${UI_ICONS.alertTriangle} <span>${conflictingMembers.length} Household Member${conflictingMembers.length > 1 ? 's' : ''} At Risk</span>
-              </span>
-              <span class="text-[10px] font-mono text-slate-400">
-                Total Allergens: ${data.detectedAllergens ? data.detectedAllergens.length : 0}
-              </span>
-            </div>
-          </div>
-        `;
-      }
-
-      // CASE D: Pro Mode - Unindexed Ingredients Warning (Only if NO conflict was detected)
-      if (!hasIndexedIngredients) {
-        return `
-          <div class="family-verdict-card rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-xl space-y-2.5">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-xl bg-slate-800 text-amber-300 border border-slate-700 shrink-0">
-                  ${UI_ICONS.info}
-                </span>
-                <div>
-                  <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-slate-400 font-semibold">Ingredients Unindexed • Label Check Required</span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700 shrink-0">
-                Unindexed
-              </span>
-            </div>
-            <p class="text-xs text-slate-300 leading-relaxed">
-              Full ingredients are not yet cataloged for this UPC barcode. Freedom from federal recalls is confirmed, but please review printed box labels for family allergen warnings.
-            </p>
-          </div>
-        `;
-      }
-
-      // CASE E: Pro Mode - All Profiles Cleared (100% Safe for Household)
-      return `
-        <div class="family-verdict-card rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-b from-emerald-950/60 via-slate-900 to-slate-900 p-4 shadow-xl shadow-emerald-950/40 space-y-3">
-          <div class="flex items-center justify-between pb-2.5 border-b border-emerald-900/50">
-            <div class="flex items-center gap-2">
-              <span class="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
-                ${UI_ICONS.shieldCheck}
-              </span>
-              <div>
-                <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
-                <span class="text-[11px] text-emerald-300 font-semibold">Cleared for All Family Profiles (${familyProfiles.length} Screened)</span>
-              </div>
-            </div>
-            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow-sm shrink-0">
-              Profiles Cleared
-            </span>
-          </div>
-
-          <!-- Member Safe Badges Grid -->
-          <div>
-            <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-300 block mb-1.5">
-              Screened & Cleared (${familyProfiles.length} Member${familyProfiles.length > 1 ? 's' : ''}):
-            </span>
-            <div class="flex flex-wrap gap-1.5">
-              ${familyProfiles.map(p => `
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-sm">
-                  ${renderMemberAvatar(p.icon, p.photo, p.name, "w-4 h-4", "w-3 h-3")}
-                  <span>${p.name}</span>
-                  <span class="text-emerald-400 text-[10px]">✓</span>
-                </span>
-              `).join('')}
-            </div>
-          </div>
-
-          <!-- Household Allergen Summary Footer -->
-          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
-            <span class="flex items-center gap-1 text-emerald-400 font-medium">
-              ${UI_ICONS.shieldCheck} <span>0 Household Conflicts • Safe for All Profiles</span>
-            </span>
-            <span class="text-[10px] font-semibold text-slate-400">
-              ${detectedAllergensCount > 0 ? `${detectedAllergensCount} Allergen${detectedAllergensCount > 1 ? 's' : ''} Cataloged` : 'No Allergens'}
-            </span>
-          </div>
-        </div>
-      `;
     }
+    window.toggleResultCardDrawer = toggleResultCardDrawer;
 
     function displayResult(data, source = 'scanner') {
       currentActiveProductScanData = data;
@@ -10542,77 +10331,27 @@
       const detectedAllergensCount = (data.detectedAllergens || []).length;
       const hasIndexedIngredients = Boolean(data.ingredients && String(data.ingredients).trim().length > 0);
 
-      // 1. MASTER PRODUCT OVERVIEW & MULTI-GUARDRAIL STATUS PILLS
-      let recallPillBg = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-      let recallPillIcon = UI_ICONS.checkCircle;
-      let recallPillText = "Cleared";
-      if (isRecalled) {
-        recallPillBg = "bg-rose-500/20 text-rose-300 border-rose-500/40 ";
-        recallPillIcon = UI_ICONS.alertTriangle;
-        recallPillText = "Active Recall";
-      } else if (isTerminated) {
-        recallPillBg = "bg-teal-500/20 text-teal-300 border-teal-500/40";
-        recallPillIcon = UI_ICONS.archive;
-        recallPillText = "Terminated";
-      }
-
-      let allergenPillBg = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-      let allergenPillIcon = UI_ICONS.shieldCheck;
-      let allergenPillText = "No Conflicts";
-      if (!isPlusActive) {
-        allergenPillBg = "bg-slate-800 text-amber-300 border-slate-700";
-        allergenPillIcon = UI_ICONS.lock;
-        allergenPillText = "Pro Feature";
-      } else if (hasFamilyMatches) {
-        allergenPillBg = "bg-amber-500/20 text-amber-300 border-amber-500/40";
-        allergenPillIcon = UI_ICONS.alertCircle;
-        allergenPillText = `${data.familyMatches.length} Alert${data.familyMatches.length > 1 ? 's' : ''}`;
-      } else if (!hasIndexedIngredients) {
-        allergenPillBg = "bg-slate-800 text-amber-300 border-slate-700";
-        allergenPillIcon = UI_ICONS.info;
-        allergenPillText = "Check Label";
-      }
-
-      let additivePillBg = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-      let additivePillIcon = UI_ICONS.checkCircle;
-      let additivePillText = "Clean";
-      if (!hasIndexedIngredients) {
-        additivePillBg = "bg-slate-800 text-slate-300 border-slate-700";
-        additivePillIcon = UI_ICONS.info;
-        additivePillText = "Unindexed";
-      }
-      if (!isPlusActive) {
-        additivePillBg = "bg-slate-800 text-amber-300 border-slate-700";
-        additivePillIcon = UI_ICONS.lock;
-        additivePillText = "Pro Feature";
-      } else if (hasAdditives) {
-        additivePillBg = "bg-purple-500/20 text-purple-300 border-purple-500/40";
-        additivePillIcon = UI_ICONS.flask;
-        additivePillText = `${additivesCount} Flagged`;
-      }
-
-      const familyVerdictCardHtml = buildUnifiedFamilyVerdictCard(data);
-
+      // 1. COMPACT PRODUCT IDENTIFIER CARD (Clean, compact, no awkward vertical wrapping)
       const masterHeaderHtml = `
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/95 p-4 shadow-xl space-y-3">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/95 p-3.5 sm:p-4 shadow-xl space-y-2">
           ${(typeof navigator !== 'undefined' && navigator.onLine === false) ? `
-            <div class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 flex items-center justify-between">
+            <div class="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[10px] text-slate-300 flex items-center justify-between">
               <span class="flex items-center gap-1.5">
                 ${UI_ICONS.radio}
-                <span>Offline Supermarket Mode • Auditing against Store-Ready FDA Cache</span>
+                <span>Offline Supermarket Mode • Store-Ready FDA Cache</span>
               </span>
-              <span class="text-[9px] font-bold text-sky-400 uppercase tracking-wider">Local Wire</span>
+              <span class="text-[9px] font-bold text-sky-400 uppercase tracking-wider">Local</span>
             </div>
           ` : ''}
-          <div class="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
-            <div class="min-w-0">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
               <h3 class="font-display text-base sm:text-lg font-bold text-white leading-snug">${data.productName}</h3>
               <p class="text-xs text-slate-300 mt-0.5">${data.brand} • <span class="font-mono text-slate-400">UPC: ${data.upc}</span></p>
-              <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-500/30">
+              <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 shadow-sm">
                 <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
-                <span>${isPlusActive ? 'Protected in Pro Pantry Shield (500-item monitoring)' : (scanHistory.length >= 5 ? 'Pantry Shield Full (5/5 Free Limit • Tap to Upgrade)' : 'Tracked in Free Pantry Shield (up to 5 items)')}</span>
+                <span>Item Added to Watchlist</span>
               </div>
               ${data.lotCode ? `
                 <div class="mt-2 p-2 rounded-xl border flex items-center justify-between text-xs ${data.lotAudit && data.lotAudit.isMatch === true ? 'bg-rose-950/80 border-rose-500/80 text-rose-200' : 'bg-slate-950/80 border-slate-800 text-slate-200'}">
@@ -10628,7 +10367,7 @@
               ` : ''}
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="text-[10px] font-semibold text-slate-300 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800">
+              <span class="text-[10px] font-semibold text-slate-300 bg-slate-950 px-2 py-1 rounded-md border border-slate-800">
                 ${data.time}
               </span>
               <button 
@@ -10644,57 +10383,30 @@
               </button>
             </div>
           </div>
-
-          <!-- Defining Category Status Pills (Click to Jump Directly to Window) -->
-          <div class="grid grid-cols-3 gap-1.5 text-center">
-            <button 
-              type="button" 
-              onclick="scrollToResultSection('Recall', '${activeSource}')" 
-              class="p-2 rounded-xl border ${recallPillBg} flex flex-col items-center justify-center transition active:scale-95 cursor-pointer hover:brightness-110 shadow-sm"
-              title="Jump directly to Federal Recall Wire window"
-            >
-              <span class="text-xs">${recallPillIcon}</span>
-              <span class="text-[10px] font-bold mt-0.5 truncate w-full">${recallPillText}</span>
-              <span class="text-[8px] uppercase tracking-wider opacity-75 flex items-center gap-0.5">
-                <span>FDA / USDA</span>
-                <span class="text-[7px]">▼</span>
-              </span>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="scrollToResultSection('Allergen', '${activeSource}')" 
-              class="p-2 rounded-xl border ${allergenPillBg} flex flex-col items-center justify-center transition active:scale-95 cursor-pointer hover:brightness-110 shadow-sm"
-              title="Jump directly to Household Allergen Guard window"
-            >
-              <span class="text-xs">${allergenPillIcon}</span>
-              <span class="text-[10px] font-bold mt-0.5 truncate w-full">${allergenPillText}</span>
-              <span class="text-[8px] uppercase tracking-wider opacity-75 flex items-center gap-0.5">
-                <span>Allergens</span>
-                <span class="text-[7px]">▼</span>
-              </span>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="scrollToResultSection('Additive', '${activeSource}')" 
-              class="p-2 rounded-xl border ${additivePillBg} flex flex-col items-center justify-center transition active:scale-95 cursor-pointer hover:brightness-110 shadow-sm"
-              title="Jump directly to Food Additive & Dye Guard window"
-            >
-              <span class="text-xs">${additivePillIcon}</span>
-              <span class="text-[10px] font-bold mt-0.5 truncate w-full">${additivePillText}</span>
-              <span class="text-[8px] uppercase tracking-wider opacity-75 flex items-center gap-0.5">
-                <span>Additives</span>
-                <span class="text-[7px]">▼</span>
-              </span>
-            </button>
-          </div>
         </div>
       `;
 
-      // 2. WINDOW 1: FEDERAL RECALL STATUS (ACTIVE, TERMINATED, OR CLEARED)
-      let recallWindowHtml = '';
+      // 2. WINDOW 1: FEDERAL RECALL STATUS (COLLAPSIBLE ACCORDION)
+      let recallBorderClass = 'border-emerald-500/50';
+      let recallBgClass = 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900';
+      let recallIconBgClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      let recallIcon = UI_ICONS.checkCircle;
+      let recallBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      let recallBadgeText = 'No Recalls';
+      let recallSubtextClass = 'text-emerald-300';
+      let recallSummaryText = 'No Active Federal Recalls on Record';
+      let recallDrawerContent = '';
+
       if (isRecalled) {
+        recallBorderClass = 'border-rose-500 shadow-rose-950/50';
+        recallBgClass = 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-900';
+        recallIconBgClass = 'bg-rose-500/25 text-rose-300 border border-rose-500/40';
+        recallIcon = UI_ICONS.alertTriangle;
+        recallBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500 text-white shadow-sm';
+        recallBadgeText = data.recallRecord.severity || 'Class I Alert';
+        recallSubtextClass = 'text-rose-200';
+        recallSummaryText = data.recallRecord.hazard ? (data.recallRecord.hazard.slice(0, 60) + '...') : 'Active Public Health Recall Alert';
+
         const storeTag = (data.recallRecord.stores && data.recallRecord.stores.length > 0) ? `
           <div class="flex justify-between border-b border-rose-900/60 pb-2 text-xs">
             <span class="text-rose-300/80">Sold At Stores:</span>
@@ -10702,93 +10414,63 @@
           </div>
         ` : '';
 
-        recallWindowHtml = `
-          <div class="rounded-2xl border-2 border-rose-500 bg-gradient-to-b from-rose-950/80 via-slate-900 to-slate-900 p-4 shadow-xl shadow-rose-950/50 space-y-3">
-            <div class="flex items-center justify-between pb-2.5 border-b border-rose-900/50">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">${UI_ICONS.alertTriangle}</span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Federal Recall Wire</span>
-                  <span class="text-[11px] text-rose-300 font-semibold">Active Public Health Recall Alert</span>
-                </div>
-              </div>
-              <span class="text-[10px] uppercase font-bold text-rose-300 bg-rose-900/70 border border-rose-700/60 px-2 py-1 rounded-md">
-                ${data.recallRecord.severity || 'Class I Alert'}
-              </span>
+        recallDrawerContent = `
+          <div class="space-y-2.5 text-xs bg-slate-950/80 rounded-xl p-3 border border-rose-900/50">
+            <div class="flex items-center justify-between text-[11px] text-rose-300">
+              <span class="font-semibold">Issue Date:</span>
+              <span class="font-mono text-white font-bold">${data.recallRecord.recallDate || 'Active Notice'}</span>
             </div>
-
-            <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-rose-900/50">
-              <div class="flex items-center justify-between text-[11px] text-rose-300">
-                <span class="font-semibold">Issue Date:</span>
-                <span class="font-mono text-white font-bold">${data.recallRecord.recallDate || 'Active Notice'}</span>
-              </div>
-              ${storeTag}
-              <div class="pt-1">
-                <span class="font-bold text-rose-400 block mb-0.5">Health Hazard / Contaminant:</span>
-                <p class="text-slate-200 leading-relaxed">${data.recallRecord.hazard}</p>
-              </div>
-              <div class="pt-2 p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/60">
-                <span class="font-bold text-rose-300 block mb-0.5">Consumer Action:</span>
-                <p class="text-slate-200">${data.recallRecord.action || 'Do not consume. Discard or return to store.'}</p>
-              </div>
-              <button 
-                type="button" 
-                onclick="openLotAuditorForCurrentProduct()"
-                class="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1"
-                title="Point camera at printed Best-By date to confirm if your specific bag is recalled"
-              >
-                <svg class="w-4 h-4 text-amber-200 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-                <span>Audit My Bag: Check Stamped Date</span>
-              </button>
+            ${storeTag}
+            <div class="pt-1">
+              <span class="font-bold text-rose-400 block mb-0.5">Health Hazard / Contaminant:</span>
+              <p class="text-slate-200 leading-relaxed">${data.recallRecord.hazard}</p>
+            </div>
+            <div class="pt-2 p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/60">
+              <span class="font-bold text-rose-300 block mb-0.5">Consumer Action:</span>
+              <p class="text-slate-200">${data.recallRecord.action || 'Do not consume. Discard or return to store.'}</p>
+            </div>
+            <button 
+              type="button" 
+              onclick="openLotAuditorForCurrentProduct()"
+              class="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1"
+              title="Point camera at printed Best-By date to confirm if your specific bag is recalled"
+            >
+              <svg class="w-4 h-4 text-amber-200 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Audit My Bag: Check Stamped Date</span>
+            </button>
+            <div class="pt-2 border-t border-rose-900/60 text-[10px] text-rose-300/80 italic">
+              Verification based on active federal databases as of scan time. Always verify printed lot codes on packaging directly.
             </div>
           </div>
         `;
       } else if (isTerminated) {
-        recallWindowHtml = `
-          <div class="rounded-2xl border-2 border-teal-500/80 bg-gradient-to-b from-teal-950/70 via-slate-900 to-slate-900 p-4 shadow-xl shadow-teal-950/50 space-y-3">
-            <div class="flex items-center justify-between pb-2.5 border-b border-teal-900/50">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0">${UI_ICONS.archive}</span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Federal Recall Wire</span>
-                  <span class="text-[11px] text-teal-300 font-semibold">Past Recall Terminated & Resolved</span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold text-teal-200 bg-teal-950/80 border border-teal-600/60 px-2 py-1 rounded-md">
-                FDA Completed
-              </span>
-            </div>
+        recallBorderClass = 'border-teal-500/70 shadow-teal-950/40';
+        recallBgClass = 'bg-gradient-to-r from-teal-950/70 via-slate-900 to-slate-900';
+        recallIconBgClass = 'bg-teal-500/20 text-teal-300 border border-teal-500/40';
+        recallIcon = UI_ICONS.archive;
+        recallBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/25 text-teal-200 border border-teal-500/40';
+        recallBadgeText = 'FDA Completed';
+        recallSubtextClass = 'text-teal-300';
+        recallSummaryText = 'Past Recall Terminated & Resolved • Current Inventory Cleared';
 
-            <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-teal-900/40">
-              <div class="flex items-center justify-between text-[11px] text-teal-300">
-                <span class="font-semibold">Resolution Date:</span>
-                <span class="font-mono text-white font-bold">${data.terminatedNotice.date || 'Historical Archive'}</span>
-              </div>
-              <p class="text-slate-200 leading-relaxed pt-1">
-                <strong class="text-teal-300">Official Status:</strong> ${data.terminatedNotice.reason || 'Past voluntary recall officially resolved.'}
-              </p>
-              <div class="mt-2 p-2 rounded-lg bg-teal-950/40 border border-teal-800/40 text-[11px] text-teal-200">
-                ${UI_ICONS.check} <strong>Store Verification:</strong> The historical lot batch associated with this notice was officially closed out. Current grocery store inventory is cleared and safe to purchase.
-              </div>
+        recallDrawerContent = `
+          <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-teal-900/40">
+            <div class="flex items-center justify-between text-[11px] text-teal-300">
+              <span class="font-semibold">Resolution Date:</span>
+              <span class="font-mono text-white font-bold">${data.terminatedNotice.date || 'Historical Archive'}</span>
+            </div>
+            <p class="text-slate-200 leading-relaxed pt-1">
+              <strong class="text-teal-300">Official Status:</strong> ${data.terminatedNotice.reason || 'Past voluntary recall officially resolved.'}
+            </p>
+            <div class="mt-2 p-2 rounded-lg bg-teal-950/40 border border-teal-800/40 text-[11px] text-teal-200">
+              ${UI_ICONS.check} <strong>Store Verification:</strong> The historical lot batch associated with this notice was officially closed out. Current grocery store inventory is cleared and safe to purchase.
             </div>
           </div>
         `;
       } else {
-        recallWindowHtml = `
-          <div class="rounded-2xl border border-emerald-500/50 bg-gradient-to-b from-emerald-950/40 via-slate-900 to-slate-900 p-4 shadow-xl space-y-2">
-            <div class="flex items-center justify-between pb-2 border-b border-emerald-900/40">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">${UI_ICONS.checkCircle}</span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Federal Recall Wire</span>
-                  <span class="text-[11px] text-emerald-300 font-semibold">No Active Federal Recalls on Record</span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-md">
-                No Recalls
-              </span>
-            </div>
-            <p class="text-xs text-slate-300 leading-relaxed">
+        recallDrawerContent = `
+          <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-emerald-900/40">
+            <p class="text-slate-300 leading-relaxed">
               Audited against openFDA food enforcement logs and USDA-FSIS feeds. No active safety notices, biological pathogen alerts, or foreign material recalls on record.
             </p>
             <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
@@ -10798,265 +10480,326 @@
         `;
       }
 
-      // 3. WINDOW 2: HOUSEHOLD DIETARY & ALLERGEN GUARDS
-      let allergenWindowHtml = '';
-      if (hasFamilyMatches) {
-        allergenWindowHtml = `
-          <div class="rounded-2xl border-2 border-amber-400 bg-gradient-to-b from-amber-950/80 via-slate-900 to-slate-900 p-4 shadow-xl shadow-amber-950/50 space-y-3">
-            <div class="flex items-center justify-between pb-2.5 border-b border-amber-900/50">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${UI_ICONS.alertTriangle}</span>
-                <div>
-                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-amber-300 font-semibold">Unsafe for ${data.familyMatches.length} Household Member${data.familyMatches.length > 1 ? 's' : ''}</span>
+      const recallWindowHtml = `
+        <div class="rounded-2xl border-2 ${recallBorderClass} ${recallBgClass} overflow-hidden shadow-lg transition-all duration-200">
+          <div onclick="toggleResultCardDrawer('recall')" class="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer select-none hover:brightness-105 active:scale-[0.99] transition">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <span class="p-2 rounded-xl ${recallIconBgClass} shrink-0 shadow-sm">${recallIcon}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Federal Recall Wire</span>
+                  <span class="${recallBadgeClass}">${recallBadgeText}</span>
                 </div>
+                <p class="text-xs ${recallSubtextClass} font-medium mt-0.5 truncate">${recallSummaryText}</p>
               </div>
-              <span class="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-1 rounded-md">
-                Dietary Alert
-              </span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 text-slate-400">
+              <span class="text-[10px] font-medium hidden sm:inline">Details</span>
+              <span id="result-chevron-recall" class="text-xs font-bold text-slate-300">▼</span>
+            </div>
+          </div>
+          <div id="result-drawer-recall" class="hidden border-t border-slate-800/80 p-3.5 sm:p-4 bg-slate-950/70">
+            ${recallDrawerContent}
+          </div>
+        </div>
+      `;
+
+      // 3. WINDOW 2: HOUSEHOLD ALLERGEN GUARD (COLLAPSIBLE ACCORDION)
+      let allergenBorderClass = 'border-emerald-500/50';
+      let allergenBgClass = 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900';
+      let allergenIconBgClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      let allergenIcon = UI_ICONS.shieldCheck;
+      let allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      let allergenBadgeText = 'Cleared';
+      let allergenSubtextClass = 'text-emerald-300';
+      let allergenSummaryText = `0 Conflicts • Safe for All Profiles (${familyProfiles.length} Screened)`;
+      let allergenDrawerContent = '';
+
+      if (hasFamilyMatches) {
+        allergenBorderClass = 'border-amber-400 shadow-amber-950/50';
+        allergenBgClass = 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900';
+        allergenIconBgClass = 'bg-amber-500/25 text-amber-300 border border-amber-500/40';
+        allergenIcon = UI_ICONS.alertTriangle;
+        allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-slate-950 shadow-sm';
+        allergenBadgeText = `${data.familyMatches.length} Alert${data.familyMatches.length > 1 ? 's' : ''}`;
+        allergenSubtextClass = 'text-amber-200';
+        const conflictNames = data.familyMatches.map(m => m.name).join(', ');
+        allergenSummaryText = `Unsafe for: ${conflictNames}`;
+
+        allergenDrawerContent = `
+          <div class="space-y-3 bg-slate-950/80 rounded-xl p-3 border border-amber-500/30 text-xs">
+            <span class="text-[11px] font-bold text-amber-300 block mb-1">Affected Household Profiles:</span>
+            <div class="space-y-1.5">
+              ${data.familyMatches.map(m => `
+                <div class="flex items-center justify-between bg-amber-950/60 px-2.5 py-1.5 rounded-lg border border-amber-500/30 text-xs">
+                  <span class="font-bold text-white flex items-center gap-2">
+                    ${m.photo 
+                      ? `<img src="${m.photo}" class="w-7 h-7 rounded-full object-cover border border-amber-400 shrink-0">` 
+                      : `<span class="w-7 h-7 rounded-full bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-sm shrink-0">${m.icon}</span>`}
+                    <span>${m.name}</span>
+                  </span>
+                  <span class="font-semibold text-amber-300 text-right">Contains: ${m.allergens.join(', ')}</span>
+                </div>
+              `).join('')}
             </div>
 
-            <div class="space-y-2 bg-slate-950/80 rounded-xl p-3 border border-amber-500/30">
-              <span class="text-[11px] font-bold text-amber-300 block mb-1">Affected Household Profiles:</span>
-              <div class="space-y-1.5">
-                ${data.familyMatches.map(m => `
-                  <div class="flex items-center justify-between bg-amber-950/60 px-2.5 py-1.5 rounded-lg border border-amber-500/30 text-xs">
-                    <span class="font-bold text-white flex items-center gap-2">
-                      ${m.photo 
-                        ? `<img src="${m.photo}" class="w-7 h-7 rounded-full object-cover border border-amber-400 shrink-0">` 
-                        : `<span class="w-7 h-7 rounded-full bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-sm shrink-0">${m.icon}</span>`}
-                      <span>${m.name}</span>
-                    </span>
-                    <span class="font-semibold text-amber-300 text-right">Contains: ${m.allergens.join(', ')}</span>
-                  </div>
-                `).join('')}
-              </div>
-
-              <div class="pt-2 border-t border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between">
-                <span>Total Identified Allergens:</span>
-                <span class="font-bold text-slate-200 text-right">${formatAllergenList(data.detectedAllergens)}</span>
-              </div>
+            <div class="pt-2 border-t border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between">
+              <span>Total Identified Allergens:</span>
+              <span class="font-bold text-slate-200 text-right">${formatAllergenList(data.detectedAllergens)}</span>
+            </div>
+            <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
+              Evaluated against manufacturer label declarations and ingredient feeds. Always inspect printed packaging directly for allergen cross-contact warnings.
             </div>
           </div>
         `;
       } else if (isPlusActive) {
-        allergenWindowHtml = `
-          <div class="rounded-2xl border border-emerald-500/50 bg-gradient-to-b from-emerald-950/40 via-slate-900 to-slate-900 p-4 shadow-xl space-y-2">
-            ${hasIndexedIngredients ? `
-              <div class="flex items-center justify-between pb-2 border-b border-emerald-900/40">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">${UI_ICONS.shieldCheck}</span>
-                  <div>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
-                    <span class="text-[11px] text-emerald-300 font-semibold">Cleared for All Family Profiles</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-md">
-                  Pro Active
+        if (hasIndexedIngredients) {
+          allergenDrawerContent = `
+            <div class="space-y-2.5 bg-slate-950/80 rounded-xl p-3 border border-emerald-900/40 text-xs">
+              <div>
+                <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-300 block mb-1.5">
+                  Screened & Cleared (${familyProfiles.length} Member${familyProfiles.length > 1 ? 's' : ''}):
                 </span>
+                <div class="flex flex-wrap gap-1.5">
+                  ${familyProfiles.map(p => `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                      ${renderMemberAvatar(p.icon, p.photo, p.name, "w-4 h-4", "w-3 h-3")}
+                      <span>${p.name}</span>
+                      <span class="text-emerald-400 text-[10px]">✓</span>
+                    </span>
+                  `).join('')}
+                </div>
               </div>
-              <p class="text-xs text-slate-300 leading-relaxed">
-                Screened against active dietary profiles for <strong>${familyProfiles.map(p => p.name).join(", ")}</strong>. No matching allergen conflicts found.
+              ${detectedAllergensCount > 0 ? `
+                <div class="pt-2 text-[11px] text-slate-400 border-t border-slate-800/70">
+                  <span class="text-slate-300 font-medium">Packaging mentions:</span> ${formatAllergenList(data.detectedAllergens)} (no active member allergies match).
+                </div>
+              ` : ''}
+              <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
+                Evaluated against manufacturer label declarations and ingredient feeds. Always inspect printed packaging directly for allergen cross-contact warnings.
+              </div>
+            </div>
+          `;
+        } else {
+          allergenBorderClass = 'border-slate-700';
+          allergenBgClass = 'bg-slate-900/90';
+          allergenIconBgClass = 'bg-slate-800 text-amber-300 border border-slate-700';
+          allergenIcon = UI_ICONS.info;
+          allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-amber-300 border border-slate-700';
+          allergenBadgeText = 'Check Label';
+          allergenSubtextClass = 'text-slate-300';
+          allergenSummaryText = 'Ingredients Unindexed • Review Printed Box';
+
+          allergenDrawerContent = `
+            <div class="space-y-2 bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-xs">
+              <p class="text-slate-300 leading-relaxed">
+                Full ingredients are not yet cataloged for this UPC barcode. Freedom from federal recalls is confirmed, but please review printed box labels for family allergen warnings.
               </p>
               <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
                 Evaluated against manufacturer label declarations and ingredient feeds. Always inspect printed packaging directly for allergen cross-contact warnings.
               </div>
-            ` : `
-              <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 shrink-0">${UI_ICONS.info}</span>
-                  <div>
-                    <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Household Allergen Guard</span>
-                    <span class="text-[11px] text-slate-400 font-semibold">Ingredients Unindexed • Label Check Required</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-300 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700">
-                  Packaging Check
-                </span>
-              </div>
-              <p class="text-xs text-slate-300 leading-relaxed">
-                Full ingredients are not yet published for this product barcode. Please inspect the printed packaging label directly for allergen warnings.
-              </p>
-            `}
-            ${detectedAllergensCount > 0 ? `
-              <div class="pt-1.5 text-[11px] text-slate-400 border-t border-slate-800/70">
-                <span class="text-slate-300 font-medium">Packaging mentions:</span> ${formatAllergenList(data.detectedAllergens)} (no active member allergies match).
-              </div>
-            ` : ''}
-          </div>
-        `;
-      } else {
-        allergenWindowHtml = `
-          <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl space-y-2">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
-              <div class="flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${UI_ICONS.lock}</span>
-                <div>
-                  <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Household Allergen Guard</span>
-                  <span class="text-[11px] text-amber-300 font-semibold">Custom Family Profiles Locked</span>
-                </div>
-              </div>
-              <span class="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-md">
-                Pro Feature
-              </span>
             </div>
-            <p class="text-xs text-slate-400 leading-normal">
+          `;
+        }
+      } else {
+        allergenBorderClass = 'border-slate-800';
+        allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        allergenBadgeText = 'Pro Feature';
+        allergenSummaryText = 'Multi-Member Household Profiles Locked';
+
+        allergenDrawerContent = `
+          <div class="space-y-2 bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-xs">
+            <p class="text-slate-400 leading-normal">
               Screening 12 allergens across multi-member family profiles is a RAKKA Pro feature.
             </p>
-            <button type="button" class="open-paywall-trigger w-full mt-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-1.5">
+            <button type="button" class="open-paywall-trigger w-full mt-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
               <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Allergen Guard</span></span>
             </button>
           </div>
         `;
       }
 
-      // 4. WINDOW 3: FOOD ADDITIVES & SYNTHETIC DYES GUARD
-      let additiveWindowHtml = '';
+      const allergenWindowHtml = `
+        <div class="rounded-2xl border-2 ${allergenBorderClass} ${allergenBgClass} overflow-hidden shadow-lg transition-all duration-200">
+          <div onclick="toggleResultCardDrawer('allergen')" class="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer select-none hover:brightness-105 active:scale-[0.99] transition">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <span class="p-2 rounded-xl ${allergenIconBgClass} shrink-0 shadow-sm">${allergenIcon}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Household Allergen Guard</span>
+                  <span class="${allergenBadgeClass}">${allergenBadgeText}</span>
+                </div>
+                <p class="text-xs ${allergenSubtextClass} font-medium mt-0.5 truncate">${allergenSummaryText}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 text-slate-400">
+              <span class="text-[10px] font-medium hidden sm:inline">Details</span>
+              <span id="result-chevron-allergen" class="text-xs font-bold text-slate-300">▼</span>
+            </div>
+          </div>
+          <div id="result-drawer-allergen" class="hidden border-t border-slate-800/80 p-3.5 sm:p-4 bg-slate-950/70">
+            ${allergenDrawerContent}
+          </div>
+        </div>
+      `;
+
+      // 4. WINDOW 3: FOOD ADDITIVES & SYNTHETIC DYES GUARD (COLLAPSIBLE ACCORDION)
+      let additiveBorderClass = 'border-emerald-500/50';
+      let additiveBgClass = 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900';
+      let additiveIconBgClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      let additiveIcon = UI_ICONS.checkCircle;
+      let additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      let additiveBadgeText = 'Clean';
+      let additiveSubtextClass = 'text-emerald-300';
+      let additiveSummaryText = 'Zero Flagged Synthetic Dyes or Scrutinized Additives';
+      let additiveDrawerContent = '';
+
       if (isPlusActive) {
         if (hasAdditives) {
-          additiveWindowHtml = `
-            <div class="rounded-2xl border-2 border-purple-500/80 bg-gradient-to-b from-purple-950/80 via-slate-900 to-slate-900 p-4 shadow-xl shadow-purple-950/50 space-y-3">
-              <div class="flex items-center justify-between pb-2.5 border-b border-purple-900/50">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 shrink-0">${UI_ICONS.flask}</span>
-                  <div>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider block">Food Additive & Dye Guard</span>
-                    <span class="text-[11px] text-purple-300 font-semibold">${additivesCount} Scrutinized Additive${additivesCount > 1 ? 's' : ''} / Dye${additivesCount > 1 ? 's' : ''} Flagged</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-600/60 px-2 py-1 rounded-md">
-                  Pro Guard
-                </span>
-              </div>
+          additiveBorderClass = 'border-purple-500/80 shadow-purple-950/50';
+          additiveBgClass = 'bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/70';
+          additiveIconBgClass = 'bg-purple-500/25 text-purple-300 border border-purple-500/40';
+          additiveIcon = UI_ICONS.flask;
+          additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/30 text-purple-200 border border-purple-500/50';
+          additiveBadgeText = `${additivesCount} Flagged`;
+          additiveSubtextClass = 'text-purple-200';
+          const additiveNames = data.detectedAdditives.slice(0, 3).map(a => (a.name || String(a)).split('(')[0].trim()).join(', ');
+          additiveSummaryText = `Contains: ${additiveNames}${additivesCount > 3 ? '...' : ''}`;
 
+          additiveDrawerContent = `
+            <div class="space-y-2 text-xs">
+              <span class="text-[11px] font-bold text-purple-300 block mb-1">Identified Food Additives & Dyes:</span>
               <div class="space-y-2">
-                <div class="space-y-1.5">
-                  ${data.detectedAdditives.map(add => `
-                    <div class="p-2.5 rounded-xl bg-slate-950/90 border border-purple-900/50 flex flex-col gap-1 text-xs">
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="font-bold text-white flex items-center gap-1.5">
-                          ${getAdditiveCategoryIcon(add.type, "w-4 h-4")}
-                          <span>${add.name}</span>
-                        </span>
-                        <span class="text-[10px] font-semibold text-purple-300 bg-purple-900/40 px-2 py-0.5 rounded border border-purple-700/40 shrink-0">
-                          ${add.type}
-                        </span>
+                ${data.detectedAdditives.map(add => {
+                  const addName = (typeof add === 'object' && add.name) ? add.name : String(add);
+                  const cleanLower = addName.toLowerCase();
+                  const matchedDb = (typeof ADDITIVES_DATABASE !== 'undefined') 
+                    ? ADDITIVES_DATABASE.find(db => (db.regex && db.regex.test(cleanLower)) || db.name.toLowerCase().includes(cleanLower) || cleanLower.includes(db.name.toLowerCase()))
+                    : null;
+                  if (matchedDb) {
+                    return `
+                      <div class="bg-purple-950/50 p-2.5 rounded-xl border border-purple-500/30 space-y-1">
+                        <div class="flex items-center justify-between flex-wrap gap-1">
+                          <span class="font-bold text-purple-200 flex items-center gap-1.5">
+                            <span>${matchedDb.name}</span>
+                          </span>
+                          <span class="text-[10px] font-semibold text-purple-300 bg-purple-900/60 px-2 py-0.5 rounded-md border border-purple-500/30">
+                            ${matchedDb.type}
+                          </span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-relaxed">${matchedDb.desc}</p>
                       </div>
-                      <p class="text-[11px] text-slate-300 leading-relaxed">${add.desc}</p>
+                    `;
+                  }
+                  return `
+                    <div class="bg-purple-950/40 p-2.5 rounded-xl border border-purple-500/30 flex items-center justify-between">
+                      <span class="font-bold text-purple-200">${addName}</span>
+                      <span class="text-[10px] text-purple-300">Scrutinized Additive</span>
                     </div>
-                  `).join('')}
-                </div>
+                  `;
+                }).join('')}
+              </div>
+              <div class="pt-2 border-t border-purple-900/50 text-[10px] text-slate-400 italic">
+                Evaluated against California Food Safety Act (AB 418), European Food Safety Authority (EFSA), and FDA additive indices.
               </div>
             </div>
           `;
         } else {
-          additiveWindowHtml = `
-            <div class="rounded-2xl border border-emerald-500/50 bg-gradient-to-b from-emerald-950/40 via-slate-900 to-slate-900 p-4 shadow-xl space-y-2">
-              ${hasIndexedIngredients ? `
-              <div class="flex items-center justify-between pb-2 border-b border-emerald-900/40">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">${UI_ICONS.checkCircle}</span>
-                  <div>
-                    <span class="text-xs font-bold text-white uppercase tracking-wider block">Food Additive & Dye Guard</span>
-                    <span class="text-[11px] text-emerald-300 font-semibold">Clean Formulation Audited</span>
-                  </div>
+          if (hasIndexedIngredients) {
+            additiveDrawerContent = `
+              <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-emerald-900/40">
+                <p class="text-slate-300 leading-relaxed">
+                  Zero synthetic petroleum dyes (Red 40, Yellow 5 & 6, Blue 1 & 2), titanium dioxide, PGPR, artificial flavors, BHA/BHT, TBHQ, nitrites, or scrutinized artificial sweeteners detected.
+                </p>
+                <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
+                  Screened against 37 synthetic additives, California Food Safety Act bans, and EU regulatory warning lists.
                 </div>
-                <span class="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-md">
-                  Auto-Audited
-                </span>
               </div>
-              <p class="text-xs text-slate-300 leading-relaxed">
-                Zero synthetic petroleum dyes (Red 40, Yellow 5 & 6, Blue 1 & 2), titanium dioxide, PGPR, artificial flavors, BHA/BHT, TBHQ, nitrites, or scrutinized artificial sweeteners detected.
-              </p>
-            ` : `
-              <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 shrink-0">${UI_ICONS.info}</span>
-                  <div>
-                    <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Food Additive & Dye Guard</span>
-                    <span class="text-[11px] text-slate-400 font-semibold">Ingredients Unindexed • Label Check Required</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-300 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700">
-                  Packaging Check
-                </span>
+            `;
+          } else {
+            additiveBorderClass = 'border-slate-700';
+            additiveBgClass = 'bg-slate-900/90';
+            additiveIconBgClass = 'bg-slate-800 text-slate-400 border border-slate-700';
+            additiveIcon = UI_ICONS.info;
+            additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700';
+            additiveBadgeText = 'Unindexed';
+            additiveSubtextClass = 'text-slate-300';
+            additiveSummaryText = 'Ingredients Unindexed • Check Packaging';
+
+            additiveDrawerContent = `
+              <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-slate-800">
+                <p class="text-slate-300 leading-relaxed">
+                  Packaging ingredients are not yet cataloged for this product. Check printed packaging for synthetic food dyes or preservatives.
+                </p>
               </div>
-              <p class="text-xs text-slate-300 leading-relaxed">
-                Packaging ingredients are not yet cataloged for this product. Check printed packaging for synthetic food dyes or preservatives.
-              </p>
-            `}
-            </div>
-          `;
+            `;
+          }
         }
       } else {
-        if (hasAdditives) {
-          additiveWindowHtml = `
-            <div class="rounded-2xl border border-purple-500/50 bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 p-4 shadow-xl space-y-2">
-              <div class="flex items-center justify-between pb-2 border-b border-purple-900/40">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">${UI_ICONS.lock}</span>
-                  <div>
-                    <span class="text-xs font-bold text-purple-200 uppercase tracking-wider block">Food Additive & Dye Guard</span>
-                    <span class="text-[11px] text-purple-300 font-semibold">${additivesCount} Potential Additive${additivesCount > 1 ? 's' : ''} Detected</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-500/40 px-2 py-0.5 rounded-md">
-                  Pro Feature
-                </span>
-              </div>
-              <p class="text-xs text-slate-300 leading-normal">
-                RAKKA detected <strong>${additivesCount} scrutinized food additive${additivesCount > 1 ? 's' : ''} or synthetic dye${additivesCount > 1 ? 's' : ''}</strong> in this product. Unlock Pro to view the exact chemicals and EU health advisories.
-              </p>
-              <button type="button" class="open-paywall-trigger unlock-additive-btn w-full mt-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
-                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Additive Audit</span></span>
-              </button>
-            </div>
-          `;
-        } else {
-          additiveWindowHtml = `
-            <div class="rounded-2xl border border-purple-500/50 bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 p-4 shadow-xl space-y-2">
-              <div class="flex items-center justify-between pb-2 border-b border-purple-900/40">
-                <div class="flex items-center gap-2">
-                  <span class="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">${UI_ICONS.lock}</span>
-                  <div>
-                    <span class="text-xs font-bold text-purple-200 uppercase tracking-wider block">Food Additive & Dye Guard</span>
-                    <span class="text-[11px] text-purple-300">Automatic Screening Locked</span>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-500/40 px-2 py-0.5 rounded-md">
-                  Pro Feature
-                </span>
-              </div>
-              <p class="text-xs text-slate-300 leading-normal">
-                Automatic chemical additive and synthetic petroleum dye screening requires RAKKA Pro.
-              </p>
-              <button type="button" class="open-paywall-trigger unlock-additive-btn w-full mt-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
-                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Additive Screening</span></span>
-              </button>
-            </div>
-          `;
-        }
+        additiveBorderClass = 'border-purple-500/50';
+        additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40';
+        additiveBadgeText = 'Pro Feature';
+        additiveSummaryText = hasAdditives ? `${additivesCount} Potential Additives Detected • Unlock Pro` : 'Automatic Additive Screening Locked';
+
+        additiveDrawerContent = `
+          <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-slate-800">
+            <p class="text-slate-300 leading-normal">
+              ${hasAdditives 
+                ? `RAKKA detected <strong>${additivesCount} scrutinized food additive${additivesCount > 1 ? 's' : ''} or synthetic dye${additivesCount > 1 ? 's' : ''}</strong> in this product. Unlock Pro to view the exact chemicals and EU health advisories.`
+                : 'Automatic chemical additive and synthetic petroleum dye screening requires RAKKA Pro.'}
+            </p>
+            <button type="button" class="open-paywall-trigger unlock-additive-btn w-full mt-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
+              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Additive Screening</span></span>
+            </button>
+          </div>
+        `;
       }
 
-      // 5. WINDOW 4: PACKAGING INGREDIENTS TRANSPARENCY
-      const ingredientsWindowHtml = `
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/90 p-4 shadow-md space-y-2">
-          <div class="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-            <span class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              ${UI_ICONS.archive}
-              <span>Packaging Ingredients Breakdown</span>
-            </span>
-            <span class="text-[10px] text-slate-400 font-medium">Catalog Transparency</span>
+      const additiveWindowHtml = `
+        <div class="rounded-2xl border-2 ${additiveBorderClass} ${additiveBgClass} overflow-hidden shadow-lg transition-all duration-200">
+          <div onclick="toggleResultCardDrawer('additive')" class="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer select-none hover:brightness-105 active:scale-[0.99] transition">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <span class="p-2 rounded-xl ${additiveIconBgClass} shrink-0 shadow-sm">${additiveIcon}</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-white uppercase tracking-wider block">Food Additive & Dye Guard</span>
+                  <span class="${additiveBadgeClass}">${additiveBadgeText}</span>
+                </div>
+                <p class="text-xs ${additiveSubtextClass} font-medium mt-0.5 truncate">${additiveSummaryText}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 text-slate-400">
+              <span class="text-[10px] font-medium hidden sm:inline">Details</span>
+              <span id="result-chevron-additive" class="text-xs font-bold text-slate-300">▼</span>
+            </div>
           </div>
-          ${data.ingredients ? `
+          <div id="result-drawer-additive" class="hidden border-t border-slate-800/80 p-3.5 sm:p-4 bg-slate-950/70">
+            ${additiveDrawerContent}
+          </div>
+        </div>
+      `;
+
+      // 5. WINDOW 4: PACKAGING INGREDIENTS BREAKDOWN (COLLAPSIBLE)
+      const ingredientsWindowHtml = `
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-sm transition-all duration-200">
+          <div onclick="toggleResultCardDrawer('ingredients')" class="p-3 sm:p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none hover:bg-slate-850 active:scale-[0.99] transition">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="p-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0">${UI_ICONS.archive}</span>
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Packaging Ingredients</span>
+                <p class="text-[11px] text-slate-400 truncate mt-0.5">${data.ingredients ? 'Catalog text available • Tap to view full list' : 'Ingredients text unindexed for this barcode'}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 text-slate-400">
+              <span class="text-[10px] font-medium hidden sm:inline">View</span>
+              <span id="result-chevron-ingredients" class="text-xs font-bold text-slate-300">▼</span>
+            </div>
+          </div>
+          <div id="result-drawer-ingredients" class="hidden border-t border-slate-800/80 p-3.5 bg-slate-950/80">
             <p class="text-xs text-slate-300 leading-relaxed font-normal bg-slate-900/60 p-3 rounded-xl border border-slate-800/60">
-              ${data.ingredients}
+              ${data.ingredients || 'Full ingredients label text not currently indexed for this specific packaging batch. Always review printed packaging on shelf.'}
             </p>
-          ` : `
-            <p class="text-xs text-slate-500 italic bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">
-              Full ingredients label text not currently indexed for this specific packaging batch. Always review printed packaging on shelf.
-            </p>
-          `}
+          </div>
         </div>
       `;
 
@@ -11105,20 +10848,12 @@
       `;
 
       targetContainer.innerHTML = `
-        <div class="space-y-3.5">
+        <div class="space-y-3">
           ${masterHeaderHtml}
-          <div id="${activeSource}-window-Recall" class="scroll-mt-[150px] transition-all duration-300 rounded-2xl">
-            ${recallWindowHtml}
-          </div>
-          <div id="${activeSource}-window-Allergen" class="scroll-mt-[150px] transition-all duration-300 rounded-2xl">
-            ${familyVerdictCardHtml}
-          </div>
-          <div id="${activeSource}-window-Additive" class="scroll-mt-[150px] transition-all duration-300 rounded-2xl">
-            ${additiveWindowHtml}
-          </div>
-          <div id="${activeSource}-window-Ingredients" class="scroll-mt-[150px] transition-all duration-300 rounded-2xl">
-            ${ingredientsWindowHtml}
-          </div>
+          ${recallWindowHtml}
+          ${allergenWindowHtml}
+          ${additiveWindowHtml}
+          ${ingredientsWindowHtml}
           ${actionBtnHtml}
           ${dietaryContextCallout}
           ${microNotice}
