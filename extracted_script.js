@@ -706,7 +706,7 @@
       const text = `${item.productName || item.product || ''} ${item.cleanName || ''} ${item.rawLine || ''} ${item.brand || item.receiptStore || ''} ${item.ingredients || ''}`.toLowerCase();
 
       // Gluten & Wheat
-      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust)\b/i.test(text)) {
+      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pie|pies|pastry|pastries|turnover|turnovers|tart|tarts|strudel|croissant|croissants|biscuit|biscuits|muffin|muffins|scone|scones|danish|cobbler|crisp)\b/i.test(text)) {
         detected.add('gluten');
       }
 
@@ -2762,6 +2762,56 @@
     // EMBEDDED HIGH-SPEED OFFLINE STAPLES REGISTRY
     // ==========================================
     const STAPLES_CATALOG_EMBEDDED = {
+  "4069365314173": {
+    "product": "Mini Apple Pies (6-Pack)",
+    "brand": "Aldi (Baker's Treat)",
+    "upc": "4069365314173",
+    "ingredients": "Enriched Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), High Fructose Corn Syrup, Water, Palm Oil and Fractionated Palm Oil, Sugar, Evaporated Apples (Treated with Sulfur Dioxide to Preserve Color), Contains 2% or Less of: Food Starch-Modified, Salt, Preservatives (Sodium Propionate, Sodium Benzoate, Citric Acid), Corn Starch, Xanthan Gum, Wheat Flour, Malted Barley Flour, Cinnamon, Dextrose, Calcium Carbonate, Agar-Agar, Natural Flavors, Mono- and Diglycerides, Sorbitan Monostearate, Soy Lecithin.",
+    "allergens": [
+      "gluten",
+      "soy",
+      "sulfites",
+      "corn"
+    ],
+    "additives_tags": [
+      "en:e281",
+      "en:e211",
+      "en:high-fructose-corn-syrup",
+      "en:e471",
+      "en:e491",
+      "en:e330",
+      "en:e415"
+    ],
+    "stores": [
+      "Aldi"
+    ],
+    "isRecalled": false
+  },
+  "04069365314173": {
+    "product": "Mini Apple Pies (6-Pack)",
+    "brand": "Aldi (Baker's Treat)",
+    "upc": "4069365314173",
+    "ingredients": "Enriched Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), High Fructose Corn Syrup, Water, Palm Oil and Fractionated Palm Oil, Sugar, Evaporated Apples (Treated with Sulfur Dioxide to Preserve Color), Contains 2% or Less of: Food Starch-Modified, Salt, Preservatives (Sodium Propionate, Sodium Benzoate, Citric Acid), Corn Starch, Xanthan Gum, Wheat Flour, Malted Barley Flour, Cinnamon, Dextrose, Calcium Carbonate, Agar-Agar, Natural Flavors, Mono- and Diglycerides, Sorbitan Monostearate, Soy Lecithin.",
+    "allergens": [
+      "gluten",
+      "soy",
+      "sulfites",
+      "corn"
+    ],
+    "additives_tags": [
+      "en:e281",
+      "en:e211",
+      "en:high-fructose-corn-syrup",
+      "en:e471",
+      "en:e491",
+      "en:e330",
+      "en:e415"
+    ],
+    "stores": [
+      "Aldi"
+    ],
+    "isRecalled": false
+  },
   "072250011372": {
     "product": "Wonder Classic White Sandwich Sliced Bread (20 oz)",
     "brand": "Wonder Bread / Flowers Foods",
@@ -6142,10 +6192,11 @@
               // Neither variant matched in Open Food Facts; cascades to USDA
             }
 
-            // Single-Ingredient Fresh Produce & Pure Baking Staples Heuristic
+            // Single-Ingredient Fresh Produce & Pure Baking Staples Heuristic (with strict processed-food guardrails)
             if (!ingredientsSummary && productName && !productName.startsWith('Retail Grocery Item')) {
               const lowerProd = (productName + ' ' + brandName).toLowerCase();
-              if (/\b(carrot|carrots|apple|apples|banana|bananas|grape|grapes|strawberry|strawberries|blueberry|blueberries|potato|potatoes|onion|onions|broccoli|spinach|lettuce|celery|cucumber|cucumbers|pepper|peppers|tomato|tomatoes|garlic|mushroom|mushrooms)\b/.test(lowerProd)) {
+              const isProcessedOrPrepared = /\b(pie|pies|cake|cakes|cookie|cookies|pastry|pastries|turnover|turnovers|tart|tarts|strudel|muffin|muffins|bread|toast|bun|bagel|dough|crust|waffle|pancake|biscuit|scone|croissant|juice|cider|sauce|jam|jelly|syrup|snack|bar|bars|cereal|chip|chips|crisp|crisps|candy|candies|dip|dips|soup|soups|pizza|pasta|frozen|canned|jarred|instant|mix|puree|pureed|dried|freeze[-_\s]*dried|flavored|flavoring|filling|dessert)\b/i.test(lowerProd);
+              if (!isProcessedOrPrepared && /\b(carrot|carrots|apple|apples|banana|bananas|grape|grapes|strawberry|strawberries|blueberry|blueberries|potato|potatoes|onion|onions|broccoli|spinach|lettuce|celery|cucumber|cucumbers|pepper|peppers|tomato|tomatoes|garlic|mushroom|mushrooms)\b/i.test(lowerProd)) {
                 ingredientsSummary = `${productName} (100% Fresh Single-Ingredient Produce)`;
               } else if (/yeast|levure|levadura|lievito|hefe|saf-instant|fleischmann|saccharomyces/.test(lowerProd)) {
                 ingredientsSummary = "Baker's Dry Yeast (Saccharomyces cerevisiae), Sorbitan Monostearate";
@@ -6299,7 +6350,7 @@
         const combinedFoodText = `${productName} ${brandName} ${ingredientsSummary} ${offCats} ${(offProductData?.allergens || '')} ${(offProductData?.allergens_tags || []).join(' ')}`.toLowerCase();
 
         // 1. Gluten & Wheat (Includes farro, durum, graham, kamut, triticale, spelt, semolina, malt extract)
-        if (/gluten|wheat|barley|rye|malt|flour|bread|pasta|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|einkorn|emmer/.test(combinedFoodText)) {
+        if (/gluten|wheat|barley|rye|malt|flour|bread|pasta|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|einkorn|emmer|pie|pastry|turnover|tart|strudel|croissant|biscuit|muffin|scone|danish|cobbler/.test(combinedFoodText)) {
           if (!detectedAllergenIds.includes('gluten')) detectedAllergenIds.push('gluten');
         }
         // 2. Dairy & Milk (Includes casein, caseinate, sodium/calcium caseinate, lactalbumin, ghee, curds, butterfat, buttermilk; excludes cocoa/cacao/shea/apple/peanut butter)
@@ -6518,6 +6569,25 @@
         checkPlusStatus();
         let triggeredFamilyMatches = [];
         let detectedAdditivesList = auditFoodAdditives(ingredientsSummary, productAdditivesTags, productName);
+
+        // Common grocery heuristic fallback for unindexed bakery, snack & beverage items (keeps scanner & watchlist in sync)
+        if (detectedAdditivesList.length === 0 && (!ingredientsSummary || ingredientsSummary.includes('Unindexed'))) {
+          const lowerName = (String(productName) + ' ' + String(brandName)).toLowerCase();
+          if (lowerName.includes('toast') || lowerName.includes('bread') || lowerName.includes('bun') || lowerName.includes('bagel')) {
+            detectedAdditivesList.push({ name: 'Calcium Propionate (E281/E282)', type: 'Chemical Preservative', desc: 'Antifungal bread preservative used to extend commercial shelf life.' });
+            detectedAdditivesList.push({ name: 'DATEM / Monoglycerides (E472e)', type: 'Dough Conditioner', desc: 'Industrial emulsifiers used to increase loaf volume and artificial softness.' });
+          } else if (lowerName.includes('kielbasa') || lowerName.includes('sausage') || lowerName.includes('pork saus')) {
+            detectedAdditivesList.push({ name: 'Sodium Nitrite (E250)', type: 'Curing Preservative', desc: 'Synthetic nitrite salt used for pink color stabilization and antimicrobial preservation.' });
+          } else if (lowerName.includes('cake') || lowerName.includes('cookie') || lowerName.includes('pie') || lowerName.includes('loaf') || lowerName.includes('pastry')) {
+            detectedAdditivesList.push({ name: 'Vanillin & Artificial Flavors', type: 'Synthetic Flavoring', desc: 'Wood lignin- or petroleum-derived artificial aroma chemicals.' });
+            detectedAdditivesList.push({ name: 'Mono- & Diglycerides (E471)', type: 'Synthetic Emulsifier', desc: 'Commercial crust and crumb conditioning emulsifier.' });
+          } else if (lowerName.includes('energy') || lowerName.includes('celsius') || lowerName.includes('alani')) {
+            detectedAdditivesList.push({ name: 'Sucralose & Acesulfame K', type: 'Artificial Sweetener', desc: 'Chlorinated synthetic sugar replacers.' });
+            detectedAdditivesList.push({ name: 'Citric Acid (Preservative)', type: 'Food Acidulant', desc: 'Industrial fermentation preservative.' });
+          } else if (lowerName.includes('soda') || lowerName.includes('cola')) {
+            detectedAdditivesList.push({ name: 'Caramel Color (Class IV)', type: 'Ammonia-Processed Color', desc: 'Manufactured with ammonia and sulfites under high pressure.' });
+          }
+        }
 
         // Fresh Dairy Fluid Milk & Pure Cream Heuristic
         if (!ingredientsSummary && productName && !productName.startsWith('Retail Grocery Item')) {
@@ -6846,10 +6916,10 @@
               </div>
             `}
 
-            <!-- Section 3: Additives & Total Allergens -->
+            <!-- Section 3: Household Allergen Status -->
             <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
-              <span class="text-slate-400">
-                ${hasAdditives ? `<span class="text-purple-300 font-medium">${additivesCount} additive${additivesCount > 1 ? 's' : ''} flagged</span>` : '<span class="text-emerald-400 font-medium">Clean formulation</span>'}
+              <span class="text-amber-300 font-medium flex items-center gap-1">
+                ${UI_ICONS.alertTriangle} <span>${conflictingMembers.length} Household Member${conflictingMembers.length > 1 ? 's' : ''} At Risk</span>
               </span>
               <span class="text-[10px] font-mono text-slate-400">
                 Total Allergens: ${data.detectedAllergens ? data.detectedAllergens.length : 0}
@@ -6918,12 +6988,14 @@
             </div>
           </div>
 
-          <!-- Additive / Chemical Transparency Note -->
+          <!-- Household Allergen Summary Footer -->
           <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
-            <span class="flex items-center gap-1 text-slate-400">
-              ${hasAdditives ? `${UI_ICONS.flask} <span class="text-purple-300 font-semibold">${additivesCount} scrutinized additive${additivesCount > 1 ? 's' : ''} detected</span>` : `${UI_ICONS.checkCircle} <span class="text-emerald-300 font-medium">Clean formulation (zero petroleum dyes)</span>`}
+            <span class="flex items-center gap-1 text-emerald-400 font-medium">
+              ${UI_ICONS.shieldCheck} <span>0 Household Conflicts • Safe for All Profiles</span>
             </span>
-            <span class="text-[10px] font-semibold text-emerald-400">0 Allergens</span>
+            <span class="text-[10px] font-semibold text-slate-400">
+              ${detectedAllergensCount > 0 ? `${detectedAllergensCount} Allergen${detectedAllergensCount > 1 ? 's' : ''} Cataloged` : 'No Allergens'}
+            </span>
           </div>
         </div>
       `;

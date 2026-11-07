@@ -20616,5 +20616,30 @@
       "Walmart"
     ],
     "isRecalled": false
+  },
+  "4069365314173": {
+    "product": "Mini Apple Pies (6-Pack)",
+    "brand": "Aldi (Baker's Treat)",
+    "upc": "4069365314173",
+    "ingredients": "Enriched Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), High Fructose Corn Syrup, Water, Palm Oil and Fractionated Palm Oil, Sugar, Evaporated Apples (Treated with Sulfur Dioxide to Preserve Color), Contains 2% or Less of: Food Starch-Modified, Salt, Preservatives (Sodium Propionate, Sodium Benzoate, Citric Acid), Corn Starch, Xanthan Gum, Wheat Flour, Malted Barley Flour, Cinnamon, Dextrose, Calcium Carbonate, Agar-Agar, Natural Flavors, Mono- and Diglycerides, Sorbitan Monostearate, Soy Lecithin.",
+    "allergens": [
+      "gluten",
+      "soy",
+      "sulfites",
+      "corn"
+    ],
+    "additives_tags": [
+      "en:e281",
+      "en:e211",
+      "en:high-fructose-corn-syrup",
+      "en:e471",
+      "en:e491",
+      "en:e330",
+      "en:e415"
+    ],
+    "stores": [
+      "Aldi"
+    ],
+    "isRecalled": false
   }
 }
