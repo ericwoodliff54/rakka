@@ -6968,7 +6968,7 @@
               </div>
             </div>
             <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow-sm shrink-0">
-              All Cleared
+              Profiles Cleared
             </span>
           </div>
 
@@ -7002,6 +7002,7 @@
     }
 
     function displayResult(data, source = 'scanner') {
+      currentActiveProductScanData = data;
       const activeSource = data.source || source;
       const targetContainer = scannerResultContainer || manualResultContainer;
       if (!targetContainer) return;
@@ -7038,7 +7039,7 @@
 
       let allergenPillBg = "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
       let allergenPillIcon = UI_ICONS.shieldCheck;
-      let allergenPillText = "Safe for All";
+      let allergenPillText = "No Conflicts";
       if (!isPlusActive) {
         allergenPillBg = "bg-slate-800 text-amber-300 border-slate-700";
         allergenPillIcon = UI_ICONS.lock;
@@ -7213,7 +7214,7 @@
               </div>
               <button 
                 type="button" 
-                onclick="openLotAuditor('${escape(data.recallRecord.product || data.productName)}', '${escape(data.recallRecord.hazard || '')}', '${escape(data.recallRecord.brand || '')}', '${escape((data.recallRecord.upcs || []).join(', '))}')"
+                onclick="openLotAuditorForCurrentProduct()"
                 class="w-full py-2.5 px-3 min-h-[42px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1"
                 title="Point camera at printed Best-By date to confirm if your specific bag is recalled"
               >
@@ -7261,7 +7262,7 @@
                 <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">${UI_ICONS.checkCircle}</span>
                 <div>
                   <span class="text-xs font-bold text-white uppercase tracking-wider block">Federal Recall Wire</span>
-                  <span class="text-[11px] text-emerald-300 font-semibold">100% Cleared of Federal Recalls</span>
+                  <span class="text-[11px] text-emerald-300 font-semibold">No Active Federal Recalls on Record</span>
                 </div>
               </div>
               <span class="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-md">
@@ -7271,6 +7272,9 @@
             <p class="text-xs text-slate-300 leading-relaxed">
               Audited against openFDA food enforcement logs and USDA-FSIS feeds. No active safety notices, biological pathogen alerts, or foreign material recalls on record.
             </p>
+            <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
+              Verification based on active federal databases as of scan time. Always verify printed lot codes on packaging directly.
+            </div>
           </div>
         `;
       }
@@ -7335,6 +7339,9 @@
               <p class="text-xs text-slate-300 leading-relaxed">
                 Screened against active dietary profiles for <strong>${familyProfiles.map(p => p.name).join(", ")}</strong>. No matching allergen conflicts found.
               </p>
+              <div class="pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 italic">
+                Evaluated against manufacturer label declarations and ingredient feeds. Always inspect printed packaging directly for allergen cross-contact warnings.
+              </div>
             ` : `
               <div class="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div class="flex items-center gap-2">
@@ -8925,33 +8932,34 @@
 
         // 3. Category Intelligence Check for prominent safety alerts
         if (!match) {
-          if (titleLower.includes('spinach') && (titleLower.includes('baby') || titleLower.includes('organic') || titleLower.includes('5z') || titleLower.includes('5 oz'))) {
+          const brandTitleLower = (titleLower + ' ' + String(item.brand || '') + ' ' + String(item.receiptStore || '')).toLowerCase();
+          if (brandTitleLower.includes('meijer') && titleLower.includes('spinach')) {
             match = {
               id: 'REC-CAT-SPINACH',
               title: item.productName || 'Organic Baby Spinach',
-              brand: item.brand || 'Store Brand',
+              brand: item.brand || 'Meijer',
               hazard: 'FDA Class I Public Health Recall: Risk of Listeria monocytogenes and Salmonella contamination in pre-packaged baby spinach.',
               reason: 'FDA Class I Public Health Recall: Risk of Listeria monocytogenes and Salmonella contamination in pre-packaged baby spinach.',
               agency: 'FDA',
               severity: 'Class I High Risk',
               date: 'Recent Notice'
             };
-          } else if (titleLower.includes('lettuce') || titleLower.includes('salad green') || titleLower.includes('spring mix')) {
+          } else if (brandTitleLower.includes('meijer') && (titleLower.includes('salad green') || titleLower.includes('spring mix') || titleLower.includes('baby lettuce'))) {
             match = {
               id: 'REC-CAT-GREENS',
               title: item.productName || 'Baby Lettuce Salad Greens',
-              brand: item.brand || 'Store Brand',
+              brand: item.brand || 'Meijer',
               hazard: 'FDA Class I Public Health Recall: Potential Listeria monocytogenes contamination in packaged fresh salad greens.',
               reason: 'FDA Class I Public Health Recall: Potential Listeria monocytogenes contamination in packaged fresh salad greens.',
               agency: 'FDA',
               severity: 'Class I High Risk',
               date: 'Recent Notice'
             };
-          } else if (titleLower.includes('sweet potato spiral') || (titleLower.includes('sweet potato') && titleLower.includes('spiral'))) {
+          } else if (brandTitleLower.includes('meijer') && titleLower.includes('sweet potato') && titleLower.includes('spiral')) {
             match = {
               id: 'REC-CAT-SPIRALS',
               title: item.productName || 'Sweet Potato Spirals',
-              brand: item.brand || 'Store Brand',
+              brand: item.brand || 'Meijer',
               hazard: 'FDA Class I Food Safety Recall: Microbial pathogen risk (Listeria monocytogenes) in fresh pre-cut sweet potato spirals.',
               reason: 'FDA Class I Food Safety Recall: Microbial pathogen risk (Listeria monocytogenes) in fresh pre-cut sweet potato spirals.',
               agency: 'FDA',
@@ -9263,17 +9271,18 @@ function renderHistory() {
           if (!item.receiptDate) {
             item.receiptDate = item.date || item.time || 'Recent Scan';
           }
-          // Backfill additives for existing items if missing or empty
-          if (!item.detectedAdditives || item.detectedAdditives.length === 0) {
+          // Only backfill inferred additives for unindexed items that have never been audited (do NOT overwrite clean scans)
+          if (!item.detectedAdditives && item.source === 'receipt') {
             const lowerName = String(item.productName || item.product || '').toLowerCase();
             const inferred = [];
             if (lowerName.includes('toast') || lowerName.includes('bread') || lowerName.includes('bun') || lowerName.includes('bagel')) {
-              inferred.push({ name: 'Calcium Propionate (E282)', type: 'Chemical Preservative', desc: 'Antifungal bread preservative used to extend commercial shelf life.' });
+              inferred.push({ name: 'Calcium Propionate (E281/E282)', type: 'Chemical Preservative', desc: 'Antifungal bread preservative used to extend commercial shelf life.' });
               inferred.push({ name: 'DATEM / Monoglycerides (E472e)', type: 'Dough Conditioner', desc: 'Industrial emulsifiers used to increase loaf volume and artificial softness.' });
             } else if (lowerName.includes('kielbasa') || lowerName.includes('sausage') || lowerName.includes('pork saus')) {
               inferred.push({ name: 'Sodium Nitrite (E250)', type: 'Curing Preservative', desc: 'Synthetic nitrite salt used for pink color stabilization and antimicrobial preservation.' });
-            } else if (lowerName.includes('cake') || lowerName.includes('cookie') || lowerName.includes('pie') || lowerName.includes('loaf')) {
+            } else if (lowerName.includes('cake') || lowerName.includes('cookie') || lowerName.includes('pie') || lowerName.includes('loaf') || lowerName.includes('pastry')) {
               inferred.push({ name: 'Vanillin & Artificial Flavors', type: 'Synthetic Flavoring', desc: 'Wood lignin- or petroleum-derived artificial aroma chemicals.' });
+              inferred.push({ name: 'Mono- & Diglycerides (E471)', type: 'Synthetic Emulsifier', desc: 'Commercial crust and crumb conditioning emulsifier.' });
             } else if (lowerName.includes('energy') || lowerName.includes('celsius') || lowerName.includes('alani')) {
               inferred.push({ name: 'Sucralose & Acesulfame K', type: 'Artificial Sweetener', desc: 'Chlorinated synthetic sugar replacers.' });
               inferred.push({ name: 'Citric Acid (Preservative)', type: 'Food Acidulant', desc: 'Industrial fermentation preservative.' });
@@ -11311,28 +11320,29 @@ function renderHistory() {
               isRecalledItem = false;
             }
           } else {
-            const lower = itemName.toLowerCase();
-            if (lower.includes('spinach') && (lower.includes('baby') || lower.includes('organic') || lower.includes('5z') || lower.includes('5 oz'))) {
+            const lower = (itemName + ' ' + String(item.brand || '') + ' ' + String(receiptStore || '')).toLowerCase();
+            // Specific verified brand-level recall checks (never flag generic items without brand or bulletin match)
+            if (lower.includes('meijer') && lower.includes('spinach')) {
               isRecalledItem = true;
               hazardText = 'FDA Class I Public Health Recall: Risk of Listeria monocytogenes and Salmonella contamination in pre-packaged baby spinach.';
               recallAgencyText = 'FDA';
               recallSeverityText = 'Class I High Risk';
-            } else if (lower.includes('lettuce') || lower.includes('salad green') || lower.includes('spring mix')) {
+            } else if (lower.includes('meijer') && (lower.includes('salad green') || lower.includes('spring mix'))) {
               isRecalledItem = true;
               hazardText = 'FDA Class I Public Health Recall: Microbial pathogen detection (Listeria monocytogenes) in pre-packaged retail baby salad greens.';
               recallAgencyText = 'FDA';
               recallSeverityText = 'Class I High Risk';
-            } else if (lower.includes('sweet potato spiral') || (lower.includes('sweet potato') && lower.includes('spiral'))) {
+            } else if (lower.includes('meijer') && lower.includes('sweet potato') && lower.includes('spiral')) {
               isRecalledItem = true;
               hazardText = 'FDA Class I Food Safety Recall: Contamination with Listeria monocytogenes in pre-cut spiraled sweet potatoes.';
               recallAgencyText = 'FDA';
               recallSeverityText = 'Class I High Risk';
-            } else if (lower.includes('waffle') && (lower.includes('frozen') || lower.includes('toaster') || lower.includes('buttermilk'))) {
+            } else if (lower.includes('treehouse') && lower.includes('waffle')) {
               isRecalledItem = true;
               hazardText = 'FDA Class I Recall: Listeria monocytogenes contamination risk across commercial frozen waffle production lines.';
               recallAgencyText = 'FDA';
               recallSeverityText = 'Class I High Risk';
-            } else if (lower.includes('carrot') && (lower.includes('organic') || lower.includes('baby') || lower.includes('whole'))) {
+            } else if ((lower.includes('grimmway') || lower.includes('bunny luv')) && lower.includes('carrot')) {
               isRecalledItem = true;
               hazardText = 'FDA Class I Recall: E. Coli O121 risk in multi-pound retail bags of organic whole and baby carrots.';
               recallAgencyText = 'FDA';
