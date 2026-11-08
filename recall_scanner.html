@@ -1799,24 +1799,88 @@
       color: #0284c7 !important;
       font-weight: 800 !important;
     }
+    /* Watchlist Chevrons & Action Buttons in Light Mode */
     html.theme-light [id^="watchlist-chevron-"],
     html.theme-light [id^="receipt-chevron-"] {
+      background-color: #f1f5f9 !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #475569 !important;
+      font-weight: 800 !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    }
+    html.theme-light [id^="watchlist-chevron-"]:hover,
+    html.theme-light [id^="receipt-chevron-"]:hover {
+      background-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+
+    /* Watchlist Trash Can Buttons in Light Mode (Clean Slate background, Soft Red on Hover - No Black Rectangles) */
+    html.theme-light .watchlist-trash-btn,
+    html.theme-light .watchlist-item-card button[title="Remove from Watchlist"],
+    html.theme-light button[title="Delete this receipt"] {
+      background-color: #f1f5f9 !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #64748b !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    }
+    html.theme-light .watchlist-trash-btn:hover,
+    html.theme-light .watchlist-item-card button[title="Remove from Watchlist"]:hover,
+    html.theme-light button[title="Delete this receipt"]:hover {
+      background-color: #fee2e2 !important;
+      border-color: #fca5a5 !important;
+      color: #e11d48 !important;
+    }
+    html.theme-light .watchlist-trash-btn svg,
+    html.theme-light .watchlist-item-card button[title="Remove from Watchlist"] svg,
+    html.theme-light button[title="Delete this receipt"] svg {
+      color: inherit !important;
+      stroke: currentColor !important;
+    }
+
+    /* Product Information - Packaging Ingredients Card & Text in Light Mode (Crystal Clear, High Contrast) */
+    html.theme-light #product-ingredients-card,
+    html.theme-light [id="product-ingredients-card"],
+    html.theme-light div:has(> #result-drawer-ingredients) {
+      background-color: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+    }
+    html.theme-light #product-ingredients-card > div:first-child:hover,
+    html.theme-light div:has(> #result-drawer-ingredients) > div:first-child:hover {
+      background-color: #f8fafc !important;
+    }
+    html.theme-light #product-ingredients-card span.text-slate-200,
+    html.theme-light div:has(> #result-drawer-ingredients) span.text-slate-200 {
+      color: #0f172a !important;
+      font-weight: 800 !important;
+    }
+    html.theme-light #product-ingredients-card p.text-slate-400,
+    html.theme-light div:has(> #result-drawer-ingredients) p.text-slate-400 {
+      color: #475569 !important;
+      font-weight: 500 !important;
+    }
+    html.theme-light #product-ingredients-card .bg-slate-800,
+    html.theme-light div:has(> #result-drawer-ingredients) .bg-slate-800 {
+      background-color: #f1f5f9 !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+    html.theme-light #result-chevron-ingredients {
       color: #475569 !important;
       font-weight: 800 !important;
     }
-    html.theme-light .watchlist-item-card button[title="Remove from Watchlist"] {
-      color: #64748b !important;
+    html.theme-light #result-drawer-ingredients {
+      background-color: #f8fafc !important;
+      border-top: 1px solid #e2e8f0 !important;
     }
-    html.theme-light .watchlist-item-card button[title="Remove from Watchlist"]:hover {
-      color: #e11d48 !important;
-      background: #fee2e2 !important;
-    }
-    html.theme-light button[title="Delete this receipt"] {
-      color: #64748b !important;
-    }
-    html.theme-light button[title="Delete this receipt"]:hover {
-      color: #e11d48 !important;
-      background: #fee2e2 !important;
+    html.theme-light #result-drawer-ingredients p {
+      background-color: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      color: #0f172a !important;
+      font-weight: 600 !important;
+      font-size: 0.8125rem !important;
+      line-height: 1.6 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
     }
     html.theme-light .watchlist-item-card.is-recalled {
       background: #fff1f2 !important;
@@ -11207,7 +11271,7 @@
 
       // 5. WINDOW 4: PACKAGING INGREDIENTS BREAKDOWN (COLLAPSIBLE)
       const ingredientsWindowHtml = `
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-sm transition-all duration-200">
+        <div id="product-ingredients-card" class="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-sm transition-all duration-200">
           <div onclick="toggleResultCardDrawer('ingredients')" class="p-3 sm:p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none hover:bg-slate-850 active:scale-[0.99] transition">
             <div class="flex items-center gap-2 min-w-0">
               <span class="p-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 shrink-0">${UI_ICONS.archive}</span>
@@ -13294,9 +13358,9 @@ function renderHistory() {
                   `}
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
-                  <span id="watchlist-chevron-${cardKey}" class="text-xs text-slate-300 font-bold w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800/60 transition-transform">▼</span>
-                  <button type="button" onclick="event.stopPropagation(); removeGuardedItem('${cardKey}')" class="text-slate-300 hover:text-rose-300 w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-slate-800/90 hover:bg-rose-500/20 border border-slate-700/60 flex items-center justify-center transition active:scale-95 shrink-0 shadow-sm ml-1" title="Remove from Watchlist">
-                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  <span id="watchlist-chevron-${cardKey}" class="text-xs text-slate-300 font-bold w-7.5 h-7.5 min-w-[30px] min-h-[30px] flex items-center justify-center rounded-lg bg-slate-800/60 transition-transform">▼</span>
+                  <button type="button" onclick="event.stopPropagation(); removeGuardedItem('${cardKey}')" class="watchlist-trash-btn text-slate-400 hover:text-rose-300 w-7.5 h-7.5 min-w-[30px] min-h-[30px] rounded-lg bg-slate-800/90 hover:bg-rose-500/20 border border-slate-700/60 flex items-center justify-center transition active:scale-95 shrink-0 shadow-sm ml-0.5" title="Remove from Watchlist">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                   </button>
                 </div>
               </div>
@@ -13537,8 +13601,8 @@ function renderHistory() {
 
               <!-- Action Buttons -->
               <div class="flex items-center gap-1.5 shrink-0">
-                <button type="button" onclick="event.stopPropagation(); deleteReceiptGroup('${rcpt.id}')" class="text-slate-300 hover:text-rose-300 w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-slate-800/90 hover:bg-rose-500/20 border border-slate-700/60 flex items-center justify-center transition active:scale-95 shrink-0 ml-1" title="Delete this receipt">
-                  <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <button type="button" onclick="event.stopPropagation(); deleteReceiptGroup('${rcpt.id}')" class="watchlist-trash-btn text-slate-400 hover:text-rose-300 w-7.5 h-7.5 min-w-[30px] min-h-[30px] rounded-lg bg-slate-800/90 hover:bg-rose-500/20 border border-slate-700/60 flex items-center justify-center transition active:scale-95 shrink-0 ml-0.5" title="Delete this receipt">
+                  <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
                 <span id="receipt-chevron-${rcpt.id}" class="text-slate-400 text-xs font-bold px-1 transition-transform duration-200">${isExpanded ? '▲' : '▼'}</span>
               </div>
