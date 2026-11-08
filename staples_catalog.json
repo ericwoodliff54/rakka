@@ -20663,5 +20663,47 @@
       "Kroger"
     ],
     "isRecalled": false
+  },
+  "4099100155891": {
+    "product": "Millville Buttermilk Complete Pancake & Waffle Mix (32 oz)",
+    "brand": "Millville (Aldi)",
+    "upc": "4099100155891",
+    "ingredients": "Enriched Bleached Flour (Bleached Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Sugar, Dextrose, Leavening (Baking Soda, Sodium Aluminum Phosphate, Monocalcium Phosphate), Defatted Soy Flour, Canola or Soybean Oil, Salt, Dry Buttermilk, Calcium Carbonate.",
+    "allergens": [
+      "gluten",
+      "dairy",
+      "soy"
+    ],
+    "additives_tags": [
+      "en:e541",
+      "en:e341i",
+      "en:e500ii",
+      "en:e170"
+    ],
+    "stores": [
+      "ALDI"
+    ],
+    "isRecalled": false
+  },
+  "04099100155891": {
+    "product": "Millville Buttermilk Complete Pancake & Waffle Mix (32 oz)",
+    "brand": "Millville (Aldi)",
+    "upc": "4099100155891",
+    "ingredients": "Enriched Bleached Flour (Bleached Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Sugar, Dextrose, Leavening (Baking Soda, Sodium Aluminum Phosphate, Monocalcium Phosphate), Defatted Soy Flour, Canola or Soybean Oil, Salt, Dry Buttermilk, Calcium Carbonate.",
+    "allergens": [
+      "gluten",
+      "dairy",
+      "soy"
+    ],
+    "additives_tags": [
+      "en:e541",
+      "en:e341i",
+      "en:e500ii",
+      "en:e170"
+    ],
+    "stores": [
+      "ALDI"
+    ],
+    "isRecalled": false
   }
 }
