@@ -827,49 +827,101 @@
       background: #e2e8f0 !important;
     }
 
-    /* Family Profiles Bar in Light Mode - High Contrast */
+    /* Family Profiles Bar in Light Mode - High Contrast & Crisp Icons */
     html.theme-light .family-profile-pill,
     html.theme-light #familyProfilesBar .family-profile-pill {
       background: #ffffff !important;
       border: 1.5px solid #cbd5e1 !important;
       color: #0f172a !important;
-      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05) !important;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
     }
     html.theme-light .family-profile-pill:hover {
       border-color: #94a3b8 !important;
       background: #f8fafc !important;
     }
-    html.theme-light .family-profile-pill span {
+    html.theme-light .family-profile-pill .profile-name {
       color: #0f172a !important;
       font-weight: 700 !important;
     }
-    html.theme-light .family-profile-pill .w-10.h-10 {
-      background: #f1f5f9 !important;
-      border-color: #cbd5e1 !important;
-      color: #0f172a !important;
+    html.theme-light .family-profile-pill .profile-subtext {
+      color: #64748b !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .family-profile-pill .w-10.h-10 svg {
+    /* Inactive profile icon container & SVG in light mode */
+    html.theme-light .family-profile-pill .profile-avatar-box {
+      background: #f0f9ff !important;
+      border: 1.5px solid #bae6fd !important;
       color: #0284c7 !important;
+    }
+    html.theme-light .family-profile-pill .profile-avatar-box svg {
+      color: #0284c7 !important;
+      stroke: #0284c7 !important;
     }
     /* Active Profile Pill in Light Mode */
     html.theme-light .family-profile-pill.bg-gradient-to-r,
-    html.theme-light #familyProfilesBar .family-profile-pill.bg-gradient-to-r {
-      background: linear-gradient(to right, #0891b2, #14b8a6) !important;
+    html.theme-light #familyProfilesBar .family-profile-pill.bg-gradient-to-r,
+    html.theme-light .family-profile-pill.active-profile-pill {
+      background: linear-gradient(135deg, #0891b2, #0d9488) !important;
       border: 2px solid #06b6d4 !important;
       color: #ffffff !important;
       box-shadow: 0 4px 12px rgba(8, 145, 178, 0.35) !important;
     }
-    html.theme-light .family-profile-pill.bg-gradient-to-r span {
+    html.theme-light .family-profile-pill.active-profile-pill .profile-name,
+    html.theme-light .family-profile-pill.bg-gradient-to-r .profile-name {
       color: #ffffff !important;
       font-weight: 800 !important;
     }
-    html.theme-light .family-profile-pill.bg-gradient-to-r .w-10.h-10 {
+    html.theme-light .family-profile-pill.active-profile-pill .profile-subtext,
+    html.theme-light .family-profile-pill.bg-gradient-to-r .profile-subtext {
+      color: #cffafe !important;
+      font-weight: 700 !important;
+    }
+    html.theme-light .family-profile-pill.active-profile-pill .profile-avatar-box,
+    html.theme-light .family-profile-pill.bg-gradient-to-r .profile-avatar-box {
       background: rgba(255, 255, 255, 0.25) !important;
-      border-color: #ffffff !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
       color: #ffffff !important;
     }
-    html.theme-light .family-profile-pill.bg-gradient-to-r .w-10.h-10 svg {
+    html.theme-light .family-profile-pill.active-profile-pill .profile-avatar-box svg,
+    html.theme-light .family-profile-pill.bg-gradient-to-r .profile-avatar-box svg {
       color: #ffffff !important;
+      stroke: #ffffff !important;
+    }
+    /* Member Avatar Circles (Barcode Affected Profiles) in Light Mode */
+    html.theme-light .member-avatar-circle {
+      background-color: #fef3c7 !important;
+      border-color: #f59e0b !important;
+      color: #b45309 !important;
+    }
+    html.theme-light .member-avatar-circle svg {
+      color: #b45309 !important;
+      stroke: #b45309 !important;
+    }
+    html.theme-light .member-avatar-emerald {
+      background-color: #d1fae5 !important;
+      border-color: #10b981 !important;
+      color: #065f46 !important;
+    }
+    html.theme-light .member-avatar-emerald svg {
+      color: #065f46 !important;
+      stroke: #065f46 !important;
+    }
+    html.theme-light #addNewProfileBtn {
+      background-color: #f0fdf4 !important;
+      border-color: #86efac !important;
+      color: #166534 !important;
+    }
+    html.theme-light #addNewProfileBtn span {
+      color: #166534 !important;
+    }
+    html.theme-light #activeProfileNotice .profile-hero-avatar {
+      background: #f0f9ff !important;
+      border-color: #0284c7 !important;
+      color: #0284c7 !important;
+    }
+    html.theme-light #activeProfileNotice .profile-hero-avatar svg {
+      color: #0284c7 !important;
+      stroke: #0284c7 !important;
     }
 
     /* Active Family Guard Card in Light Mode */
@@ -10592,25 +10644,16 @@
 
     
     
-    function renderMemberAvatar(iconKey, photoUrl, name, sizeCls = "w-7 h-7", iconSizeCls = "w-4 h-4") {
+    function renderMemberAvatar(iconKey, photoUrl, name, sizeCls = "w-7 h-7", iconSizeCls = "w-4 h-4", variant = "amber") {
       if (photoUrl) {
-        return `<img src="${photoUrl}" class="${sizeCls} rounded-full object-cover shrink-0 border border-amber-400" alt="${name || 'Member'}">`;
+        const borderCls = variant === 'emerald' ? 'border-emerald-400' : 'border-amber-400';
+        return `<img src="${photoUrl}" class="${sizeCls} rounded-full object-cover shrink-0 border ${borderCls}" alt="${name || 'Member'}">`;
       }
-      // If iconKey is an emoji (starts with high unicode or emoji char), render as emoji char directly
-      if (iconKey && typeof iconKey === 'string' && iconKey.trim().length > 0) {
-        const trimmed = iconKey.trim();
-        // Check if trimmed is a known SVG icon name
-        const knownSvgKeys = ['user', 'smile', 'shield', 'heart', 'star'];
-        if (knownSvgKeys.includes(trimmed.toLowerCase())) {
-          return `<div class="${sizeCls} rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-200 shrink-0 shadow-sm">${getProfileAvatarSvg(trimmed.toLowerCase(), iconSizeCls)}</div>`;
-        }
-        // If it's single character or typical emoji length, render the emoji directly
-        if (trimmed.length <= 4) {
-          return `<span class="${sizeCls} rounded-full bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-sm shrink-0">${trimmed}</span>`;
-        }
-      }
-      // Default picture emoji fallback
-      return `<span class="${sizeCls} rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm shrink-0">👤</span>`;
+      const safeKey = String(iconKey || 'user').trim();
+      const colorCls = variant === 'emerald' 
+        ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-400 member-avatar-emerald'
+        : 'bg-amber-500/20 border-amber-400/50 text-amber-500 dark:text-amber-300 member-avatar-circle';
+      return `<div class="${sizeCls} rounded-full border flex items-center justify-center shrink-0 shadow-sm ${colorCls}">${getProfileAvatarSvg(safeKey, iconSizeCls)}</div>`;
     }
 
     // Toggle Expand/Collapse for Barcode Result Windows (Recalls, Allergens, Additives, Ingredients)
@@ -10855,9 +10898,7 @@
               ${data.familyMatches.map(m => `
                 <div class="flex items-center justify-between bg-amber-950/60 px-2.5 py-1.5 rounded-lg border border-amber-500/30 text-xs">
                   <span class="font-bold text-white flex items-center gap-2">
-                    ${m.photo 
-                      ? `<img src="${m.photo}" class="w-7 h-7 rounded-full object-cover border border-amber-400 shrink-0">` 
-                      : `<span class="w-7 h-7 rounded-full bg-amber-900/60 border border-amber-400/50 flex items-center justify-center text-sm shrink-0">${m.icon}</span>`}
+                    ${renderMemberAvatar(m.icon, m.photo, m.name, "w-7 h-7", "w-4 h-4", "amber")}
                     <span>${m.name}</span>
                   </span>
                   <span class="font-semibold text-amber-300 text-right">Contains: ${m.allergens.join(', ')}</span>
@@ -11441,7 +11482,7 @@
       if (activeProfileNotice) {
         const photoEl = currentProfile.photo 
           ? `<img src="${currentProfile.photo}" class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl object-cover border-2 border-sky-400 shadow-md shrink-0" alt="${currentProfile.name}">`
-          : `<div class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-md">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-7 h-7 sm:w-8 sm:h-8")}</div>`;
+          : `<div class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-md profile-hero-avatar">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-7 h-7 sm:w-8 sm:h-8")}</div>`;
           
         activeProfileNotice.innerHTML = `
           <div class="flex items-center justify-between bg-slate-950/95 border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 shadow-md gap-2">
@@ -11506,21 +11547,21 @@
           const count = (p.allergens || []).length;
           
           const avatarEl = p.photo 
-            ? `<img src="${p.photo}" class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl object-cover shrink-0 border-2 ${isActive ? 'border-cyan-400 shadow-md ring-2 ring-cyan-400/40' : 'border-slate-700'}" alt="${p.name}">`
-            : `<div class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center shrink-0 ${isActive ? 'bg-cyan-500/20 border-2 border-cyan-400 text-white shadow-md ring-2 ring-cyan-400/40' : 'bg-slate-800 border border-slate-700 text-slate-300'}">${getProfileAvatarSvg(p.icon || 'user', "w-7 h-7 sm:w-8 sm:h-8")}</div>`;
+            ? `<img src="${p.photo}" class="w-10 h-10 rounded-xl object-cover shrink-0 border-2 ${isActive ? 'border-cyan-400 shadow-sm ring-1 ring-cyan-400/50' : 'border-slate-700'} profile-avatar-box" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;" alt="${p.name}">`
+            : `<div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 profile-avatar-box ${isActive ? 'bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 shadow-sm ring-1 ring-cyan-400/50' : 'bg-slate-800 border border-slate-700 text-sky-400'}" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;">${getProfileAvatarSvg(p.icon || 'user', "w-5 h-5")}</div>`;
 
           return `
             <div 
               draggable="true" 
-              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-3 p-2.5 sm:p-3 min-h-[66px] sm:min-h-[72px] rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle}"
+              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-2.5 px-3 py-2 min-h-[56px] h-[56px] rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle} ${isActive ? 'active-profile-pill' : ''}"
               data-id="${p.id}"
               data-index="${index}"
               title="Tap to select • Drag to reorder"
             >
               ${avatarEl}
-              <div class="flex flex-col min-w-0 pr-1">
-                <span class="text-sm sm:text-base font-bold leading-tight truncate max-w-[110px] sm:max-w-[130px] ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
-                <span class="text-xs font-semibold mt-1 ${isActive ? 'text-cyan-300' : 'text-slate-400'}">
+              <div class="flex flex-col min-w-0 pr-1 justify-center">
+                <span class="text-xs sm:text-sm font-bold leading-tight truncate max-w-[110px] sm:max-w-[130px] profile-name ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
+                <span class="text-[11px] font-semibold mt-0.5 profile-subtext ${isActive ? 'text-cyan-300' : 'text-slate-400'}">
                   ${count === 0 ? 'No Restrictions' : `${count} alert${count > 1 ? 's' : ''}`}
                 </span>
               </div>
@@ -11530,19 +11571,19 @@
           <button 
             type="button" 
             id="addNewProfileBtn" 
-            class="shrink-0 flex items-center gap-2.5 px-3.5 py-2.5 min-h-[66px] sm:min-h-[72px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs sm:text-sm font-bold transition active:scale-95 shadow-sm"
+            class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[56px] h-[56px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs sm:text-sm font-bold transition active:scale-95 shadow-sm"
             title="Add a family member (${familyProfiles.length}/${MAX_FAMILY_MEMBERS} slots)"
           >
-            <span class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-              <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span class="w-10 h-10 rounded-xl bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-cyan-400 shrink-0" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;">
+              <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             </span>
-            <div class="flex flex-col text-left">
-              <span class="leading-tight">Add Member</span>
+            <div class="flex flex-col text-left justify-center pr-1">
+              <span class="leading-tight font-bold">Add</span>
               <span class="text-[10px] text-sky-400/80 font-normal leading-tight">${familyProfiles.length}/${MAX_FAMILY_MEMBERS} slots</span>
             </div>
           </button>
         ` : `
-          <div class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[66px] sm:min-h-[72px] rounded-2xl border border-slate-800 bg-slate-950/50 text-slate-500 text-xs font-semibold select-none">
+          <div class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[56px] h-[56px] rounded-2xl border border-slate-800 bg-slate-950/50 text-slate-500 text-xs font-semibold select-none">
             <span class="text-[10px] uppercase font-bold text-slate-400">Max ${MAX_FAMILY_MEMBERS} Members</span>
           </div>
         `);
