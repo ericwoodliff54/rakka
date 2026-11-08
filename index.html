@@ -3377,7 +3377,7 @@
         </div>
       </div>
 
-      <div id="bulletinFeedList" class="space-y-2.5 max-h-72 overflow-y-auto pr-1"></div>
+      <div id="bulletinFeedList" class="space-y-2.5"></div>
     </section>
 
     <!-- SECTION 5: SETTINGS & PREFERENCES -->
@@ -9930,11 +9930,13 @@
     // State & Store Filter Handlers
     stateFilterSelect.addEventListener('change', () => {
       triggerHaptic([30]);
+      bulletinFdaVisibleCount = 20;
       renderBulletins();
     });
 
     storeFilterSelect.addEventListener('change', () => {
       triggerHaptic([30]);
+      bulletinFdaVisibleCount = 20;
       renderBulletins();
     });
 
@@ -9942,6 +9944,7 @@
       triggerHaptic([30]);
       stateFilterSelect.value = 'ALL';
       storeFilterSelect.value = 'ALL';
+      bulletinFdaVisibleCount = 20;
       renderBulletins();
     });
 
@@ -13722,6 +13725,8 @@ function renderHistory() {
       VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
     };
 
+    let bulletinFdaVisibleCount = 20;
+
     function renderBulletins() {
       const selectedState = stateFilterSelect.value;
       const selectedStore = storeFilterSelect.value;
@@ -13795,10 +13800,23 @@ function renderHistory() {
       const storeName = storeFilterSelect.options[storeFilterSelect.selectedIndex].text;
       const totalCount = filtered.length + fdaFiltered.length;
       
+      const displayedFda = fdaFiltered.slice(0, bulletinFdaVisibleCount);
+      const currentlyShownCount = filtered.length + displayedFda.length;
+      const hasMore = displayedFda.length < fdaFiltered.length;
+      const remainingCount = fdaFiltered.length - displayedFda.length;
+
       if (selectedState === 'ALL' && selectedStore === 'ALL') {
-        filteredCountNotice.textContent = `Showing ${totalCount} active notices (${filtered.length} priority retail alerts + ${fdaFiltered.length} FDA wire reports)`;
+        if (currentlyShownCount < totalCount) {
+          filteredCountNotice.textContent = `Showing ${currentlyShownCount} of ${totalCount} active notices (${filtered.length} priority + ${displayedFda.length} of ${fdaFiltered.length} FDA wire reports)`;
+        } else {
+          filteredCountNotice.textContent = `Showing all ${totalCount} active notices (${filtered.length} priority retail alerts + ${fdaFiltered.length} FDA wire reports)`;
+        }
       } else {
-        filteredCountNotice.textContent = `Showing ${totalCount} active notice(s) for ${stateName.split(' - ')[0]} • ${storeName}`;
+        if (currentlyShownCount < totalCount) {
+          filteredCountNotice.textContent = `Showing ${currentlyShownCount} of ${totalCount} active notices for ${stateName.split(' - ')[0]} • ${storeName}`;
+        } else {
+          filteredCountNotice.textContent = `Showing all ${totalCount} active notice(s) for ${stateName.split(' - ')[0]} • ${storeName}`;
+        }
       }
 
       if (totalCount === 0) {
@@ -13850,7 +13868,7 @@ function renderHistory() {
         `;
       }).join('');
 
-      const fdaHtml = fdaFiltered.slice(0, 30).map((f, idx) => {
+      const fdaHtml = displayedFda.map((f, idx) => {
         const detailsId = `fda-live-details-${idx}`;
         return `
           <div class="p-3 rounded-xl border border-slate-800/80 bg-slate-950/60 hover:border-slate-700 transition space-y-1 cursor-pointer select-none" onclick="toggleBulletinDetails('${detailsId}')">
@@ -13884,7 +13902,55 @@ function renderHistory() {
         `;
       }).join('');
 
-      bulletinFeedList.innerHTML = priorityHtml + (fdaHtml ? `<div class="pt-2 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">${UI_ICONS.radio}<span>Live Federal Enforcement Feed (${fdaFiltered.length} reports)</span></div>` + fdaHtml : '');
+      let paginationHtml = '';
+      if (hasMore) {
+        paginationHtml = `
+          <div class="pt-4 pb-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+            <button 
+              type="button" 
+              id="loadMoreBulletinsBtn" 
+              class="w-full sm:w-auto px-6 py-3 min-h-[48px] rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              <span>Show More Recalls (+20)</span>
+              <span class="text-[11px] opacity-80 font-normal">(${remainingCount} remaining)</span>
+            </button>
+            <button 
+              type="button" 
+              id="loadAllBulletinsBtn" 
+              class="w-full sm:w-auto px-4 py-3 min-h-[48px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs transition active:scale-95 cursor-pointer"
+            >
+              Show All (${totalCount})
+            </button>
+          </div>
+        `;
+      } else if (totalCount > 20) {
+        paginationHtml = `
+          <div class="pt-3 pb-1 text-center text-xs text-slate-500 font-mono">
+            ✓ All ${totalCount} active notices displayed
+          </div>
+        `;
+      }
+
+      bulletinFeedList.innerHTML = priorityHtml + (fdaHtml ? `<div class="pt-2 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">${UI_ICONS.radio}<span>Live Federal Enforcement Feed (showing ${displayedFda.length} of ${fdaFiltered.length} reports)</span></div>` + fdaHtml : '') + paginationHtml;
+
+      const loadMoreBtn = document.getElementById('loadMoreBulletinsBtn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+          triggerHaptic([20]);
+          bulletinFdaVisibleCount += 20;
+          renderBulletins();
+        });
+      }
+
+      const loadAllBtn = document.getElementById('loadAllBulletinsBtn');
+      if (loadAllBtn) {
+        loadAllBtn.addEventListener('click', () => {
+          triggerHaptic([30]);
+          bulletinFdaVisibleCount = fdaFiltered.length;
+          renderBulletins();
+        });
+      }
     }
 
     // Store-Ready Auto-Sync Engine: Caches latest FDA recall bulletins for offline supermarket use
