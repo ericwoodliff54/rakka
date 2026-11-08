@@ -994,6 +994,7 @@
     }
 
     /* Modals in Light Mode */
+    html.theme-light #resetConfirmModal > div,
     html.theme-light #plusPaywallModal > div,
     html.theme-light #addProfileModal > div,
     html.theme-light #safetyDisclaimerModal > div,
@@ -2238,6 +2239,78 @@
     </div>
 
 <!-- USER AGREEMENT & FOOD SAFETY TERMS MODAL (Mandatory on First Launch & Accessible in Settings) -->
+    
+    <!-- FACTORY RESET CONFIRMATION MODAL SHEET -->
+    <div id="resetConfirmModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border-2 border-rose-500/60 max-w-sm w-full rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Close Button (Top-Right) -->
+        <button type="button" id="closeResetModalBtn" class="absolute top-4 right-4 text-slate-300 hover:text-white w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 flex items-center justify-center transition active:scale-95 shadow-md cursor-pointer z-10" aria-label="Cancel reset">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+
+        <!-- Header Hero -->
+        <div class="flex items-center gap-3 border-b border-slate-800 pb-3 pr-8">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-display text-base font-bold text-white leading-tight">Reset All Data & Settings?</h3>
+            <p class="text-[11px] text-rose-400 font-bold tracking-wide uppercase mt-0.5">Permanent • Cannot Be Undone</p>
+          </div>
+        </div>
+
+        <!-- Explanation of What Will Happen -->
+        <div class="space-y-2.5 text-xs bg-slate-950 p-4 rounded-2xl border border-slate-800">
+          <p class="text-slate-300 leading-relaxed font-semibold">
+            This will permanently erase all data stored in this browser:
+          </p>
+          <ul class="space-y-2 text-slate-300 text-[11px]">
+            <li class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold text-sm leading-none shrink-0">•</span>
+              <span><strong class="text-white">Watchlist & Scans:</strong> All saved barcodes, photo scans, and OCR-imported receipts will be deleted.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold text-sm leading-none shrink-0">•</span>
+              <span><strong class="text-white">Family Profiles:</strong> All household dietary profiles, allergen alerts, and profile pictures will be cleared.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold text-sm leading-none shrink-0">•</span>
+              <span><strong class="text-white">Preferences:</strong> Sound effects, haptics, theme, and state recall bulletin filters will reset to defaults.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col gap-2.5 pt-1">
+          <!-- Destructive Confirm Button -->
+          <button 
+            type="button" 
+            id="confirmResetBtn" class="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-rose-950/60 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+          >
+            <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            <span>Yes, Reset Everything</span>
+          </button>
+
+          <!-- Safe Cancel Button -->
+          <button 
+            type="button" 
+            id="cancelResetBtn" 
+            class="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs sm:text-sm flex items-center justify-center transition active:scale-[0.98] cursor-pointer"
+          >
+            Cancel & Keep My Data
+          </button>
+        </div>
+
+      </div>
+    </div>
+
     <div id="safetyDisclaimerModal" class="hidden fixed inset-0 z-[60] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
       <div class="bg-slate-900 border-2 border-cyan-500/50 max-w-xl w-full rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
         
@@ -3402,13 +3475,23 @@
       </div>
 
       <!-- Reset Settings -->
-      <div class="pt-2">
+      <div class="pt-3 border-t border-slate-800/80 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-300">Data & Factory Reset</span>
+          <span class="text-[10px] text-rose-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">Irreversible</span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Permanently clears all scanned barcodes, grocery receipts, custom allergen shields, family profiles, and app preferences stored on this device.
+        </p>
         <button 
           type="button" 
           id="resetAllDataBtn" 
-          class="w-full min-h-[44px] py-2.5 px-3 rounded-xl border border-rose-500/30 bg-rose-950/20 hover:bg-rose-900/30 text-rose-300 text-xs font-medium transition active:scale-[0.98]"
+          class="w-full min-h-[48px] py-3 px-4 rounded-xl border border-rose-500/40 bg-rose-950/30 hover:bg-rose-900/40 text-rose-300 hover:text-white text-xs sm:text-sm font-bold transition active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm cursor-pointer"
         >
-          Reset All Saved History & Settings
+          <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          <span>Reset All Saved History & Settings</span>
         </button>
       </div>
 
@@ -11859,21 +11942,80 @@
       renderCustomizeTab();
     });
 
-    resetAllDataBtn.addEventListener('click', () => {
-      triggerHaptic([60]);
-      userAllergens = [];
-      scanHistory = [];
-      isPlusActive = false;
-      try {
-        localStorage.clear();
-      } catch (e) {}
-      updatePlusUI();
-      renderHistory();
-      renderCustomizeTab();
-      renderAllergensTab();
-      sound.playScanBeep();
-      showCustomizeToast("All history and settings have been reset.");
-    });
+    // Reset Modal DOM Elements
+    const resetConfirmModal = document.getElementById('resetConfirmModal');
+    const closeResetModalBtn = document.getElementById('closeResetModalBtn');
+    const cancelResetBtn = document.getElementById('cancelResetBtn');
+    const confirmResetBtn = document.getElementById('confirmResetBtn');
+
+    function openResetConfirmModal() {
+      triggerHaptic([30]);
+      if (resetConfirmModal) {
+        resetConfirmModal.classList.remove('hidden');
+      }
+    }
+
+    function closeResetConfirmModal() {
+      triggerHaptic([20]);
+      if (resetConfirmModal) {
+        resetConfirmModal.classList.add('hidden');
+      }
+    }
+
+    if (resetAllDataBtn) {
+      resetAllDataBtn.addEventListener('click', openResetConfirmModal);
+    }
+
+    if (closeResetModalBtn) {
+      closeResetModalBtn.addEventListener('click', closeResetConfirmModal);
+    }
+
+    if (cancelResetBtn) {
+      cancelResetBtn.addEventListener('click', closeResetConfirmModal);
+    }
+
+    if (resetConfirmModal) {
+      resetConfirmModal.addEventListener('click', (e) => {
+        if (e.target === resetConfirmModal) {
+          closeResetConfirmModal();
+        }
+      });
+    }
+
+    if (confirmResetBtn) {
+      confirmResetBtn.addEventListener('click', () => {
+        triggerHaptic([50, 100, 50]);
+        try {
+          localStorage.clear();
+        } catch (e) {}
+
+        // Factory Reset State Variables
+        userAllergens = [];
+        scanHistory = [];
+        isPlusActive = false;
+        familyProfiles = [
+          { id: 'primary', name: 'Primary', allergens: [], icon: 'user' }
+        ];
+        activeProfileId = 'primary';
+        soundEnabled = true;
+        hapticsEnabled = true;
+
+        // Dismiss Modal
+        closeResetConfirmModal();
+
+        // Refresh all UI tabs and badges
+        updatePlusUI();
+        renderHistory();
+        renderCustomizeTab();
+        renderAllergensTab();
+        if (typeof updateWatchlistNavBadge === 'function') {
+          updateWatchlistNavBadge();
+        }
+
+        sound.playScanBeep();
+        showCustomizeToast("✓ All history, profiles, and settings have been reset.");
+      });
+    }
 
     function showCustomizeToast(msg) {
       customizeToast.textContent = msg;
