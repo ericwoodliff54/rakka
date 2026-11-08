@@ -9469,54 +9469,49 @@
         return;
       }
       
-      // Debounce: prevent rapid repeated triggering on the same frame or within 3.5 seconds
-      if (isScanningLocked || (code === lastScannedCode && now - lastScanTimestamp < 3500)) {
+      // Debounce: prevent rapid repeated triggering on the same barcode within 3 seconds
+      if (isScanningLocked || (code === lastScannedCode && now - lastScanTimestamp < 3000)) {
         return;
       }
 
+      // Lock scanning temporarily during active product analysis
       isScanningLocked = true;
       lastScannedCode = code;
       lastScanTimestamp = now;
 
       triggerHaptic([80, 40, 80]);
       sound.playScanBeep();
-      upcInput.value = code;
-      clearBtn.classList.remove('hidden');
 
-      // Seamlessly pause scanning without destroying the camera stream
-      if (html5QrCode && isCameraRunning) {
-        try {
-          if (typeof html5QrCode.pause === 'function') {
-            html5QrCode.pause(true);
-            isCameraPaused = true;
-          }
-          // Automatically turn off flashlight as soon as scan is complete
-          await setTorchState(false);
-          // Show sleek frosted success overlay over camera viewport (hides awkward frozen frame)
-          const camOverlay = document.getElementById('cameraScanSuccessOverlay');
-          const camCodeBadge = document.getElementById('scannedSuccessCode');
-          if (camOverlay && camCodeBadge) {
-            camCodeBadge.textContent = "UPC: " + code;
-            camOverlay.classList.remove('hidden');
-          }
-          cameraBtnText.textContent = "Scan Next Barcode";
-          toggleCameraBtn.classList.replace('from-slate-700', 'from-cyan-600');
-          toggleCameraBtn.classList.replace('to-slate-800', 'to-cyan-500');
-        } catch (pauseErr) {
-          console.warn("Could not pause camera:", pauseErr);
-        }
+      // Show sleek frosted success overlay briefly over camera viewport (800ms) without halting the stream
+      const camOverlay = document.getElementById('cameraScanSuccessOverlay');
+      const camCodeBadge = document.getElementById('scannedSuccessCode');
+      if (camOverlay && camCodeBadge) {
+        camCodeBadge.textContent = "UPC: " + code;
+        camOverlay.classList.remove('hidden');
+        setTimeout(() => {
+          if (camOverlay) camOverlay.classList.add('hidden');
+        }, 800);
       }
 
       // Process product and allergen analysis
-      await processUPC(code, 'scanner');
+      try {
+        await processUPC(code, 'scanner');
+      } catch (err) {
+        console.error("Barcode processing error:", err);
+      } finally {
+        // Automatically release the scan lock after 1.2s so consecutive/different products scan smoothly
+        setTimeout(() => {
+          isScanningLocked = false;
+        }, 1200);
+      }
     }
 
     // Reset workflow to seamlessly scan the next item
     async function resetAndScanNext() {
       triggerHaptic([40]);
       
-      // 1. Keep scanning locked during transition to prevent motion-blur partial scans
-      isScanningLocked = true;
+      // 1. Reset scan lock and lastScannedCode so user can immediately re-scan any item (even the same one)
+      isScanningLocked = false;
       lastScannedCode = null;
       lastScanTimestamp = 0;
 
@@ -9534,35 +9529,20 @@
       setNavTab('scanner');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // 4. Delay camera resume until scroll finishes (350ms) to ensure steady optical focus
-      setTimeout(async () => {
-        if (html5QrCode && isCameraRunning) {
-          try {
-            if (isCameraPaused && typeof html5QrCode.resume === 'function') {
-              html5QrCode.resume();
-              isCameraPaused = false;
-            }
-            cameraBtnText.textContent = "Stop Camera";
-            toggleCameraBtn.classList.replace('from-cyan-600', 'from-slate-700');
-            toggleCameraBtn.classList.replace('to-cyan-500', 'to-slate-800');
-            cameraPlaceholder.classList.add('hidden');
-          } catch (resumeErr) {
-            console.warn("Camera resume failed, re-opening cleanly:", resumeErr);
-            await stopCamera();
-            await startCamera();
-          }
-        } else {
+      // 4. Ensure camera stream is active and steady
+      if (!isCameraRunning || !html5QrCode) {
+        await startCamera();
+      } else if (isCameraPaused && typeof html5QrCode.resume === 'function') {
+        try {
+          html5QrCode.resume();
+          isCameraPaused = false;
+        } catch (e) {
           await stopCamera();
           await startCamera();
         }
-
-        // 5. Re-arm scanning lock only after camera is active and steady
-        setTimeout(() => {
-          isScanningLocked = false;
-          lastScannedCode = null;
-          lastScanTimestamp = 0;
-        }, 150);
-      }, 350);
+      }
+      cameraBtnText.textContent = "Stop Camera";
+      cameraPlaceholder.classList.add('hidden');
     }
 
         // Brand & Product Search Engine (Active Recalls + Watched Items Only; Excludes static catalog)
@@ -9957,6 +9937,9 @@
       triggerHaptic([30]);
       upcInput.value = '';
       clearBtn.classList.add('hidden');
+      isScanningLocked = false;
+      lastScannedCode = null;
+      lastScanTimestamp = 0;
       if (manualResultContainer) {
         manualResultContainer.classList.add('hidden');
         manualResultContainer.innerHTML = '';
@@ -14135,6 +14118,8 @@ function renderHistory() {
         if (manualResultContainer.style) manualResultContainer.style.display = 'none';
         manualResultContainer.innerHTML = '';
       }
+      const camOverlay = document.getElementById('cameraScanSuccessOverlay');
+      if (camOverlay) camOverlay.classList.add('hidden');
       const upcInputEl = document.getElementById('upcInput');
       if (upcInputEl) upcInputEl.value = '';
       const clearBtnEl = document.getElementById('clearBtn');
