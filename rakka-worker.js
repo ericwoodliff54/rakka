@@ -511,30 +511,102 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: mimeType, data: cleanBase64 } }
-              ]
-            }],
-            generationConfig: {
-              temperature: 0.1,
-              response_mime_type: "application/json"
-            }
-          })
-        });
+        // Multi-Model Fallback for Lot & Date Stamp OCR
+        const candidateModels = [
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-flash-latest',
+          'gemini-2.5-flash'
+        ];
 
-        if (!geminiRes.ok) {
-          const errText = await geminiRes.text();
-          console.warn("Gemini Lot Audit error:", errText);
-          return new Response(JSON.stringify({ success: false, error: 'AI inspection service temporarily busy' }), { status: 502, headers: corsHeaders });
+        let geminiRes = null;
+        let lastErrText = '';
+
+        for (const modelName of candidateModels) {
+          try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: prompt },
+                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: "application/json"
+                }
+              })
+            });
+
+            if (res.ok) {
+              geminiRes = res;
+              break;
+            } else {
+              lastErrText = await res.text();
+              console.warn(`Lot Audit Model ${modelName} returned HTTP ${res.status}:`, lastErrText);
+            }
+          } catch (modelErr) {
+            console.warn(`Lot Audit Model ${modelName} fetch exception:`, modelErr);
+          }
+        }
+
+        // If candidate list failed, query Google ModelService for models enabled on this key
+        if (!geminiRes || !geminiRes.ok) {
+          try {
+            const listRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+              headers: { 'x-goog-api-key': apiKey }
+            });
+            if (listRes.ok) {
+              const listData = await listRes.json();
+              const availableModels = (listData.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
+              for (const m of availableModels) {
+                const modelPath = m.name;
+                const cleanModelName = modelPath.replace(/^models\//, '');
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent`, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                  },
+                  body: JSON.stringify({
+                    contents: [{
+                      parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                      ]
+                    }],
+                    generationConfig: {
+                      temperature: 0.1,
+                      responseMimeType: "application/json"
+                    }
+                  })
+                });
+                if (res.ok) {
+                  geminiRes = res;
+                  break;
+                }
+              }
+            }
+          } catch (listErr) {
+            console.warn('Dynamic lot audit model discovery error:', listErr);
+          }
+        }
+
+        if (!geminiRes || !geminiRes.ok) {
+          let detailedErr = 'AI vision service temporarily busy';
+          try {
+            const errObj = JSON.parse(lastErrText);
+            if (errObj && errObj.error && errObj.error.message) {
+              detailedErr = errObj.error.message;
+            }
+          } catch (_) {}
+          return new Response(JSON.stringify({ success: false, error: detailedErr }), { status: 502, headers: corsHeaders });
         }
 
         const geminiData = await geminiRes.json();
@@ -549,14 +621,18 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           if (jsonMatch) {
             parsed = JSON.parse(jsonMatch[0]);
           } else {
-            throw new Error(`Failed to parse AI vision receipt output: ${parseErr.message}`);
+            throw new Error(`Failed to parse AI vision lot audit output: ${parseErr.message}`);
           }
         }
         if (!parsed || typeof parsed !== 'object') {
-          parsed = { items: [], totalFoodItems: 0, storeName: 'Grocery Store' };
-        }
-        if (!Array.isArray(parsed.items)) {
-          parsed.items = [];
+          parsed = {
+            extractedCode: "Unclear",
+            isMatch: null,
+            verdictTitle: "UNCLEAR STAMP",
+            severity: "warning",
+            explanation: "Could not definitively isolate date stamp text from photo.",
+            action: "Compare printed date against recall window above."
+          };
         }
 
         return new Response(JSON.stringify({

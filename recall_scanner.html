@@ -5847,6 +5847,7 @@
         upc: "00994824552",
         recallDate: "Nov 04, 2026",
         hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
         action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
         severity: "Class I Recall (High Health Risk)",
         agency: "FDA Food Safety Wire",
@@ -5862,6 +5863,7 @@
         upc: "00994824552",
         recallDate: "Nov 04, 2026",
         hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
         action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
         severity: "Class I Recall (High Health Risk)",
         agency: "FDA Food Safety Wire",
@@ -5879,6 +5881,7 @@
         upc: "00994824552",
         recallDate: "Nov 04, 2026",
         hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
         action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
         severity: "Class I Recall (High Health Risk)",
         agency: "FDA Food Safety Wire",
@@ -5896,6 +5899,7 @@
         upc: "00994824552",
         recallDate: "Nov 04, 2026",
         hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
         action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
         severity: "Class I Recall (High Health Risk)",
         agency: "FDA Food Safety Wire",
@@ -24380,7 +24384,7 @@ function renderHistory() {
         brand = data.brand || (data.recallRecord && data.recallRecord.brand) || brand;
         if (data.recallRecord) {
           hazard = data.recallRecord.hazard || hazard;
-          expectedLots = data.recallRecord.action || data.recallRecord.expectedLots || "";
+          expectedLots = data.recallRecord.expectedLots || data.recallRecord.lotCodes || data.recallRecord.dates || "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)";
         }
       }
 
@@ -24483,7 +24487,20 @@ function renderHistory() {
             isMatch: null,
             verdictTitle: "Inspection Reference",
             severity: "warning",
-            explanation: `AI Vision hook is unconfigured (${serverErrorMsg || 'No Gemini Key on Worker'}). Compare the printed date on your package directly: Affected batches carry ${recallWindowText}. If your stamped date is outside this window, your package is clear.`,
+            let explMsg = "";
+          if (serverErrorMsg) {
+            explMsg = `Edge inspector notice: ${serverErrorMsg}. Affected recall batches carry: ${recallWindowText}. Compare the stamped date printed on your package against this recall window.`;
+          } else {
+            explMsg = `AI Vision key needed. Affected recall batches carry: ${recallWindowText}. Compare the stamped date printed on your package against this recall window.`;
+          }
+          renderLotAuditVerdict({
+            extractedCode: "Manual Verification Required",
+            isMatch: null,
+            verdictTitle: "Inspection Reference",
+            severity: "warning",
+            explanation: explMsg,
+            action: clientApiKey ? "Paste the updated rakka-worker.js code into Cloudflare Quick Edit to enable multi-model fallback." : "To enable instant AI photo reading, add your free Gemini API key in Rakka Settings > AI Integration."
+          });
             action: "To enable instant AI photo reading, add your free Gemini API key in Rakka Settings > AI Integration."
           });
         } catch (err) {
