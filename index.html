@@ -24434,6 +24434,7 @@ function renderHistory() {
           let serverErrorMsg = "";
           let data = null;
 
+          // 1. Try Cloudflare Worker edge hook
           try {
             const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
               method: 'POST',
@@ -24465,8 +24466,74 @@ function renderHistory() {
             serverErrorMsg = "Edge hook or network unavailable";
           }
 
-          // SMART OFFLINE / UNCONFIGURED FALLBACK:
-          // Check if filename or test image provides lot context (e.g. test_lot_code_stamp)
+          // 2. Direct Browser-to-Gemini Fallback (If client key is saved in Settings, bypass worker errors)
+          if (clientApiKey) {
+            try {
+              const cleanB64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+              const lotPrompt = `You are an expert food safety inspector reviewing a customer's package photo for a federal food recall.
+Recall Details:
+- Food: ${currentAuditorRecall.brand || ''} - ${currentAuditorRecall.title || ''}
+- Hazard: ${currentAuditorRecall.hazard || ''}
+- Recall Batch Window: ${currentAuditorRecall.expectedLots || ''}
+
+Task:
+1. Inspect the packaging photo.
+2. Read any stamped date (Best By, Use By) or lot code.
+3. Compare against the recall window.
+
+Respond STRICTLY in JSON:
+{
+  "extractedCode": "Stamped text or 'Unclear'",
+  "isMatch": true,
+  "verdictTitle": "CONFIRMED RECALL MATCH or CLEARED - OUTSIDE RECALL WINDOW",
+  "severity": "danger",
+  "explanation": "2-3 sentences explaining match or safety.",
+  "action": "Immediate directive."
+}`;
+
+              const directModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+              for (const dModel of directModels) {
+                try {
+                  const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-goog-api-key': clientApiKey
+                    },
+                    body: JSON.stringify({
+                      contents: [{
+                        parts: [
+                          { text: lotPrompt },
+                          { inlineData: { mimeType: 'image/jpeg', data: cleanB64 } }
+                        ]
+                      }],
+                      generationConfig: {
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                      }
+                    })
+                  });
+
+                  if (dRes.ok) {
+                    const dJson = await dRes.json();
+                    const rawTxt = dJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+                    const cleaned = rawTxt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+                    const parsed = JSON.parse(cleaned);
+                    if (parsed && parsed.extractedCode) {
+                      renderLotAuditVerdict(parsed);
+                      return;
+                    }
+                  }
+                } catch (dmErr) {
+                  console.warn(`Direct model ${dModel} failed:`, dmErr);
+                }
+              }
+            } catch (directErr) {
+              console.warn("Direct Gemini vision call error:", directErr);
+            }
+          }
+
+          // 3. Simulated test image support
           const fileNameLower = (file.name || '').toLowerCase();
           if (fileNameLower.includes('test_lot') || fileNameLower.includes('stamp') || fileNameLower.includes('l-241011')) {
             renderLotAuditVerdict({
@@ -24480,21 +24547,29 @@ function renderHistory() {
             return;
           }
 
-          // Provide actionable manual comparison window rather than a dead-end
+          // 4. Actionable Manual Comparison Window
           const recallWindowText = currentAuditorRecall.expectedLots || "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)";
           let explMsg = "";
-          if (serverErrorMsg) {
-            explMsg = `Edge inspector notice: ${serverErrorMsg}. Affected recall batches carry: ${recallWindowText}. Compare the stamped date printed on your package against this recall window.`;
+          let actionMsg = "";
+
+          if (serverErrorMsg && serverErrorMsg.includes("temporarily busy")) {
+            explMsg = `Cloudflare Worker is running older code that needs the multi-model fallback. Compare your stamped package date directly against the recall window: ${recallWindowText}.`;
+            actionMsg = "To fix this: Open Cloudflare > Workers > rakka-edge > Edit Code, paste the updated rakka-worker.js, and click Deploy. Or paste your key in app Settings.";
+          } else if (serverErrorMsg) {
+            explMsg = `Edge status: ${serverErrorMsg}. Recall batch window: ${recallWindowText}. Compare your printed date directly.`;
+            actionMsg = clientApiKey ? "Check Cloudflare Worker settings or redeploy rakka-worker.js." : "Add your Gemini API key in Rakka Settings (gear icon) on this device, or deploy the updated rakka-worker.js to Cloudflare.";
           } else {
-            explMsg = `AI Vision key needed. Affected recall batches carry: ${recallWindowText}. Compare the stamped date printed on your package against this recall window.`;
+            explMsg = `Compare the printed date on your package directly: Affected batches carry ${recallWindowText}. If your stamped date is outside this window, your package is clear.`;
+            actionMsg = "To enable automatic photo reading on this phone, paste your free Gemini API key into Rakka Settings (gear icon) > AI Integration.";
           }
+
           renderLotAuditVerdict({
             extractedCode: "Manual Verification Required",
             isMatch: null,
             verdictTitle: "Inspection Reference",
             severity: "warning",
             explanation: explMsg,
-            action: clientApiKey ? "Paste the updated rakka-worker.js code into Cloudflare Quick Edit to enable multi-model fallback." : "To enable instant AI photo reading, add your free Gemini API key in Rakka Settings > AI Integration."
+            action: actionMsg
           });
         } catch (err) {
           console.warn("Lot code auditor notice:", err);
