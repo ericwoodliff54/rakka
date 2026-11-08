@@ -14709,8 +14709,8 @@ function renderHistory() {
 
       return {
         id: 'rcpt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-        storeName: topReceipt.storeName || bottomReceipt.storeName || 'Grocery Store',
-        purchaseDate: topReceipt.purchaseDate || bottomReceipt.purchaseDate || 'Recent Trip',
+        storeName: (topReceipt.storeName && topReceipt.storeName !== 'Grocery Store') ? topReceipt.storeName : (bottomReceipt.storeName || topReceipt.storeName || 'Grocery Store'),
+        purchaseDate: (topReceipt.purchaseDate && topReceipt.purchaseDate !== 'Today' && topReceipt.purchaseDate !== 'Recent Trip') ? topReceipt.purchaseDate : (bottomReceipt.purchaseDate || topReceipt.purchaseDate || 'Recent Trip'),
         totalFoodItems: mergedItems.length,
         recalledCount: mergedItems.filter(i => i.status === 'recalled' || i.isRecalled).length,
         allergenWarningCount: mergedItems.filter(i => i.status === 'allergen_alert').length,
@@ -14785,27 +14785,29 @@ function renderHistory() {
       // Each slice handles only ~15-18 items, allowing Gemini to finish in ~15-18s concurrently!
       const fullDataUrl = canvas.toDataURL('image/jpeg', 0.75);
 
-      // Only slice truly ultra-tall receipts (e.g. 50+ item long hauls where h > 2.8x w and targetH >= 1600)
-      if (h >= w * 2.8 && targetH >= 1600) {
-        // Slice 1: Top 0% to 38%
-        const s1H = Math.round(targetH * 0.38);
+      // 3-Slice Parallel Engine: Slices vertical receipt captures (>= 700px vertical) into 3 concurrent passes
+      // Slices into Top (0-40%), Middle (30-70%), and Bottom (60-100%) with 10% overlap seams
+      // Each slice handles ~12-18 items, allowing Gemini to finish in ~12-15s concurrently in parallel!
+      if (h >= w * 1.15 && targetH >= 700) {
+        // Slice 1: Top 0% to 40%
+        const s1H = Math.round(targetH * 0.40);
         const c1 = document.createElement('canvas');
         c1.width = targetW;
         c1.height = s1H;
         const ctx1 = c1.getContext('2d');
         ctx1.drawImage(canvas, 0, 0, targetW, s1H, 0, 0, targetW, s1H);
 
-        // Slice 2: Middle 31% to 69% (7% overlap with top, 7% overlap with bottom)
-        const s2StartY = Math.round(targetH * 0.31);
-        const s2H = Math.round(targetH * 0.38);
+        // Slice 2: Middle 30% to 70% (10% overlap with top, 10% overlap with bottom)
+        const s2StartY = Math.round(targetH * 0.30);
+        const s2H = Math.round(targetH * 0.40);
         const c2 = document.createElement('canvas');
         c2.width = targetW;
         c2.height = s2H;
         const ctx2 = c2.getContext('2d');
         ctx2.drawImage(canvas, 0, s2StartY, targetW, s2H, 0, 0, targetW, s2H);
 
-        // Slice 3: Bottom 62% to 100%
-        const s3StartY = Math.round(targetH * 0.62);
+        // Slice 3: Bottom 60% to 100%
+        const s3StartY = Math.round(targetH * 0.60);
         const s3H = targetH - s3StartY;
         const c3 = document.createElement('canvas');
         c3.width = targetW;
