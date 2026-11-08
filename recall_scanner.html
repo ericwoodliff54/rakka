@@ -14717,15 +14717,18 @@ function renderHistory() {
         return false;
       }
 
-      // Anchored Seam Alignment:
-      // The overlap zone is the TAIL of topItems that matches consecutive items starting at/near the HEAD of bottomItems.
+      // Robust Anchored Seam Alignment:
+      // Detects overlapping item sequences in the tail of topItems and head of bottomItems,
+      // tolerating up to 3 partial/cutoff trailing lines at slice boundaries.
       let bestTopIdx = -1;
       let bestBottomIdx = -1;
       let maxMatchedLen = 0;
+      let bestScore = -1;
 
-      const searchStart = Math.max(0, topItems.length - 25);
+      const searchStart = Math.max(0, topItems.length - 22);
+      const maxBottomSearch = Math.min(14, bottomItems.length);
 
-      for (let bIdx = 0; bIdx < Math.min(8, bottomItems.length); bIdx++) {
+      for (let bIdx = 0; bIdx < maxBottomSearch; bIdx++) {
         for (let tIdx = topItems.length - 1; tIdx >= searchStart; tIdx--) {
           if (itemsMatch(topItems[tIdx], bottomItems[bIdx])) {
             let matchLen = 1;
@@ -14737,13 +14740,17 @@ function renderHistory() {
               matchLen++;
             }
 
-            // Seam constraint: The overlap must anchor to the end of topItems!
-            const reachesEndOfTop = (tIdx + matchLen === topItems.length);
+            const distFromEnd = topItems.length - (tIdx + matchLen);
 
-            if (reachesEndOfTop && matchLen > maxMatchedLen) {
-              maxMatchedLen = matchLen;
-              bestTopIdx = tIdx;
-              bestBottomIdx = bIdx;
+            // Allow up to 3 trailing cut-off or partial items at the end of topItems
+            if (distFromEnd <= 3) {
+              const score = (matchLen * 100) - (distFromEnd * 10) - bIdx;
+              if (score > bestScore) {
+                bestScore = score;
+                maxMatchedLen = matchLen;
+                bestTopIdx = tIdx;
+                bestBottomIdx = bIdx;
+              }
             }
           }
         }
@@ -14753,10 +14760,29 @@ function renderHistory() {
       if (maxMatchedLen >= 1 && bestTopIdx !== -1) {
         // High-confidence seam alignment: take top up to bestTopIdx, then continue with bottom from bestBottomIdx
         mergedItems = topItems.slice(0, bestTopIdx).concat(bottomItems.slice(bestBottomIdx));
-        console.log(`[RAKKA] Anchored seam confirmed! Deduped ${topItems.length - bestTopIdx} boundary items across slices.`);
+        console.log(`[RAKKA] Anchored seam confirmed! Deduped boundary items across slices (matched ${maxMatchedLen} items at seam).`);
       } else {
-        console.log("[RAKKA] Distinct receipt halves with zero boundary duplicates detected.");
-        mergedItems = topItems.concat(bottomItems);
+        // Single-item fallback boundary deduplication (checks last 8 of top against first 8 of bottom)
+        let singleAnchorTop = -1;
+        let singleAnchorBottom = -1;
+        for (let bIdx = 0; bIdx < Math.min(8, bottomItems.length); bIdx++) {
+          for (let tIdx = topItems.length - 1; tIdx >= Math.max(0, topItems.length - 8); tIdx--) {
+            if (itemsMatch(topItems[tIdx], bottomItems[bIdx])) {
+              singleAnchorTop = tIdx;
+              singleAnchorBottom = bIdx;
+              break;
+            }
+          }
+          if (singleAnchorTop !== -1) break;
+        }
+
+        if (singleAnchorTop !== -1) {
+          mergedItems = topItems.slice(0, singleAnchorTop).concat(bottomItems.slice(singleAnchorBottom));
+          console.log(`[RAKKA] Single-item boundary anchor confirmed at topIdx=${singleAnchorTop}, bottomIdx=${singleAnchorBottom}.`);
+        } else {
+          console.log("[RAKKA] Distinct receipt segments with zero boundary duplicates detected.");
+          mergedItems = topItems.concat(bottomItems);
+        }
       }
 
       return {
