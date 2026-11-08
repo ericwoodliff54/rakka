@@ -1053,7 +1053,7 @@
       font-weight: 600 !important;
     }
 
-    /* 3. Settings Page: RAKKA Pro Active Member Pill & Button */
+    /* 3. Settings Page: RAKKA Plus Active Member Pill & Button */
     html.theme-light #plusActiveBadge {
       font-weight: 700 !important;
     }
@@ -1208,7 +1208,7 @@
     html.theme-light #toggleTesterModeBtn {
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
     }
-    /* When Pro Active */
+    /* When Plus Active */
     html.theme-light #toggleTesterModeBtn.border-emerald-500\/40,
     html.theme-light #toggleTesterModeBtn.bg-emerald-500\/20 {
       background-color: #ecfdf5 !important;
@@ -1897,8 +1897,8 @@
     <div class="flex items-center justify-between pb-1 px-1">
       <div class="flex items-center gap-2">
         <span class="font-display font-black text-xl bg-gradient-to-r from-cyan-300 to-teal-400 bg-clip-text text-transparent tracking-wider">RAKKA</span>
-        <button type="button" id="headerTopTierBadge" onclick="openPaywall()" class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1" title="Free Mode - Tap to Upgrade to Pro">
-          <span>Free Mode - Upgrade to Pro</span>
+        <button type="button" id="headerTopTierBadge" onclick="openPaywall()" class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1" title="Free Mode - Tap to Upgrade to Plus">
+          <span>Free Mode - Upgrade to Plus</span>
         </button>
       </div>
       <button 
@@ -1983,7 +1983,7 @@
       </button>
     </nav>
 
-    <!-- RAKKA PRO IN-APP PAYWALL MODAL SHEET -->
+    <!-- RAKKA PLUS IN-APP PAYWALL MODAL SHEET -->
     <div id="plusPaywallModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div class="bg-slate-900 border-2 border-amber-500/50 max-w-md w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200">
         
@@ -2000,7 +2000,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
             </svg>
           </div>
-          <span class="text-[11px] font-bold tracking-widest uppercase text-amber-400 block">RAKKA PRO UPGRADE</span>
+          <span class="text-[11px] font-bold tracking-widest uppercase text-amber-400 block">RAKKA PLUS UPGRADE</span>
           <h2 class="font-display text-xl font-bold text-white">Recalls + Allergen & Additive Guard</h2>
           <p class="text-xs text-slate-300 max-w-xs mx-auto">Instant peace of mind in every grocery aisle. Never read confusing ingredient fine print again.</p>
         </div>
@@ -2131,7 +2131,7 @@
             </button>
           </div>
         </div><p class="text-[10px] text-slate-500 text-center leading-tight">
-          Demo Mode: Tapping above immediately unlocks RAKKA Pro so you can test all features. In App Store release, this connects to Apple IAP & Google Play Billing.
+          Demo Mode: Tapping above immediately unlocks RAKKA Plus so you can test all features. In App Store release, this connects to Apple IAP & Google Play Billing.
         </p>
       </div>
     </div>
@@ -2812,15 +2812,15 @@
           
         </div>
         <span id="activeAllergensBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-          Locked (Pro)
+          Locked (Plus)
         </span>
       </div>
 
-      <!-- Pro Status & Trial Banner -->
+      <!-- Plus Status & Trial Banner -->
       <div id="allergensPlusBanner" class="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-yellow-500/20 border border-amber-500/40 flex items-center justify-between gap-3">
         <div>
           <span id="allergensPlusBannerTitle" class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-            <svg class="w-3 h-3 text-amber-400 shrink-0 inline-block" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> <span>RAKKA Pro Required</span>
+            <svg class="w-3 h-3 text-amber-400 shrink-0 inline-block" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> <span>RAKKA Plus Required</span>
           </span>
           <p id="allergensPlusBannerSub" class="text-[11px] text-slate-300">Start your 3-day free trial (no card needed) to unlock family profiles, 12 allergens & additive screening.</p>
         </div>
@@ -2858,7 +2858,7 @@
             </div>
           </div>
           <span id="additiveProStatusBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0">
-            ACTIVE (PRO)
+            ACTIVE (PLUS)
           </span>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
@@ -3242,13 +3242,13 @@
       </div>
 
 
-      <!-- RAKKA PRO MEMBERSHIP SETTINGS -->
+      <!-- RAKKA PLUS MEMBERSHIP SETTINGS -->
       <div class="p-3.5 rounded-xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 shadow-lg space-y-2.5">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <svg class="w-3 h-3 text-amber-400 shrink-0 inline-block" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
             <div>
-              <span class="text-xs font-bold text-amber-300 block">RAKKA Pro</span>
+              <span class="text-xs font-bold text-amber-300 block">RAKKA Plus</span>
               <span class="text-[10px] text-slate-400 block">Gluten & Personalized Dietary Guards</span>
             </div>
           </div>
@@ -3257,20 +3257,20 @@
           </span>
         </div>
         <p class="text-[11px] text-slate-300 leading-relaxed">
-          Federal recall scanning is 100% free forever. RAKKA Pro unlocks 12 allergen guards, automatic food additive screening, and multi-member family dietary profiles. when shopping.
+          Federal recall scanning is 100% free forever. RAKKA Plus unlocks 12 allergen guards, automatic food additive screening, and multi-member family dietary profiles. when shopping.
         </p>
         <button 
           type="button" 
           id="openPaywallBtn" 
           class="w-full min-h-[52px] py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-sm shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          <span>View RAKKA Pro Plans ($2.99/mo or $24.99/yr)</span>
+          <span>View RAKKA Plus Plans ($2.99/mo or $24.99/yr)</span>
         </button>
         <button 
           type="button" 
           id="shareFamilyVipBtn" 
           class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2"
-          title="Share an instant unlocked VIP Pro link with your spouse or family members"
+          title="Share an instant unlocked VIP Plus link with your spouse or family members"
         >
           <svg class="w-4 h-4 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
           <span>Share Family VIP Pass (Free Unlocked Link)</span>
@@ -3283,16 +3283,16 @@
             </div>
             <div class="min-w-0">
               <span class="font-bold text-xs text-white block">Developer Mode</span>
-              <span id="devModeStatusSubtext" class="text-[11px] text-slate-400 block truncate">Testing as: RAKKA Pro</span>
+              <span id="devModeStatusSubtext" class="text-[11px] text-slate-400 block truncate">Testing as: RAKKA Plus</span>
             </div>
           </div>
           <button 
             type="button" 
             id="toggleTesterModeBtn" 
             class="min-h-[42px] px-3.5 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 font-bold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
-            title="Toggle between Free and Pro tiers for testing"
+            title="Toggle between Free and Plus tiers for testing"
           >
-            <span id="toggleTesterBtnText">Pro Active</span>
+            <span id="toggleTesterBtnText">Plus Active</span>
           </button>
         </div>
       </div>
@@ -3802,7 +3802,7 @@
       { id: 'sulfites', name: 'Sulfites', icon: 'sulfites', desc: 'Sulfur dioxide & bisulfites' },
       { id: 'yeast', name: 'Yeast', icon: 'yeast', desc: "Baker's, brewer's & nutritional yeast, extracts" }
     ];
-    // Comprehensive Index of Scrutinized Food Additives & Synthetic Dyes (Pro Guard)
+    // Comprehensive Index of Scrutinized Food Additives & Synthetic Dyes (Plus Guard)
     const ADDITIVES_DATABASE = [
       {
         id: 'bvo',
@@ -4152,7 +4152,7 @@
                   <span>${additives.length} Flagged Food Additive${additives.length > 1 ? 's' : ''} & Synthetic Dye${additives.length > 1 ? 's' : ''}</span>
                 </span>
                 <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Pro Guard Active
+                  Plus Guard Active
                 </span>
               </div>
               <div class="space-y-1.5 pt-0.5">
@@ -4195,14 +4195,14 @@
                   <span>${additives.length} Potential Food Additive${additives.length > 1 ? 's' : ''} / Dye${additives.length > 1 ? 's' : ''} Detected</span>
                 </span>
                 <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Pro Feature
+                  Plus Feature
                 </span>
               </div>
               <p class="text-[11px] text-slate-300 leading-normal">
-                RAKKA identified potential synthetic dyes or chemical additives in this product formulation. Unlock Pro to view the exact detected additives and activate personalized allergen guards.
+                RAKKA identified potential synthetic dyes or chemical additives in this product formulation. Unlock Plus to view the exact detected additives and activate personalized allergen guards.
               </p>
               <button type="button" class="open-paywall-trigger unlock-additive-btn w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
-                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Additive & Allergen Guard</span></span>
+                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Additive & Allergen Guard</span></span>
               </button>
             </div>
           `;
@@ -4214,7 +4214,7 @@
                 <span>Allergen & Additive Guard: <strong class="text-purple-300">Locked</strong></span>
               </span>
               <button type="button" class="open-paywall-trigger unlock-additive-btn px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-[10px] shadow-sm shadow-purple-950/30 transition shrink-0 cursor-pointer">
-                Unlock Pro
+                Unlock Plus
               </button>
             </div>
           `;
@@ -4382,7 +4382,7 @@
       const isPro = (typeof isPlusActive !== 'undefined') ? isPlusActive : true;
       
       // Determine which profiles to screen against:
-      // In Pro mode: screen against all household familyProfiles
+      // In Plus mode: screen against all household familyProfiles
       // In Free mode: screen against active profile
       const targetProfiles = (isPro && Array.isArray(familyProfiles) && familyProfiles.length > 0)
         ? familyProfiles
@@ -4487,18 +4487,18 @@
         const promoParam = (params.get('promo') || '').toLowerCase();
         const codeParam = (params.get('code') || '').toLowerCase();
         const familyParam = (params.get('family') || '').toLowerCase();
-        const proParam = (params.get('pro') || '').toLowerCase();
+        const proParam = (params.get('plus') || params.get('pro') || '').toLowerCase();
 
         // 1. Detect if this is a VIP / Family invitation link
         const isVipCandidate = (
-          vipParam === 'family' || vipParam === 'pro' || vipParam === 'true' || vipParam === '1' || vipParam === 'tester' || vipParam === 'vip' ||
-          familyParam === 'vip' || familyParam === 'true' || familyParam === '1' || familyParam === 'pro' ||
+          vipParam === 'family' || vipParam === 'plus' || vipParam === 'pro' || vipParam === 'true' || vipParam === '1' || vipParam === 'tester' || vipParam === 'vip' ||
+          familyParam === 'vip' || familyParam === 'true' || familyParam === '1' || familyParam === 'plus' || familyParam === 'pro' ||
           proParam === 'family' || proParam === 'vip' || proParam === 'true' || proParam === '1' ||
-          codeParam === 'family' || codeParam === 'vip' || codeParam === 'pro' || codeParam === 'tester' ||
-          promoParam === 'family' || promoParam === 'vip' || promoParam === 'pro' ||
+          codeParam === 'family' || codeParam === 'vip' || codeParam === 'plus' || codeParam === 'pro' || codeParam === 'tester' ||
+          promoParam === 'family' || promoParam === 'vip' || promoParam === 'plus' || promoParam === 'pro' ||
           search.includes('vip=family') || search.includes('vip=pro') || search.includes('vip=true') || search.includes('vip=1') ||
           search.includes('family=vip') || search.includes('pro=vip') || search.includes('code=family') ||
-          hash.includes('vip=family') || hash.includes('family') || hash.includes('vip') || hash.includes('pro') ||
+          hash.includes('vip=family') || hash.includes('family') || hash.includes('vip') || hash.includes('plus') || hash.includes('pro') ||
           href.includes('vip=family') || href.includes('vip=pro') || href.includes('family=vip')
         );
 
@@ -4542,7 +4542,7 @@
           return;
         }
 
-        // 3. Link is valid and unexpired: Activate permanent Lifetime Pro access
+        // 3. Link is valid and unexpired: Activate permanent Lifetime Plus access
         isPlusActive = true;
         plusStatusType = 'paid';
         trialDaysRemaining = 0;
@@ -7957,7 +7957,7 @@
     if (redeemPromoBtn && promoCodeInput) {
       redeemPromoBtn.addEventListener('click', () => {
         const inputCode = promoCodeInput.value.trim().toUpperCase();
-        if (inputCode === 'FAMILY' || inputCode === 'TESTER' || inputCode === 'VIP' || inputCode === 'RAKKA'  || inputCode === 'PRO') {
+        if (inputCode === 'FAMILY' || inputCode === 'TESTER' || inputCode === 'VIP' || inputCode === 'RAKKA'  || inputCode === 'PRO' || inputCode === 'PLUS') {
           triggerHaptic([60, 40, 60]);
           sound.playClearChime();
           isPlusActive = true;
@@ -7968,7 +7968,7 @@
           updatePlusUI();
           closePaywall();
           renderAllergensTab();
-          showCustomizeToast("Family VIP Access Unlocked! Full RAKKA Pro is active.");
+          showCustomizeToast("Family VIP Access Unlocked! Full RAKKA Plus is active.");
         } else {
           triggerHaptic([40, 40]);
           showCustomizeToast("Invalid code. Please check with the app creator.");
@@ -8062,65 +8062,65 @@
       const topBadge = document.getElementById('headerTopTierBadge');
       if (topBadge) {
         if (isPlusActive) {
-          topBadge.innerHTML = `<span>Pro Mode</span>`;
+          topBadge.innerHTML = `<span>Plus Mode</span>`;
           topBadge.className = "text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm cursor-default select-none pointer-events-none";
           topBadge.onclick = null;
-          topBadge.title = "RAKKA Pro Mode";
+          topBadge.title = "RAKKA Plus Mode";
         } else {
-          topBadge.innerHTML = `<span>Free Mode - Upgrade to Pro</span>`;
+          topBadge.innerHTML = `<span>Free Mode - Upgrade to Plus</span>`;
           topBadge.className = "text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1";
           topBadge.onclick = openPaywall;
-          topBadge.title = "Free Mode - Tap to Upgrade to Pro";
+          topBadge.title = "Free Mode - Tap to Upgrade to Plus";
         }
       }
       if (toggleTesterBtnText) {
-        toggleTesterBtnText.textContent = isPlusActive ? 'Developer: Switch to Free Mode' : 'Developer: Switch to Pro Active Mode';
+        toggleTesterBtnText.textContent = isPlusActive ? 'Developer: Switch to Free Mode' : 'Developer: Switch to Plus Active Mode';
       }
 
       const additiveBadge = document.getElementById('additiveProStatusBadge');
 
       if (plusStatusType === 'paid') {
-        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PRO ACTIVE";
+        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PLUS ACTIVE";
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition flex items-center gap-1";
-        plusActiveBadge.textContent = "PRO ACTIVE";
+        plusActiveBadge.textContent = "PLUS ACTIVE";
         plusActiveBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
-        openPaywallBtn.innerHTML = `<span>RAKKA Pro Active (VIP Member)</span>`;
+        openPaywallBtn.innerHTML = `<span>RAKKA Plus Active (VIP Member)</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "AUTO-ACTIVE (PRO)";
+          additiveBadge.textContent = "AUTO-ACTIVE (PLUS)";
           additiveBadge.className = "px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
         }
       } else if (plusStatusType === 'trial') {
-        if (headerPlusBadgeText) headerPlusBadgeText.textContent = `PRO TRIAL (${trialDaysRemaining}D)`;
+        if (headerPlusBadgeText) headerPlusBadgeText.textContent = `PLUS TRIAL (${trialDaysRemaining}D)`;
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = `TRIAL (${trialDaysRemaining}D LEFT)`;
         plusActiveBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40";
-        openPaywallBtn.innerHTML = `<span>3-Day Pro Trial Active (${trialDaysRemaining}d left) • View Plans</span>`;
+        openPaywallBtn.innerHTML = `<span>3-Day Plus Trial Active (${trialDaysRemaining}d left) • View Plans</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "TRIAL ACTIVE (PRO)";
+          additiveBadge.textContent = "TRIAL ACTIVE (PLUS)";
           additiveBadge.className = "px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
         }
       } else if (plusStatusType === 'expired') {
-        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PRO EXPIRED";
+        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PLUS EXPIRED";
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "TRIAL EXPIRED";
         plusActiveBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40";
-        openPaywallBtn.innerHTML = `<span>Upgrade to RAKKA Pro ($24.99/yr or $2.99/mo)</span>`;
+        openPaywallBtn.innerHTML = `<span>Upgrade to RAKKA Plus ($24.99/yr or $2.99/mo)</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "LOCKED (PRO)";
+          additiveBadge.textContent = "LOCKED (PLUS)";
           additiveBadge.className = "px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
         }
       } else {
-        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PRO";
+        if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PLUS";
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "FREE TIER";
         plusActiveBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
         openPaywallBtn.innerHTML = `<span>Start 3-Day Free Trial ($24.99/yr or $2.99/mo)</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "LOCKED (PRO)";
+          additiveBadge.textContent = "LOCKED (PLUS)";
           additiveBadge.className = "px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
         }
       }
@@ -10733,16 +10733,16 @@
       } else {
         allergenBorderClass = 'border-slate-800';
         allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-        allergenBadgeText = 'Pro Feature';
+        allergenBadgeText = 'Plus Feature';
         allergenSummaryText = 'Multi-Member Household Profiles Locked';
 
         allergenDrawerContent = `
           <div class="space-y-2 bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-xs">
             <p class="text-slate-400 leading-normal">
-              Screening 12 allergens across multi-member family profiles is a RAKKA Pro feature.
+              Screening 12 allergens across multi-member family profiles is a RAKKA Plus feature.
             </p>
             <button type="button" class="open-paywall-trigger w-full mt-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
-              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Allergen Guard</span></span>
+              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Allergen Guard</span></span>
             </button>
           </div>
         `;
@@ -10867,18 +10867,18 @@
       } else {
         additiveBorderClass = 'border-purple-500/50';
         additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40';
-        additiveBadgeText = 'Pro Feature';
-        additiveSummaryText = hasAdditives ? `${additivesCount} Potential Additives Detected • Unlock Pro` : 'Automatic Additive Screening Locked';
+        additiveBadgeText = 'Plus Feature';
+        additiveSummaryText = hasAdditives ? `${additivesCount} Potential Additives Detected • Unlock Plus` : 'Automatic Additive Screening Locked';
 
         additiveDrawerContent = `
           <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-slate-800">
             <p class="text-slate-300 leading-normal">
               ${hasAdditives 
-                ? `RAKKA detected <strong>${additivesCount} scrutinized food additive${additivesCount > 1 ? 's' : ''} or synthetic dye${additivesCount > 1 ? 's' : ''}</strong> in this product. Unlock Pro to view the exact chemicals and EU health advisories.`
-                : 'Automatic chemical additive and synthetic petroleum dye screening requires RAKKA Pro.'}
+                ? `RAKKA detected <strong>${additivesCount} scrutinized food additive${additivesCount > 1 ? 's' : ''} or synthetic dye${additivesCount > 1 ? 's' : ''}</strong> in this product. Unlock Plus to view the exact chemicals and EU health advisories.`
+                : 'Automatic chemical additive and synthetic petroleum dye screening requires RAKKA Plus.'}
             </p>
             <button type="button" class="open-paywall-trigger unlock-additive-btn w-full mt-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
-              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Pro Additive Screening</span></span>
+              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Additive Screening</span></span>
             </button>
           </div>
         `;
@@ -11284,22 +11284,22 @@
       if (isPlusActive) {
         activeAllergensBadge.textContent = `${userAllergens.length} Active (${currentProfile.name})`;
         activeAllergensBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0";
-        // Pro user: Hide the Pro banner completely per user request (no redundant promo banner)
+        // Plus user: Hide the Plus banner completely per user request (no redundant promo banner)
         if (allergensPlusBanner) {
           allergensPlusBanner.classList.add('hidden');
         }
       } else {
-        activeAllergensBadge.textContent = "Locked (Pro)";
+        activeAllergensBadge.textContent = "Locked (Plus)";
         activeAllergensBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0";
         if (allergensPlusBanner) {
           allergensPlusBanner.className = "p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-yellow-500/20 border border-amber-500/40 flex items-center justify-between gap-3";
-          allergensPlusBannerTitle.innerHTML = UI_ICONS.star + " RAKKA Pro Required";
+          allergensPlusBannerTitle.innerHTML = UI_ICONS.star + " RAKKA Plus Required";
           allergensPlusBannerTitle.className = "text-xs font-bold text-amber-300 flex items-center gap-1.5";
           allergensPlusBannerSub.textContent = plusStatusType === 'expired'
-            ? "Your 3-day trial has ended. Subscribe to Pro to re-enable family profiles, allergen alerts & additive screening."
+            ? "Your 3-day trial has ended. Subscribe to Plus to re-enable family profiles, allergen alerts & additive screening."
             : "Start your 3-day free trial (no card needed) to unlock family profiles, 12 allergens & synthetic dye screening.";
           unlockAllergensBannerBtn.classList.remove('hidden');
-          unlockAllergensBannerBtn.textContent = plusStatusType === 'expired' ? "Upgrade to Pro" : "Start 3-Day Trial";
+          unlockAllergensBannerBtn.textContent = plusStatusType === 'expired' ? "Upgrade to Plus" : "Start 3-Day Trial";
         }
       }
 
@@ -11419,7 +11419,7 @@
             if (!isPlusActive) {
               triggerHaptic([40, 40]);
               openPaywall();
-              showCustomizeToast("RAKKA Pro required to add family profiles.");
+              showCustomizeToast("RAKKA Plus required to add family profiles.");
               return;
             }
             if (familyProfiles.length >= MAX_FAMILY_MEMBERS) {
@@ -11433,7 +11433,7 @@
         }
       }
 
-      // Render 12 Allergen Guardrail Toggles (Default to unchecked; locked in Free mode, customizable in Pro)
+      // Render 12 Allergen Guardrail Toggles (Default to unchecked; locked in Free mode, customizable in Plus)
       // 12 Allergen Guardrail Toggles (Compact 2-column mobile cards, highly visible & clickable)
       allergenCheckboxesContainer.innerHTML = ALLERGEN_OPTIONS.map(opt => {
         const isChecked = isPlusActive && userAllergens.includes(opt.id);
@@ -11446,7 +11446,7 @@
           lockIcon = `
             <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs">
               <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-              <span>PRO</span>
+              <span>PLUS</span>
             </span>
           `;
         } else if (isChecked) {
@@ -11468,7 +11468,7 @@
             type="button" 
             class="allergen-toggle-btn min-h-[48px] p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.98] ${activeBg} gap-1.5 sm:gap-2 cursor-pointer shadow-xs"
             data-id="${opt.id}"
-            title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Pro Required to enable ${opt.name}`}"
+            title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Plus Required to enable ${opt.name}`}"
           >
             <div class="flex items-center gap-2 min-w-0">
               <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0">
@@ -11490,7 +11490,7 @@
           if (!isPlusActive) {
             triggerHaptic([40, 40]);
             openPaywall();
-            showCustomizeToast("RAKKA Pro required to customize allergen guards.");
+            showCustomizeToast("RAKKA Plus required to customize allergen guards.");
             return;
           }
           triggerHaptic([30]);
@@ -11518,7 +11518,7 @@
         if (!isPlusActive) {
           triggerHaptic([40, 40]);
           openPaywall();
-          showCustomizeToast("RAKKA Pro required to enable allergen guards.");
+          showCustomizeToast("RAKKA Plus required to enable allergen guards.");
           return;
         }
         triggerHaptic([40]);
@@ -11871,11 +11871,11 @@
       if (devBtn && devText) {
         if (isPlusActive) {
           devBtn.className = "min-h-[42px] px-3.5 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 font-bold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5 cursor-pointer";
-          devText.textContent = "Pro Active • Tap for Free";
-          if (devSub) devSub.textContent = "Testing as: RAKKA Pro (All features unlocked)";
+          devText.textContent = "Plus Active • Tap for Free";
+          if (devSub) devSub.textContent = "Testing as: RAKKA Plus (All features unlocked)";
         } else {
           devBtn.className = "min-h-[42px] px-3.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold text-xs transition active:scale-95 shadow-sm flex items-center gap-1.5 cursor-pointer hover:border-slate-600";
-          devText.textContent = "Free Mode • Tap for Pro";
+          devText.textContent = "Free Mode • Tap for Plus";
           if (devSub) devSub.textContent = "Testing as: Free Tier (Paywall & locked features active)";
         }
       }
@@ -11905,7 +11905,7 @@
           sound.playScanBeep();
           showCustomizeToast("Developer Mode: Switched to Free Tier (Paywall Active)");
         } else {
-          // Switch to Pro Active Mode (All features unlocked)
+          // Switch to Plus Active Mode (All features unlocked)
           try {
             localStorage.setItem('rakka_dev_mode', 'paid');
             localStorage.setItem('rakka_pro_active', 'paid');
@@ -11919,7 +11919,7 @@
           renderAllergensTab();
           renderCustomizeTab();
           sound.playClearChime();
-          showCustomizeToast("Developer Mode: Switched to Pro Active (All Features Unlocked)");
+          showCustomizeToast("Developer Mode: Switched to Plus Active (All Features Unlocked)");
         }
       });
     }
@@ -12749,7 +12749,7 @@ function renderHistory() {
       const activeCount = scanHistory.length;
       if (countBadge) {
         const maxCap = isPlusActive ? MAX_WATCHLIST_ITEMS : 5;
-        countBadge.textContent = `${activeCount}/${maxCap} Monitored (${isPlusActive ? 'Pro' : 'Free'})`;
+        countBadge.textContent = `${activeCount}/${maxCap} Monitored (${isPlusActive ? 'Plus' : 'Free'})`;
         if (activeCount >= MAX_WATCHLIST_ITEMS) {
           countBadge.className = 'px-2.5 py-1 text-[11px] font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40';
         } else if (activeCount > 0) {
@@ -12933,7 +12933,7 @@ function renderHistory() {
             const memberNames = affectedMembers.length > 0 ? ` (${affectedMembers.map(m => m.name).join(', ')})` : '';
             statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert${memberNames}</span>`;
           } else {
-            statusPill = `<button type="button" onclick="event.stopPropagation(); openPaywall();" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer" title="Tap to unlock RAKKA Pro allergen guard"><span>🔒 Allergen Alert • Unlock Pro</span></button>`;
+            statusPill = `<button type="button" onclick="event.stopPropagation(); openPaywall();" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer" title="Tap to unlock RAKKA Plus allergen guard"><span>🔒 Allergen Alert • Unlock Plus</span></button>`;
           }
         }
 
@@ -12954,7 +12954,7 @@ function renderHistory() {
                     </span>
                   ` : `
                     <button type="button" onclick="event.stopPropagation(); openPaywall();" class="px-2 py-0.5 text-[10px] rounded-lg font-medium bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition cursor-pointer flex items-center gap-1" title="Tap to unlock chemical additives screening">
-                      <span>🔒 ${additivesCount} Additive${additivesCount > 1 ? 's' : ''} (Pro)</span>
+                      <span>🔒 ${additivesCount} Additive${additivesCount > 1 ? 's' : ''} (Plus)</span>
                     </button>
                   `) : `
                     <span class="px-2 py-0.5 text-[10px] rounded-lg font-medium bg-slate-950 text-slate-400 border border-slate-800">
@@ -13038,19 +13038,19 @@ function renderHistory() {
                         <span>🔒</span>
                         <span>Potential Household Allergen Conflict</span>
                       </span>
-                      <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Pro Feature</span>
+                      <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Plus Feature</span>
                     </div>
                     <p class="text-[11px] text-slate-300 leading-relaxed">
-                      Upgrade to RAKKA Pro to reveal which family profile is affected, view specific ingredient conflict flags, and unlock custom profiles.
+                      Upgrade to RAKKA Plus to reveal which family profile is affected, view specific ingredient conflict flags, and unlock custom profiles.
                     </p>
                     <button type="button" onclick="event.stopPropagation(); openPaywall();" class="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer">
-                      Unlock Pro Allergen Shield
+                      Unlock Plus Allergen Shield
                     </button>
                   </div>
                 ` : `
                   <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs flex items-center justify-between">
                     <span>✓ No common allergen conflicts detected.</span>
-                    <button type="button" onclick="event.stopPropagation(); openPaywall();" class="text-[10px] text-amber-400 font-bold hover:underline cursor-pointer">Custom Guards (Pro) ›</button>
+                    <button type="button" onclick="event.stopPropagation(); openPaywall();" class="text-[10px] text-amber-400 font-bold hover:underline cursor-pointer">Custom Guards (Plus) ›</button>
                   </div>
                 `)}
               </div>
@@ -13081,10 +13081,10 @@ function renderHistory() {
                         <span>🔒</span>
                         <span>${additivesCount} Commercial Additive${additivesCount > 1 ? 's' : ''} or Dye${additivesCount > 1 ? 's' : ''} Flagged</span>
                       </span>
-                      <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">Pro Feature</span>
+                      <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">Plus Feature</span>
                     </div>
                     <p class="text-[11px] text-slate-300 leading-relaxed">
-                      RAKKA Pro screens 37 European- and California-flagged chemical dyes, emulsifiers, and preservatives. Upgrade to see full ingredient ratings.
+                      RAKKA Plus screens 37 European- and California-flagged chemical dyes, emulsifiers, and preservatives. Upgrade to see full ingredient ratings.
                     </p>
                     <button type="button" onclick="event.stopPropagation(); openPaywall();" class="unlock-additive-btn w-full py-2 px-3 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-95 cursor-pointer">
                       Unlock Chemical Additive Directory
@@ -13720,8 +13720,8 @@ function renderHistory() {
         const expDateFormatted = new Date(expTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const shareUrl = window.location.origin + window.location.pathname + '?vip=family&exp=' + expTimestamp;
         const shareData = {
-          title: 'RAKKA Pro - Family VIP Pass',
-          text: `Here is your Family VIP Pass for RAKKA Pro! Open this link before ${expDateFormatted} to unlock lifetime Pro for free:`,
+          title: 'RAKKA Plus - Family VIP Pass',
+          text: `Here is your Family VIP Pass for RAKKA Plus! Open this link before ${expDateFormatted} to unlock lifetime Plus for free:`,
           url: shareUrl
         };
 
@@ -13776,7 +13776,7 @@ function renderHistory() {
       setTimeout(() => {
         triggerHaptic([60, 40, 60]);
         sound.playClearChime();
-        showCustomizeToast("Family VIP Access Unlocked! Full RAKKA Pro is active.");
+        showCustomizeToast("Family VIP Access Unlocked! Full RAKKA Plus is active.");
       }, 700);
     }
 
@@ -14918,7 +14918,7 @@ function renderHistory() {
         }
 
         if (skippedDueToCap > 0 && !isPlusActive) {
-          showCustomizeToast(`✓ Added ${importedCount}/5 items. Upgrade to Pro to monitor all ${items.length}!`);
+          showCustomizeToast(`✓ Added ${importedCount}/5 items. Upgrade to Plus to monitor all ${items.length}!`);
         } else {
           showCustomizeToast(`🎉 Auto-loaded all ${importedCount} receipt items into your Watchlist!`);
         }
@@ -15075,7 +15075,7 @@ function renderHistory() {
         
         // Show prominent toast notification
         if (skippedDueToCap > 0 && !isPlusActive) {
-          showCustomizeToast(`✓ Added ${importedCount}/5 items. Upgrade to Pro to monitor all ${safeItems.length}!`);
+          showCustomizeToast(`✓ Added ${importedCount}/5 items. Upgrade to Plus to monitor all ${safeItems.length}!`);
         } else {
           showCustomizeToast(`🎉 Successfully imported ${importedCount} groceries into your Watchlist!`);
         }
