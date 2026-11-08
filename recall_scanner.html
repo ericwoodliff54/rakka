@@ -5840,6 +5840,21 @@
         "ingredients": "Pasteurized Milk, Salt, Enzymes, Culture, Powdered Cellulose (Added to Prevent Caking)."
 },
       // WHOLE FOODS 365 ORGANIC BABY SPINACH (5 OZ CLAMSHELL) - UPC 00994824552 / 0994824552
+      "009948245528": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "00994824552",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
       "00994824552": {
         isRecalled: true,
         brand: "365 by Whole Foods Market",
@@ -17992,6 +18007,7 @@
       }
     ];
 
+    let currentActiveProductScanData = null;
     let scanHistory = [];
     try {
       const saved = localStorage.getItem('rakka_history')  || localStorage.getItem('safebite_history') || localStorage.getItem('recall_radar_history');
@@ -24347,6 +24363,42 @@ function renderHistory() {
       const targetLotModal = lotAuditorModal || document.getElementById('lotAuditorModal');
       if (targetLotModal) targetLotModal.classList.remove('hidden');
     }
+
+    function openLotAuditorForCurrentProduct() {
+      triggerHaptic([30]);
+      const data = (typeof currentActiveProductScanData !== 'undefined' && currentActiveProductScanData) 
+        ? currentActiveProductScanData 
+        : (window.currentActiveProductScanData || null);
+
+      let title = "Recalled Grocery Product";
+      let hazard = "Potential contamination risk under active federal safety notice.";
+      let brand = "Grocery Brand";
+      let expectedLots = "";
+
+      if (data) {
+        title = data.productName || (data.recallRecord && data.recallRecord.product) || title;
+        brand = data.brand || (data.recallRecord && data.recallRecord.brand) || brand;
+        if (data.recallRecord) {
+          hazard = data.recallRecord.hazard || hazard;
+          expectedLots = data.recallRecord.action || data.recallRecord.expectedLots || "";
+        }
+      }
+
+      openLotAuditor(title, hazard, brand, expectedLots);
+
+      // Directly trigger camera / file dialog so user can snap photo immediately
+      const camInput = document.getElementById('lotCodeCameraInput');
+      if (camInput) {
+        try {
+          camInput.click();
+        } catch (err) {
+          console.warn("Direct camera trigger error:", err);
+        }
+      }
+    }
+    window.openLotAuditorForCurrentProduct = openLotAuditorForCurrentProduct;
+    window.openLotAuditor = openLotAuditor;
+    window.closeLotAuditor = closeLotAuditor;
 
     function closeLotAuditor() {
       const targetLotModal = lotAuditorModal || document.getElementById('lotAuditorModal');
