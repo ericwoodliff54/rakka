@@ -11637,73 +11637,83 @@
         let lockIcon = '';
         if (!isPlusActive) {
           lockIcon = `
-            <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs">
+            <span class="text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs pointer-events-none">
               <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
               <span>PLUS</span>
             </span>
           `;
         } else if (isChecked) {
           lockIcon = `
-            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-sm transition shrink-0">
-              <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+            <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-sm transition shrink-0 pointer-events-none">
+              <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
           `;
         } else {
           lockIcon = `
-            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 border-slate-600 bg-slate-900/60 transition shrink-0"></div>
+            <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl border-2 border-slate-600 bg-slate-900/60 group-hover:border-slate-400 transition shrink-0 pointer-events-none"></div>
           `;
         }
 
         return `
           <div 
-            class="allergen-toggle-btn min-h-[48px] h-[48px] p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.98] ${activeBg} gap-1.5 cursor-pointer shadow-xs select-none"
+            class="allergen-toggle-btn min-h-[64px] sm:min-h-[68px] p-3 sm:p-3.5 rounded-2xl border text-left flex items-center justify-between transition ${activeBg} gap-2.5 shadow-xs select-none relative"
             data-id="${opt.id}"
-            role="button"
-            tabindex="0"
-            title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Plus Required to enable ${opt.name}`}"
           >
-            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0 pointer-events-none">
-                ${getAllergenIcon(opt.id, "w-4 h-4")}
+            <!-- Left Info Clickable Area: Icon + Allergen Name + (i) Button ALL open info sheet -->
+            <div 
+              class="allergen-info-trigger flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 cursor-pointer select-none group/info"
+              data-id="${opt.id}"
+              title="View screened ingredients for ${opt.name}"
+              role="button"
+              tabindex="0"
+            >
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-800/80 border border-slate-700/80 group-hover/info:border-cyan-400/60 flex items-center justify-center text-sky-400 shrink-0 transition">
+                ${getAllergenIcon(opt.id, "w-5 h-5 sm:w-5.5 sm:h-5.5")}
               </div>
-              <div class="flex items-center gap-1 min-w-0">
-                <span class="font-bold text-xs sm:text-sm text-white truncate leading-tight pointer-events-none">${opt.name}</span>
-                <button 
-                  type="button" 
-                  class="allergen-info-btn w-5 h-5 rounded-full text-slate-400 hover:text-cyan-300 hover:bg-slate-800/90 flex items-center justify-center transition active:scale-90 cursor-pointer shrink-0 ml-0.5"
-                  data-id="${opt.id}"
-                  title="View screened ingredients for ${opt.name}"
-                  aria-label="Info for ${opt.name}"
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="font-bold text-sm sm:text-base text-white group-hover/info:text-cyan-300 truncate leading-tight transition">${opt.name}</span>
+                <span 
+                  class="allergen-info-btn w-6 h-6 rounded-full text-slate-400 group-hover/info:text-cyan-300 flex items-center justify-center transition shrink-0"
                 >
-                  <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path stroke-linecap="round" d="M12 16v-4m0-4h.01"></path>
                   </svg>
-                </button>
+                </span>
               </div>
             </div>
 
-            <div class="pointer-events-none flex items-center shrink-0 ml-1">
+            <!-- Right Dedicated Checkbox Target (THE ONLY PART THAT TOGGLES CHECK) -->
+            <button 
+              type="button"
+              class="allergen-checkbox-target group p-1.5 -mr-1 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition cursor-pointer shrink-0"
+              data-id="${opt.id}"
+              aria-label="${isChecked ? `Uncheck ${opt.name}` : `Check ${opt.name}`}"
+              title="${isPlusActive ? `Tap checkbox to toggle ${opt.name}` : `RAKKA Plus required`}"
+            >
               ${lockIcon}
-            </div>
+            </button>
           </div>
         `;
       }).join('');
 
-      document.querySelectorAll('.allergen-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const infoBtn = e.target.closest('.allergen-info-btn');
-          if (infoBtn) {
-            e.preventDefault();
-            e.stopPropagation();
-            const id = infoBtn.getAttribute('data-id');
-            openAllergenInfo(id);
-            return;
-          }
-
+      // Wire up allergen info trigger (icon, name, and (i) ALL open info sheet)
+      document.querySelectorAll('.allergen-info-trigger').forEach(trigger => {
+        trigger.addEventListener('click', (e) => {
           e.preventDefault();
+          e.stopPropagation();
+          const id = trigger.getAttribute('data-id');
+          openAllergenInfo(id);
+        });
+      });
+
+      // Wire up dedicated checkbox target (THE ONLY PART THAT CHECKS/TOGGLES)
+      document.querySelectorAll('.allergen-checkbox-target').forEach(box => {
+        box.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           if (!isPlusActive) {
             triggerHaptic([40, 40]);
             openPaywall();
@@ -11711,7 +11721,7 @@
             return;
           }
           triggerHaptic([30]);
-          const id = btn.getAttribute('data-id');
+          const id = box.getAttribute('data-id');
 
           const prof = getActiveProfile();
           if (!prof.allergens) prof.allergens = [];
