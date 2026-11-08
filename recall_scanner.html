@@ -24482,12 +24482,7 @@ function renderHistory() {
 
           // Provide actionable manual comparison window rather than a dead-end
           const recallWindowText = currentAuditorRecall.expectedLots || "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)";
-          renderLotAuditVerdict({
-            extractedCode: "Manual Verification Required",
-            isMatch: null,
-            verdictTitle: "Inspection Reference",
-            severity: "warning",
-            let explMsg = "";
+          let explMsg = "";
           if (serverErrorMsg) {
             explMsg = `Edge inspector notice: ${serverErrorMsg}. Affected recall batches carry: ${recallWindowText}. Compare the stamped date printed on your package against this recall window.`;
           } else {
@@ -24500,8 +24495,6 @@ function renderHistory() {
             severity: "warning",
             explanation: explMsg,
             action: clientApiKey ? "Paste the updated rakka-worker.js code into Cloudflare Quick Edit to enable multi-model fallback." : "To enable instant AI photo reading, add your free Gemini API key in Rakka Settings > AI Integration."
-          });
-            action: "To enable instant AI photo reading, add your free Gemini API key in Rakka Settings > AI Integration."
           });
         } catch (err) {
           console.warn("Lot code auditor notice:", err);
