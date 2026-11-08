@@ -1839,7 +1839,44 @@
     html.theme-light #appSplashScreen .splash-disclaimer {
       color: #cbd5e1 !important;
     }
-</style>
+
+    /* Allergen Info (Option 3) */
+    html.theme-light .allergen-info-btn {
+      color: #64748b !important;
+    }
+    html.theme-light .allergen-info-btn:hover {
+      color: #0284c7 !important;
+      background-color: #e2e8f0 !important;
+    }
+    html.theme-light #allergenInfoModal .bg-slate-900 {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #000000 !important;
+    }
+    html.theme-light #allergenInfoModal .bg-slate-950 {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+    }
+    html.theme-light #allergenInfoModal #allergenInfoModalTitle {
+      color: #000000 !important;
+    }
+    html.theme-light #allergenInfoModal #allergenInfoModalDesc {
+      color: #1e293b !important;
+    }
+    html.theme-light #allergenInfoModal #allergenInfoModalDesc p {
+      color: #1e293b !important;
+    }
+    html.theme-light #confirmAllergenInfoBtn {
+      background-color: #0284c7 !important;
+      color: #ffffff !important;
+      border-color: #0284c7 !important;
+    }
+    html.theme-light #closeAllergenInfoBtn {
+      background-color: #f1f5f9 !important;
+      color: #475569 !important;
+    }
+
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
     <!-- RAKKA BRAND SPLASH SCREEN (Mascot with responsive mobile layout and guaranteed text visibility) -->
@@ -2240,6 +2277,43 @@
 
 <!-- USER AGREEMENT & FOOD SAFETY TERMS MODAL (Mandatory on First Launch & Accessible in Settings) -->
     
+    
+    <!-- ALLERGEN INFO MODAL SHEET (OPTION 3) -->
+    <div id="allergenInfoModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border-2 border-cyan-500/50 max-w-sm w-full rounded-3xl p-5 shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
+        
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div id="allergenInfoModalIcon" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0">
+              <!-- Injected dynamically -->
+            </div>
+            <div>
+              <h3 id="allergenInfoModalTitle" class="font-bold text-base text-white">Gluten Guard</h3>
+              <span class="text-[10px] text-cyan-400 font-semibold uppercase tracking-wider block">Screened Ingredients & Derivatives</span>
+            </div>
+          </div>
+          <button type="button" id="closeAllergenInfoBtn" class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer active:scale-90" aria-label="Close info">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="text-xs text-slate-300 leading-relaxed" id="allergenInfoModalDesc">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-400 flex items-start gap-1.5 leading-snug">
+          <svg class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+          <span>RAKKA scans ingredient lists on barcodes and receipts for exact terms and common hidden derivatives.</span>
+        </div>
+
+        <button type="button" id="confirmAllergenInfoBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer border border-slate-700 active:scale-[0.98]">
+          Got It
+        </button>
+      </div>
+    </div>
+
     <!-- FACTORY RESET CONFIRMATION MODAL SHEET -->
     <div id="resetConfirmModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div class="bg-slate-900 border-2 border-rose-500/60 max-w-sm w-full rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
@@ -3730,6 +3804,53 @@
       desktop: `<svg class="w-4 h-4 shrink-0 inline-block text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`
     };
 
+    
+    function openAllergenInfo(allergenId) {
+      const opt = ALLERGEN_OPTIONS.find(x => x.id === allergenId);
+      if (!opt) return;
+
+      const modal = document.getElementById('allergenInfoModal');
+      const title = document.getElementById('allergenInfoModalTitle');
+      const desc = document.getElementById('allergenInfoModalDesc');
+      const icon = document.getElementById('allergenInfoModalIcon');
+
+      if (title) title.textContent = `${opt.name} Guard`;
+      if (desc) {
+        desc.innerHTML = `
+          <div class="space-y-2">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block mb-0.5">Primary Target</span>
+              <p class="text-xs text-white font-medium">${opt.desc}</p>
+            </div>
+            <div class="pt-1 border-t border-slate-800">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Screened Ingredients & Hidden Derivatives</span>
+              <p class="text-xs text-slate-300 leading-relaxed">${opt.details || opt.desc}</p>
+            </div>
+          </div>
+        `;
+      }
+      if (icon) {
+        icon.innerHTML = getAllergenIcon(opt.id, "w-6 h-6");
+      }
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        triggerHaptic([25]);
+      }
+    }
+
+    function closeAllergenInfo() {
+      const modal = document.getElementById('allergenInfoModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // Modal listeners
+    document.getElementById('closeAllergenInfoBtn')?.addEventListener('click', closeAllergenInfo);
+    document.getElementById('confirmAllergenInfoBtn')?.addEventListener('click', closeAllergenInfo);
+    document.getElementById('allergenInfoModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'allergenInfoModal') closeAllergenInfo();
+    });
+
     function getAllergenIcon(id, cls = "w-5 h-5") {
       const icons = {
         gluten: `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20m-3-18c1.5 2 1.5 4 0 6s-1.5 4 0 6m6-12c-1.5 2-1.5 4 0 6s1.5 4 0 6M9 6c3 0 3-4 6-4M9 12c3 0 3-4 6-4M9 18c3 0 3-4 6-4"/></svg>`,
@@ -3789,18 +3910,90 @@
 
     // Allergen Options (Full FDA Big 9 + Gluten, Corn, Sulfites & Yeast)
     const ALLERGEN_OPTIONS = [
-      { id: 'gluten', name: 'Gluten', icon: 'gluten', desc: 'Wheat, barley, rye & flour' },
-      { id: 'dairy', name: 'Dairy', icon: 'dairy', desc: 'Milk, whey, cheese & butter' },
-      { id: 'peanuts', name: 'Peanuts', icon: 'peanuts', desc: 'Peanuts, peanut butter & oils' },
-      { id: 'treenuts', name: 'Tree Nuts', icon: 'treenuts', desc: 'Almonds, walnuts & cashews' },
-      { id: 'soy', name: 'Soy', icon: 'soy', desc: 'Soy lecithin, soybeans & tofu' },
-      { id: 'eggs', name: 'Eggs', icon: 'eggs', desc: 'Egg whites, yolks & mayo' },
-      { id: 'shellfish', name: 'Shellfish', icon: 'shellfish', desc: 'Shrimp, crab & lobster' },
-      { id: 'fish', name: 'Fish', icon: 'fish', desc: 'Salmon, tuna & finfish' },
-      { id: 'sesame', name: 'Sesame', icon: 'sesame', desc: 'Sesame seeds & tahini' },
-      { id: 'corn', name: 'Corn', icon: 'corn', desc: 'Corn syrup, starch & meal' },
-      { id: 'sulfites', name: 'Sulfites', icon: 'sulfites', desc: 'Sulfur dioxide & bisulfites' },
-      { id: 'yeast', name: 'Yeast', icon: 'yeast', desc: "Baker's, brewer's & nutritional yeast, extracts" }
+      { 
+        id: 'gluten', 
+        name: 'Gluten', 
+        icon: 'gluten', 
+        desc: 'Wheat, barley, rye & flour',
+        details: 'Wheat, barley, rye, malt, flour, semolina, spelt, farro, durum, triticale, kamut, wheat starch, and hydrolyzed wheat protein.' 
+      },
+      { 
+        id: 'dairy', 
+        name: 'Dairy', 
+        icon: 'dairy', 
+        desc: 'Milk, whey, cheese & butter',
+        details: 'Milk, whey, casein, caseinates, lactose, butter, buttermilk, cream, cheese, milk powder, ghee, curds, and lactalbumin.' 
+      },
+      { 
+        id: 'peanuts', 
+        name: 'Peanuts', 
+        icon: 'peanuts', 
+        desc: 'Peanuts, peanut butter & oils',
+        details: 'Peanuts, peanut butter, peanut oil, peanut flour, groundnuts, beer nuts, and mixed nut formulations containing peanuts.' 
+      },
+      { 
+        id: 'treenuts', 
+        name: 'Tree Nuts', 
+        icon: 'treenuts', 
+        desc: 'Almonds, walnuts & cashews',
+        details: 'Almonds, walnuts, cashews, pecans, pistachios, hazelnuts (filberts), macadamias, Brazil nuts, pine nuts, and chestnuts.' 
+      },
+      { 
+        id: 'soy', 
+        name: 'Soy', 
+        icon: 'soy', 
+        desc: 'Soy lecithin, soybeans & tofu',
+        details: 'Soybeans, soy lecithin, edamame, tofu, soy milk, soy sauce, textured vegetable protein (TVP), miso, and tempeh.' 
+      },
+      { 
+        id: 'eggs', 
+        name: 'Eggs', 
+        icon: 'eggs', 
+        desc: 'Egg whites, yolks & mayo',
+        details: 'Egg whites, egg yolks, whole egg, egg powder, albumin, globulin, mayonnaise, meringue, and lysozyme.' 
+      },
+      { 
+        id: 'shellfish', 
+        name: 'Shellfish', 
+        icon: 'shellfish', 
+        desc: 'Shrimp, crab & lobster',
+        details: 'Crustaceans and mollusks: shrimp, crab, lobster, crawfish, prawns, oysters, clams, mussels, scallops, squid, and octopus.' 
+      },
+      { 
+        id: 'fish', 
+        name: 'Fish', 
+        icon: 'fish', 
+        desc: 'Salmon, tuna & finfish',
+        details: 'Salmon, tuna, cod, tilapia, halibut, anchovies, trout, bass, finfish derivatives, fish gelatin, and fish sauce.' 
+      },
+      { 
+        id: 'sesame', 
+        name: 'Sesame', 
+        icon: 'sesame', 
+        desc: 'Sesame seeds & tahini',
+        details: 'Sesame seeds, tahini, sesame oil, sesame paste, benne seeds, sesamum indicum, and sesame flour.' 
+      },
+      { 
+        id: 'corn', 
+        name: 'Corn', 
+        icon: 'corn', 
+        desc: 'Corn syrup, starch & meal',
+        details: 'Corn syrup, high fructose corn syrup (HFCS), cornstarch, cornmeal, maize, dextrose, maltodextrin, and zein.' 
+      },
+      { 
+        id: 'sulfites', 
+        name: 'Sulfites', 
+        icon: 'sulfites', 
+        desc: 'Sulfur dioxide & bisulfites',
+        details: 'Sulfur dioxide, potassium bisulfite, potassium metabisulfite, sodium bisulfite, sodium metabisulfite, and sodium sulfite.' 
+      },
+      { 
+        id: 'yeast', 
+        name: 'Yeast', 
+        icon: 'yeast', 
+        desc: "Baker's, brewer's & nutritional yeast",
+        details: "Baker's yeast, brewer's yeast, nutritional yeast flakes, autolyzed yeast extract, Torula yeast, and hydrolyzed yeast." 
+      }
     ];
     // Comprehensive Index of Scrutinized Food Additives & Synthetic Dyes (Plus Guard)
     const ADDITIVES_DATABASE = [
@@ -8316,12 +8509,12 @@
         if (p.el) {
           if (p.active) {
             p.el.classList.remove('hidden');
-            p.el.style.display = '';
-            p.el.removeAttribute('hidden');
+            if (p.el.style) p.el.style.display = '';
+            if (typeof p.el.removeAttribute === 'function') p.el.removeAttribute('hidden');
           } else {
             p.el.classList.add('hidden');
-            p.el.style.display = 'none';
-            p.el.setAttribute('hidden', '');
+            if (p.el.style) p.el.style.display = 'none';
+            if (typeof p.el.setAttribute === 'function') p.el.setAttribute('hidden', '');
           }
         }
       });
@@ -8329,15 +8522,15 @@
       if (scannerResultContainer) {
         if (isBarcodes && scannerResultContainer.innerHTML.trim() !== '') {
           scannerResultContainer.classList.remove('hidden');
-          scannerResultContainer.style.display = '';
+          if (scannerResultContainer.style) scannerResultContainer.style.display = '';
         } else {
           scannerResultContainer.classList.add('hidden');
-          scannerResultContainer.style.display = 'none';
+          if (scannerResultContainer.style) scannerResultContainer.style.display = 'none';
         }
       }
       if (manualResultContainer) {
         manualResultContainer.classList.add('hidden');
-        manualResultContainer.style.display = 'none';
+        if (manualResultContainer.style) manualResultContainer.style.display = 'none';
       }
 
       // Reset accordion state so returning to Watchlist ALWAYS defaults to collapsed
@@ -9647,7 +9840,7 @@
         const targetContainer = scannerResultContainer || manualResultContainer;
         if (manualResultContainer && manualResultContainer !== targetContainer) {
           manualResultContainer.classList.add('hidden');
-          manualResultContainer.style.display = 'none';
+          if (manualResultContainer.style) manualResultContainer.style.display = 'none';
           manualResultContainer.innerHTML = '';
         }
         if (targetContainer) {
@@ -10445,7 +10638,7 @@
       if (!targetContainer) return;
       if (manualResultContainer && manualResultContainer !== targetContainer) {
         manualResultContainer.classList.add('hidden');
-        manualResultContainer.style.display = 'none';
+        if (manualResultContainer.style) manualResultContainer.style.display = 'none';
         manualResultContainer.innerHTML = '';
       }
       targetContainer.classList.remove('hidden');
@@ -11444,7 +11637,7 @@
         let lockIcon = '';
         if (!isPlusActive) {
           lockIcon = `
-            <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs">
+            <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs">
               <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
               <span>PLUS</span>
             </span>
@@ -11464,28 +11657,52 @@
         }
 
         return `
-          <button 
-            type="button" 
-            class="allergen-toggle-btn min-h-[48px] p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.98] ${activeBg} gap-1.5 sm:gap-2 cursor-pointer shadow-xs"
+          <div 
+            class="allergen-toggle-btn min-h-[48px] h-[48px] p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.98] ${activeBg} gap-1.5 cursor-pointer shadow-xs select-none"
             data-id="${opt.id}"
+            role="button"
+            tabindex="0"
             title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Plus Required to enable ${opt.name}`}"
           >
-            <div class="flex items-center gap-2 min-w-0">
-              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0">
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0 pointer-events-none">
                 ${getAllergenIcon(opt.id, "w-4 h-4")}
               </div>
-              <div class="min-w-0">
-                <span class="font-bold text-xs sm:text-sm text-white block leading-tight truncate">${opt.name}</span>
-                <span class="text-[10px] sm:text-[11px] text-slate-400 block leading-tight truncate mt-0.5">${opt.desc}</span>
+              <div class="flex items-center gap-1 min-w-0">
+                <span class="font-bold text-xs sm:text-sm text-white truncate leading-tight pointer-events-none">${opt.name}</span>
+                <button 
+                  type="button" 
+                  class="allergen-info-btn w-5 h-5 rounded-full text-slate-400 hover:text-cyan-300 hover:bg-slate-800/90 flex items-center justify-center transition active:scale-90 cursor-pointer shrink-0 ml-0.5"
+                  data-id="${opt.id}"
+                  title="View screened ingredients for ${opt.name}"
+                  aria-label="Info for ${opt.name}"
+                >
+                  <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path stroke-linecap="round" d="M12 16v-4m0-4h.01"></path>
+                  </svg>
+                </button>
               </div>
             </div>
-            ${lockIcon}
-          </button>
+
+            <div class="pointer-events-none flex items-center shrink-0 ml-1">
+              ${lockIcon}
+            </div>
+          </div>
         `;
       }).join('');
 
       document.querySelectorAll('.allergen-toggle-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          const infoBtn = e.target.closest('.allergen-info-btn');
+          if (infoBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = infoBtn.getAttribute('data-id');
+            openAllergenInfo(id);
+            return;
+          }
+
           e.preventDefault();
           if (!isPlusActive) {
             triggerHaptic([40, 40]);
@@ -13582,6 +13799,7 @@ function renderHistory() {
         syncStoreReadyRecalls(false);
     initStaplesCatalog();
     initTheme();
+    setNavTab('allergens');
 
     document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -13613,12 +13831,12 @@ function renderHistory() {
       triggerHaptic([30]);
       if (scannerResultContainer) {
         scannerResultContainer.classList.add('hidden');
-        scannerResultContainer.style.display = 'none';
+        if (scannerResultContainer.style) scannerResultContainer.style.display = 'none';
         scannerResultContainer.innerHTML = '';
       }
       if (manualResultContainer) {
         manualResultContainer.classList.add('hidden');
-        manualResultContainer.style.display = 'none';
+        if (manualResultContainer.style) manualResultContainer.style.display = 'none';
         manualResultContainer.innerHTML = '';
       }
       const upcInputEl = document.getElementById('upcInput');
@@ -13762,6 +13980,7 @@ function renderHistory() {
     syncStoreReadyRecalls(false);
     initStaplesCatalog();
     initTheme();
+    setNavTab('allergens');
 
     document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
