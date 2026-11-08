@@ -2808,7 +2808,7 @@
           <h2 class="font-display text-sm font-bold text-slate-100 flex items-center gap-2">
             <span>Allergen Guard: Ingredients & Additives</span>
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">Personalized allergen & food additive shields require RAKKA Pro.</p>
+          
         </div>
         <span id="activeAllergensBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
           Locked (Pro)
@@ -2842,7 +2842,7 @@
       </div>
 
       <!-- Allergen Tick Box Grid (FDA Big 9 + Gluten, Corn, Sulfites & Yeast) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
+      <div class="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
 
             <!-- Automatic Food Additives & Chemical Screener -->
       <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-3 shadow-sm">
@@ -2978,14 +2978,7 @@
         </div>
       </div>
 
-      <!-- Persistent Auto-Save Confirmation -->
-      <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-        <span class="flex items-center gap-1.5 text-emerald-400 font-medium">
-          <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-          <span>Allergen guards auto-save to device memory</span>
-        </span>
-        <span class="text-slate-400 font-medium text-[10px]">12 Dietary Guards (FDA Big 9 + Corn, Sulfites & Yeast)</span>
-      </div>
+
     </section>
 
     <!-- SECTION 4: LIVE RECALL BULLETINS PANEL -->
@@ -11253,8 +11246,8 @@
 
       if (activeProfileNotice) {
         const photoEl = currentProfile.photo 
-          ? `<img src="${currentProfile.photo}" class="w-11 h-11 rounded-full object-cover border-2 border-sky-400 shadow-sm shrink-0" alt="${currentProfile.name}">`
-          : `<div class="w-11 h-11 rounded-full bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-sm">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-5 h-5")}</div>`;
+          ? `<img src="${currentProfile.photo}" class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl object-cover border-2 border-sky-400 shadow-md shrink-0" alt="${currentProfile.name}">`
+          : `<div class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-md">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-7 h-7 sm:w-8 sm:h-8")}</div>`;
           
         activeProfileNotice.innerHTML = `
           <div class="flex items-center justify-between bg-slate-950/95 border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 shadow-md gap-2">
@@ -11319,21 +11312,21 @@
           const count = (p.allergens || []).length;
           
           const avatarEl = p.photo 
-            ? `<img src="${p.photo}" class="w-10 h-10 rounded-full object-cover shrink-0 border-2 ${isActive ? 'border-white shadow-sm' : 'border-slate-700'}" alt="${p.name}">`
-            : `<div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isActive ? 'bg-sky-500/20 border-2 border-white text-white' : 'bg-slate-800 border border-slate-700 text-slate-300'}">${getProfileAvatarSvg(p.icon || 'user', "w-5 h-5")}</div>`;
+            ? `<img src="${p.photo}" class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl object-cover shrink-0 border-2 ${isActive ? 'border-cyan-400 shadow-md ring-2 ring-cyan-400/40' : 'border-slate-700'}" alt="${p.name}">`
+            : `<div class="w-13 h-13 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center shrink-0 ${isActive ? 'bg-cyan-500/20 border-2 border-cyan-400 text-white shadow-md ring-2 ring-cyan-400/40' : 'bg-slate-800 border border-slate-700 text-slate-300'}">${getProfileAvatarSvg(p.icon || 'user', "w-7 h-7 sm:w-8 sm:h-8")}</div>`;
 
           return `
             <div 
               draggable="true" 
-              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-2.5 p-2 rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle}"
+              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-3 p-2.5 sm:p-3 min-h-[66px] sm:min-h-[72px] rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle}"
               data-id="${p.id}"
               data-index="${index}"
               title="Tap to select • Drag to reorder"
             >
               ${avatarEl}
               <div class="flex flex-col min-w-0 pr-1">
-                <span class="text-xs font-bold leading-tight truncate max-w-[100px] ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
-                <span class="text-[10px] font-semibold mt-0.5 ${isActive ? 'text-sky-300' : 'text-slate-400'}">
+                <span class="text-sm sm:text-base font-bold leading-tight truncate max-w-[110px] sm:max-w-[130px] ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
+                <span class="text-xs font-semibold mt-1 ${isActive ? 'text-cyan-300' : 'text-slate-400'}">
                   ${count === 0 ? 'No Restrictions' : `${count} alert${count > 1 ? 's' : ''}`}
                 </span>
               </div>
@@ -11343,11 +11336,11 @@
           <button 
             type="button" 
             id="addNewProfileBtn" 
-            class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[56px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs font-bold transition active:scale-95 shadow-sm"
+            class="shrink-0 flex items-center gap-2.5 px-3.5 py-2.5 min-h-[66px] sm:min-h-[72px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs sm:text-sm font-bold transition active:scale-95 shadow-sm"
             title="Add a family member (${familyProfiles.length}/${MAX_FAMILY_MEMBERS} slots)"
           >
-            <span class="w-8 h-8 rounded-full bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
-              <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+              <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             </span>
             <div class="flex flex-col text-left">
               <span class="leading-tight">Add Member</span>
@@ -11355,7 +11348,7 @@
             </div>
           </button>
         ` : `
-          <div class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[56px] rounded-2xl border border-slate-800 bg-slate-950/50 text-slate-500 text-xs font-semibold select-none">
+          <div class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[66px] sm:min-h-[72px] rounded-2xl border border-slate-800 bg-slate-950/50 text-slate-500 text-xs font-semibold select-none">
             <span class="text-[10px] uppercase font-bold text-slate-400">Max ${MAX_FAMILY_MEMBERS} Members</span>
           </div>
         `);
@@ -11440,48 +11433,49 @@
       }
 
       // Render 12 Allergen Guardrail Toggles (Default to unchecked; locked in Free mode, customizable in Pro)
+      // 12 Allergen Guardrail Toggles (Compact 2-column mobile cards, highly visible & clickable)
       allergenCheckboxesContainer.innerHTML = ALLERGEN_OPTIONS.map(opt => {
         const isChecked = isPlusActive && userAllergens.includes(opt.id);
         const activeBg = isChecked 
-          ? 'bg-cyan-950/50 border-cyan-500/60 shadow-sm shadow-cyan-950/40 ring-1 ring-amber-400/30' 
-          : 'bg-slate-950/60 border-slate-800 hover:border-slate-700';
+          ? 'bg-cyan-950/70 border-cyan-400 shadow-md shadow-cyan-950/50 ring-1 ring-cyan-400/40 text-white' 
+          : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-300';
 
         let lockIcon = '';
         if (!isPlusActive) {
           lockIcon = `
-            <span class="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 shrink-0 shadow-sm">
-              ${UI_ICONS.lock}
+            <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shrink-0 shadow-xs">
+              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
               <span>PRO</span>
             </span>
           `;
         } else if (isChecked) {
           lockIcon = `
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md transition shrink-0">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-sm transition shrink-0">
+              <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
           `;
         } else {
           lockIcon = `
-            <div class="w-8 h-8 rounded-xl border-2 border-slate-600 bg-slate-900/60 transition shrink-0"></div>
+            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 border-slate-600 bg-slate-900/60 transition shrink-0"></div>
           `;
         }
 
         return `
           <button 
             type="button" 
-            class="allergen-toggle-btn min-h-[64px] p-3.5 rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.99] ${activeBg} gap-3 cursor-pointer"
+            class="allergen-toggle-btn min-h-[48px] p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition active:scale-[0.98] ${activeBg} gap-1.5 sm:gap-2 cursor-pointer shadow-xs"
             data-id="${opt.id}"
             title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Pro Required to enable ${opt.name}`}"
           >
-            <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0">
-                ${getAllergenIcon(opt.id, "w-5 h-5")}
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0">
+                ${getAllergenIcon(opt.id, "w-4 h-4")}
               </div>
               <div class="min-w-0">
-                <span class="font-bold text-sm sm:text-base text-white block leading-tight">${opt.name}</span>
-                <span class="text-xs sm:text-sm text-slate-300 block leading-tight mt-0.5">${opt.desc}</span>
+                <span class="font-bold text-xs sm:text-sm text-white block leading-tight truncate">${opt.name}</span>
+                <span class="text-[10px] sm:text-[11px] text-slate-400 block leading-tight truncate mt-0.5">${opt.desc}</span>
               </div>
             </div>
             ${lockIcon}
