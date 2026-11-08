@@ -19914,7 +19914,11 @@
           if (recallRecord.ingredients) ingredientsSummary = recallRecord.ingredients;
           if (recallRecord.additives_tags) productAdditivesTags.push(...recallRecord.additives_tags);
           if (recallRecord.terminatedNotice) terminatedNotice = recallRecord.terminatedNotice;
-        } else if (cachedFDARecalls && cachedFDARecalls.length > 0) {
+        }
+
+        // Live openFDA Wire Override: If the live FDA wire has an active recall for this UPC,
+        // it ALWAYS overrides the static catalog safe default!
+        if (!isRecalled && cachedFDARecalls && cachedFDARecalls.length > 0) {
           // Check locally cached FDA wire records (works with ZERO cell reception)
           const match = cachedFDARecalls.find(item => {
             if (item.upcs && item.upcs.includes(code)) return true;
