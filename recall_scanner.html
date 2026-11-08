@@ -14087,11 +14087,25 @@ function renderHistory() {
       if (!topReceipt) return bottomReceipt;
       if (!bottomReceipt) return topReceipt;
 
-      const topItems = Array.isArray(topReceipt.items) ? topReceipt.items : [];
-      const bottomItems = Array.isArray(bottomReceipt.items) ? bottomReceipt.items : [];
+      const normalizeReceipt = (r) => {
+        if (!r) return { items: [], totalFoodItems: 0, storeName: 'Grocery Store' };
+        if (Array.isArray(r)) return { items: r, totalFoodItems: r.length, storeName: 'Grocery Store' };
+        if (typeof r === 'object') {
+          return {
+            ...r,
+            items: Array.isArray(r.items) ? r.items : []
+          };
+        }
+        return { items: [], totalFoodItems: 0, storeName: 'Grocery Store' };
+      };
 
-      if (topItems.length === 0) return bottomReceipt;
-      if (bottomItems.length === 0) return topItems;
+      const topObj = normalizeReceipt(topReceipt);
+      const bottomObj = normalizeReceipt(bottomReceipt);
+      const topItems = topObj.items;
+      const bottomItems = bottomObj.items;
+
+      if (topItems.length === 0) return bottomObj;
+      if (bottomItems.length === 0) return topObj;
 
       function getItemCode(item) {
         return String(item.itemCode || item.upc || '').replace(/\D/g, '');
@@ -14207,16 +14221,19 @@ function renderHistory() {
         }
       }
 
-      // Gemini Vision 768px tile boundary calibration
-      const maxW = 768;
-      const maxH = 2304;
+      // Proportional aspect-ratio calibration for OCR
+      const maxW = 800;
+      const maxH = 2400;
       let scale = 1;
       if (w > maxW || h > maxH) {
         scale = Math.min(maxW / w, maxH / h);
+      } else if (w < 400 && h < 1200) {
+        // Upscale small phone screenshots proportionally for crystal-clear OCR
+        scale = Math.min(600 / w, 1800 / h);
       }
 
-      const targetW = Math.max(320, Math.round(w * scale));
-      const targetH = Math.max(320, Math.round(h * scale));
+      const targetW = Math.round(w * scale);
+      const targetH = Math.round(h * scale);
 
       const canvas = document.createElement('canvas');
       canvas.width = targetW;
@@ -14236,7 +14253,10 @@ function renderHistory() {
       // 3-Slice Parallel Engine: For tall receipt hauls (>= 800px or vertical captures)
       // Slices into Top (0-38%), Middle (31-69%), and Bottom (62-100%) with 7% overlap seams
       // Each slice handles only ~15-18 items, allowing Gemini to finish in ~15-18s concurrently!
-      if (targetH >= 800 || (h > w && targetH >= 700)) {
+      const fullDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+      // Only slice truly ultra-tall receipts (e.g. 50+ item long hauls where h > 2.8x w and targetH >= 1600)
+      if (h >= w * 2.8 && targetH >= 1600) {
         // Slice 1: Top 0% to 38%
         const s1H = Math.round(targetH * 0.38);
         const c1 = document.createElement('canvas');
@@ -14273,7 +14293,7 @@ function renderHistory() {
         };
       }
 
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      const compressedDataUrl = fullDataUrl;
       return {
         sliceCount: 1,
         slices: [
@@ -14427,8 +14447,23 @@ function renderHistory() {
           receiptData = await fetchReceiptSegment(hookUrl, prep.slices[0].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Receipt');
         }
 
+        // Fallback: If sliced audit yielded 0 items, run single full-receipt pass
+        const hasItems = receiptData && ((Array.isArray(receiptData) && receiptData.length > 0) || (Array.isArray(receiptData.items) && receiptData.items.length > 0));
+        if (!hasItems && prep.sliceCount > 1 && prep.slices[0]?.dataUrl) {
+          console.log("[RAKKA] Multi-slice yielded 0 items, executing full-receipt fallback audit...");
+          try {
+            const fallbackAudit = await fetchReceiptSegment(hookUrl, prep.slices[0].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Full Receipt Recovery');
+            if (fallbackAudit && ((Array.isArray(fallbackAudit) && fallbackAudit.length > 0) || (Array.isArray(fallbackAudit.items) && fallbackAudit.items.length > 0))) {
+              receiptData = fallbackAudit;
+            }
+          } catch (fbErr) {
+            console.warn("Full receipt fallback notice:", fbErr);
+          }
+        }
+
         if (receiptData) {
-          updateProgressUI(100, "Audit Complete!", `Successfully verified ${receiptData.totalFoodItems || 0} items! Loading into Watchlist...`, 4);
+          const finalCount = Array.isArray(receiptData) ? receiptData.length : (receiptData.totalFoodItems || receiptData.items?.length || 0);
+          updateProgressUI(100, "Audit Complete!", `Successfully verified ${finalCount} items! Loading into Watchlist...`, 4);
           recordReceiptScanUsage();
           setTimeout(() => {
             autoImportReceiptDirectlyToWatchlist(receiptData);
@@ -14500,7 +14535,12 @@ function renderHistory() {
     
     // Automatically loads all scanned receipt items directly into the Watchlist with zero user clicks needed!
         function autoImportReceiptDirectlyToWatchlist(receipt) {
-      const items = Array.isArray(receipt.items) ? receipt.items : [];
+      let items = [];
+      if (Array.isArray(receipt)) {
+        items = receipt;
+      } else if (receipt && Array.isArray(receipt.items)) {
+        items = receipt.items;
+      }
       if (items.length === 0) {
         showCustomizeToast("Receipt audited, but no grocery lines detected.");
         return;

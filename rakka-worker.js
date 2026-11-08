@@ -538,8 +538,26 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         }
 
         const geminiData = await geminiRes.json();
-        const rawJsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        let parsed = JSON.parse(rawJsonText);
+        const rawJsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        let cleanJson = rawJsonText.trim();
+        cleanJson = cleanJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(cleanJson);
+        } catch (parseErr) {
+          const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error(`Failed to parse AI vision receipt output: ${parseErr.message}`);
+          }
+        }
+        if (!parsed || typeof parsed !== 'object') {
+          parsed = { items: [], totalFoodItems: 0, storeName: 'Grocery Store' };
+        }
+        if (!Array.isArray(parsed.items)) {
+          parsed.items = [];
+        }
 
         return new Response(JSON.stringify({
           success: true,
@@ -569,13 +587,25 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         const mimeType = body.mimeType || 'image/jpeg';
         const userAllergens = Array.isArray(body.activeAllergens) ? body.activeAllergens.join(', ') : 'None';
 
-        const prompt = `You are an expert food safety auditor reviewing a grocery store shopping receipt (e.g. from ALDI, Walmart, Kroger, Meijer, Giant Eagle, Trader Joe's, Costco, etc.).
+        const prompt = `You are an expert food safety auditor reviewing a grocery shopping receipt or shopping order audit (e.g. from ALDI, Walmart, Whole Foods, Kroger, Meijer, Giant Eagle, Trader Joe's, Costco, Target, Instacart, etc.).
 User Household Allergen Safeguards to flag: ${userAllergens}
 
-Instructions for parsing this receipt:
-1. The receipt might be an ALDI receipt with 6-digit item codes followed by item names (e.g. "398511 Texas Toast", "287146 Mxd Fruit/Tropical", "383986 Pumpkin Loaf Cake", "385145 93% Organic Beef", "399495 Polska Kielbasa", "356394 Hneycrsp Tote LRW", "356482 Autumn Crisp Grape", "280701 Irish Cheddar").
-2. The receipt may be missing its top banner or store logo; identify the store from the private-label item nomenclature, prices, or store format (e.g. ALDI format with FA/FB food assistance indicators and item numbers).
-3. Extract ALL purchased food and grocery items shown on the tape.
+CRITICAL RECEIPT SOURCE & FORMAT INSTRUCTIONS:
+1. The receipt image can be:
+   - A physical thermal paper receipt photographed on a counter.
+   - A digital e-receipt, mobile order confirmation, or store app screenshot.
+   - A dark-mode screenshot, terminal output, or text simulation (e.g., white or cyan text on dark/black background).
+   - A screenshot of a phone screen containing a receipt block inside chat or notes (ignore surrounding phone UI chrome like battery, time, chat headers like "Gemini", or input textboxes, and extract the grocery lines from the receipt block).
+2. The receipt may be missing its top banner or store logo; identify the store from the private-label item nomenclature, prices, or store format (e.g., Great Value / BTRGDS = Walmart; 365 = Whole Foods; 6-digit codes = ALDI).
+3. Extract ALL purchased food, beverage, produce, dairy, and grocery items shown on the tape or screen:
+   - Support common register line layouts and store formats:
+     * Walmart: Register shorthand followed by 12-digit barcode and price (e.g., "NIGHT HAWK 004170901935 F 2.78", "HEALTHCHOICE 007265545445 F 2.98", "MANGO YOGURT 005360000026 F 0.50", "BANAN YOGURT 005360000030 F 0.50", "POTATOES 089286700194 F 2.94", "SUGAR GRANU 007874237117 F 4.98", "BULK LEMONS 000000004958KF 0.48").
+     * Giant Eagle / Kroger / Meijer / Regional Grocers: Item description with price and tax flags (e.g., "GALILEO SALAME 2.99 F", "COLE SLAW 4.99 F", "PICNIC CHICKEN AC 9.99 F", "BE NATURAL MASHED 2.99 F", "TIC TAC ORANGE BOT 4.19 F").
+     * ALDI / Trader Joe's / Costco: 6-digit item codes or direct descriptions.
+   - Extract items even if prices are omitted, formatted in a separate column, or listed without dollar signs.
+   - Extract items even if the UPC is listed on the same line.
+   - Non-food merchandise filtering: Exclude non-food items (e.g. automotive motor oil 'AUTODRIVE', hardware/cookware 'DUTCH OVEN', 'REUSABLE BAGS USEDNP', 'TAX', 'BALANCE', cashier names), but NEVER omit real food, beverage, snack, meat, deli, produce, or candy items!
+   - NEVER return an empty items list if food names appear on the receipt!
 4. For each food item:
    - Expand truncated or abbreviated register item names into clear consumer product names (e.g., "Texas Toast" -> "L'Oven Fresh Texas Toast", "Pumpkin Loaf Cake" -> "Bake Shop Pumpkin Sliced Loaf Cake", "ChknAlfrdoMtblMar" -> "Chicken Alfredo / Meatball Marinara", "Polska Kielbasa" -> "Parkview Polska Kielbasa", "Hneycrsp Tote LRW" -> "Honeycrisp Apples", "Autumn Crisp Grape" -> "Autumn Crisp Green Seedless Grapes").
       - INTELLIGENT FOOD RECALL & SAFETY DETECTION (TOP PRIORITY):
@@ -735,8 +765,26 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         }
 
         const geminiData = await geminiRes.json();
-        const rawJsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        let parsed = JSON.parse(rawJsonText);
+        const rawJsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        let cleanJson = rawJsonText.trim();
+        cleanJson = cleanJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(cleanJson);
+        } catch (parseErr) {
+          const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error(`Failed to parse AI vision receipt output: ${parseErr.message}`);
+          }
+        }
+        if (!parsed || typeof parsed !== 'object') {
+          parsed = { items: [], totalFoodItems: 0, storeName: 'Grocery Store' };
+        }
+        if (!Array.isArray(parsed.items)) {
+          parsed.items = [];
+        }
 
         return new Response(JSON.stringify({
           success: true,
