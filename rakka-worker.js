@@ -524,22 +524,21 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // High-Speed Production Vision Models
-        // Give the primary model ample time (18s) to complete inference without aborting prematurely
+        // High-Speed Production Vision Models (Canonical REST v1beta camelCase payload)
+        // Uses inlineData + responseMimeType which Google's v1beta REST API strictly expects
         const candidateModels = [
           'gemini-1.5-flash',
-          'gemini-1.5-flash-latest',
-          'gemini-2.0-flash-exp',
-          'gemini-1.5-pro'
+          'gemini-1.5-flash-latest'
         ];
 
         let geminiRes = null;
         let lastErrText = '';
         let successfulModel = '';
+        const startTime = Date.now();
 
         for (const modelName of candidateModels) {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s safe allowance for vision processing
+          const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s safety timeout
 
           try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -553,13 +552,13 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 contents: [{
                   parts: [
                     { text: prompt },
-                    { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
                   ]
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  maxOutputTokens: 300, // Keep response fast and concise
-                  response_mime_type: "application/json"
+                  maxOutputTokens: 250,
+                  responseMimeType: "application/json"
                 }
               })
             });
@@ -661,9 +660,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           };
         }
 
+        const latencyMs = Date.now() - startTime;
         return new Response(JSON.stringify({
           success: true,
-          audit: parsed
+          audit: parsed,
+          modelUsed: successfulModel,
+          latencyMs: latencyMs
         }), { headers: corsHeaders });
       } catch (err) {
         console.error("Audit lot code exception:", err);
