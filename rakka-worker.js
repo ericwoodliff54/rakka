@@ -538,7 +538,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
         for (const modelName of candidateModels) {
           try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            // Speed Boost: Request thinkingBudget: 0 to bypass Google's 30-second reasoning token delay
+            let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -553,10 +554,34 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  response_mime_type: "application/json"
+                  response_mime_type: "application/json",
+                  thinkingConfig: { thinkingBudget: 0 }
                 }
               })
             });
+
+            // If the model rejects thinkingConfig (HTTP 400), gracefully fall back without it
+            if (!res.ok && res.status === 400) {
+              res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [
+                      { text: prompt },
+                      { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                    ]
+                  }],
+                  generationConfig: {
+                    temperature: 0.1,
+                    response_mime_type: "application/json"
+                  }
+                })
+              });
+            }
 
             if (res.ok) {
               geminiRes = res;
@@ -774,7 +799,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
         for (const modelName of candidateModels) {
           try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            // Speed Boost: Request thinkingBudget: 0 to bypass Google's 30-second reasoning token delay
+            let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -789,10 +815,34 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  response_mime_type: "application/json"
+                  response_mime_type: "application/json",
+                  thinkingConfig: { thinkingBudget: 0 }
                 }
               })
             });
+
+            // If the model rejects thinkingConfig (HTTP 400), gracefully fall back without it
+            if (!res.ok && res.status === 400) {
+              res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [
+                      { text: prompt },
+                      { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                    ]
+                  }],
+                  generationConfig: {
+                    temperature: 0.1,
+                    response_mime_type: "application/json"
+                  }
+                })
+              });
+            }
 
             if (res.ok) {
               geminiRes = res;
