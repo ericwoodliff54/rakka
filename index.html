@@ -1885,8 +1885,8 @@
       border-color: #fca5a5 !important;
     }
     html.theme-light .watchlist-item-card.is-allergen {
-      background: #fffbeb !important;
-      border-color: #fcd34d !important;
+      background: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
     }
     html.theme-light .watchlist-drawer-content {
       background: #f8fafc !important;
@@ -22762,7 +22762,7 @@ function renderHistory() {
           cardBorder = 'border border-teal-500/40 bg-slate-900/90 hover:border-teal-400';
           statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center gap-1"><span>✓</span><span>Terminated Recall</span></span>`;
         } else if (isAlert) {
-          cardBorder = 'border border-amber-500/50 bg-slate-900/90 hover:border-amber-400';
+          cardBorder = 'border-slate-800 bg-slate-900/90 hover:bg-slate-850 hover:border-slate-700';
           if (isPlusActive) {
             const memberNames = affectedMembers.length > 0 ? ` (${affectedMembers.map(m => m.name).join(', ')})` : '';
             statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert${memberNames}</span>`;
