@@ -524,83 +524,65 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // High-Speed Parallel Vision Race (Promise.any)
-        // gemini-flash-latest is verified by production telemetry as the active working model
-        const modelsToRace = [
+        // Exact 1:1 Implementation Model of the Battle-Tested Receipt Scanner
+        // Uses identical candidate hierarchy ('gemini-flash-latest'), payload structure, and discovery fallback
+        const candidateModels = [
           'gemini-flash-latest',
-          'gemini-1.5-flash'
+          'gemini-1.5-flash',
+          'gemini-2.5-flash'
         ];
 
-        const startTime = Date.now();
+        let geminiRes = null;
+        let lastErrText = '';
         let successfulModel = '';
-        let rawJsonText = null;
+        const startTime = Date.now();
 
-        const racePromises = modelsToRace.map(modelName => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 16000); // 16s safety ceiling
+        for (const modelName of candidateModels) {
+          try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.1,
+                  response_mime_type: "application/json"
+                }
+              })
+            });
 
-          return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inlineData: { mimeType: mimeType, data: cleanBase64 } }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 250,
-                responseMimeType: "application/json"
-              }
-            })
-          })
-          .then(async res => {
-            clearTimeout(timeoutId);
             if (res.ok) {
-              const data = await res.json();
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                return { text, modelName };
-              }
+              geminiRes = res;
+              successfulModel = modelName;
+              break;
+            } else {
+              lastErrText = await res.text();
+              console.warn(`Lot Audit Model ${modelName} returned HTTP ${res.status}:`, lastErrText);
             }
-            const errBody = await res.text().catch(() => '');
-            throw new Error(`Model ${modelName} HTTP ${res.status}: ${errBody}`);
-          })
-          .catch(err => {
-            clearTimeout(timeoutId);
-            throw err;
-          });
-        });
-
-        try {
-          const winner = await Promise.any(racePromises);
-          rawJsonText = winner.text;
-          successfulModel = winner.modelName;
-          cachedWorkingLotModel = winner.modelName;
-        } catch (allModelsFailed) {
-          console.warn("All parallel vision models failed:", allModelsFailed);
+          } catch (modelErr) {
+            console.warn(`Lot Audit Model ${modelName} fetch exception:`, modelErr);
+          }
         }
 
-        // Fast Vision Fallback: If parallel race failed, query models list
-        if (!rawJsonText) {
+        // Exact Receipt Scanner Fallback: Query Google's ModelService directly if static names fail
+        if (!geminiRes || !geminiRes.ok) {
           try {
-            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+            const listRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
               headers: { 'x-goog-api-key': apiKey }
             });
             if (listRes.ok) {
               const listData = await listRes.json();
-              const availableModels = (listData.models || []).filter(m => 
-                (m.supportedGenerationMethods || []).includes('generateContent') &&
-                (m.name.includes('flash') || m.name.includes('vision'))
-              );
-              for (const m of availableModels.slice(0, 3)) {
-                const modelPath = m.name;
+              const availableModels = (listData.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
+              for (const m of availableModels) {
+                const modelPath = m.name; // e.g. "models/gemini-..."
                 const cleanModelName = modelPath.replace(/^models\//, '');
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
                   method: 'POST',
@@ -612,23 +594,19 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                     contents: [{
                       parts: [
                         { text: prompt },
-                        { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                        { inline_data: { mime_type: mimeType, data: cleanBase64 } }
                       ]
                     }],
                     generationConfig: {
                       temperature: 0.1,
-                      responseMimeType: "application/json"
+                      response_mime_type: "application/json"
                     }
                   })
                 });
                 if (res.ok) {
-                  const d = await res.json();
-                  const t = d.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (t) {
-                    rawJsonText = t;
-                    successfulModel = cleanModelName;
-                    break;
-                  }
+                  geminiRes = res;
+                  successfulModel = cleanModelName;
+                  break;
                 }
               }
             }
@@ -637,9 +615,19 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           }
         }
 
-        if (!rawJsonText) {
-          return new Response(JSON.stringify({ success: false, error: 'AI vision models busy or could not extract lot code from photo' }), { status: 502, headers: corsHeaders });
+        if (!geminiRes || !geminiRes.ok) {
+          let detailedErr = 'AI vision service busy';
+          try {
+            const errObj = JSON.parse(lastErrText);
+            if (errObj && errObj.error && errObj.error.message) {
+              detailedErr = errObj.error.message;
+            }
+          } catch (_) {}
+          return new Response(JSON.stringify({ success: false, error: detailedErr }), { status: 502, headers: corsHeaders });
         }
+
+        const geminiData = await geminiRes.json();
+        const rawJsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
         let cleanJson = rawJsonText.trim();
         cleanJson = cleanJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
         let parsed;
