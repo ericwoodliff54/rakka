@@ -523,10 +523,11 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Production Flash Models (Ultra-fast, zero-throttling vision models)
+        // Production Flash Models: latest flash aliases with zero throttling
         const candidateModels = [
+          'gemini-1.5-flash-latest',
           'gemini-1.5-flash',
-          'gemini-2.0-flash'
+          'gemini-2.0-flash-exp'
         ];
 
         let geminiRes = null;

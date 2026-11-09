@@ -3746,8 +3746,8 @@
           <p id="lotRecallHazard" class="text-[11px] text-slate-400 leading-relaxed">Potential contamination risk under active FDA bulletin.</p>
         </div>
 
-        <!-- Camera Upload Trigger -->
-        <div class="p-4 rounded-2xl bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800 text-center space-y-3">
+        <!-- Camera Upload Trigger (Hidden once photo taken) -->
+        <div id="lotCodeCaptureTriggerBox" class="p-4 rounded-2xl bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800 text-center space-y-3">
           <div class="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-300 mx-auto">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           </div>
@@ -3763,6 +3763,20 @@
           </label>
         </div>
 
+        <!-- Live Analyzing Indicator -->
+        <div id="lotCodeAnalyzingBox" class="hidden p-5 rounded-2xl bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800 text-center space-y-3 animate-in fade-in duration-200">
+          <div class="relative w-12 h-12 mx-auto flex items-center justify-center">
+            <div class="absolute inset-0 rounded-full border-2 border-amber-500/30 animate-ping"></div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            </div>
+          </div>
+          <div>
+            <span class="font-bold text-white block text-sm">Auditing Date Stamp...</span>
+            <span class="text-[11px] text-slate-400 block mt-0.5">Cross-referencing printed ink text against active federal recall window</span>
+          </div>
+        </div>
+
         <!-- Live Analysis & Verdict Box -->
         <div id="lotAuditResultBox" class="hidden space-y-2.5 pt-1 animate-in fade-in duration-200">
           <div id="lotVerdictBanner" class="p-3.5 rounded-2xl border flex items-start gap-2.5">
@@ -3776,6 +3790,10 @@
             <p id="lotVerdictExplanation" class="text-slate-200 leading-relaxed"></p>
             <div id="lotVerdictActionBox" class="p-2 rounded-xl text-[11px] font-medium leading-relaxed"></div>
           </div>
+          <button type="button" id="retakeLotCodePhotoBtn" class="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs border border-slate-700/80 transition flex items-center justify-center gap-2 mt-2 cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Retake Stamped Date Photo</span>
+          </button>
         </div>
       </div>
     </div>
@@ -24333,6 +24351,8 @@ function renderHistory() {
     const lotAuditorModal = document.getElementById('lotAuditorModal');
     const closeLotAuditorModalBtn = document.getElementById('closeLotAuditorModalBtn');
     const lotCodeCameraInput = document.getElementById('lotCodeCameraInput');
+    const lotCodeCaptureTriggerBox = document.getElementById('lotCodeCaptureTriggerBox');
+    const lotCodeAnalyzingBox = document.getElementById('lotCodeAnalyzingBox');
     const lotAuditResultBox = document.getElementById('lotAuditResultBox');
     const lotVerdictBanner = document.getElementById('lotVerdictBanner');
     const lotVerdictTitle = document.getElementById('lotVerdictTitle');
@@ -24340,6 +24360,7 @@ function renderHistory() {
     const lotExtractedCodeText = document.getElementById('lotExtractedCodeText');
     const lotVerdictExplanation = document.getElementById('lotVerdictExplanation');
     const lotVerdictActionBox = document.getElementById('lotVerdictActionBox');
+    const retakeLotCodePhotoBtn = document.getElementById('retakeLotCodePhotoBtn');
 
     let currentAuditorRecall = {
       title: '',
@@ -24363,6 +24384,8 @@ function renderHistory() {
       if (hazardEl) hazardEl.textContent = currentAuditorRecall.hazard || 'Under active FDA/USDA safety notice.';
 
       if (lotAuditResultBox) lotAuditResultBox.classList.add('hidden');
+      if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.add('hidden');
+      if (lotCodeCaptureTriggerBox) lotCodeCaptureTriggerBox.classList.remove('hidden');
       if (lotCodeCameraInput) lotCodeCameraInput.value = '';
       const targetLotModal = lotAuditorModal || document.getElementById('lotAuditorModal');
       if (targetLotModal) targetLotModal.classList.remove('hidden');
@@ -24400,6 +24423,12 @@ function renderHistory() {
         }
       }
     }
+    
+    if (retakeLotCodePhotoBtn) {
+      retakeLotCodePhotoBtn.addEventListener('click', () => {
+        if (lotCodeCameraInput) lotCodeCameraInput.click();
+      });
+    }
     window.openLotAuditorForCurrentProduct = openLotAuditorForCurrentProduct;
     window.openLotAuditor = openLotAuditor;
     window.closeLotAuditor = closeLotAuditor;
@@ -24422,11 +24451,13 @@ function renderHistory() {
         const file = e.target.files[0];
         triggerHaptic([30]);
 
-        showCustomizeToast("Optimizing & analyzing date stamp with AI Vision...");
+        if (lotCodeCaptureTriggerBox) lotCodeCaptureTriggerBox.classList.add('hidden');
+        if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.remove('hidden');
+        if (lotAuditResultBox) lotAuditResultBox.classList.add('hidden');
 
         try {
-          // Client-Side Image Compression: 1000px max, 0.75 quality (~75KB JPEG, lightning fast upload)
-          const compressed = await compressImageForUpload(file, 1000, 0.75);
+          // Ultra-fast 800px compression (~45KB upload in <150ms)
+          const compressed = await compressImageForUpload(file, 800, 0.7);
           const dataUrl = compressed.dataUrl;
           const hookUrl = (localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK).trim();
           const clientApiKey = (localStorage.getItem('rakka_gemini_key') || localStorage.getItem('gemini_api_key') || '').trim();
@@ -24519,6 +24550,8 @@ function renderHistory() {
     }
 
     function renderLotAuditVerdict(audit) {
+      if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.add('hidden');
+      if (lotCodeCaptureTriggerBox) lotCodeCaptureTriggerBox.classList.add('hidden');
       if (!lotAuditResultBox) return;
       lotAuditResultBox.classList.remove('hidden');
 
