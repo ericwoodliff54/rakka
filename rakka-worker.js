@@ -1,4 +1,3 @@
-let cachedWorkingLotModel = null;
 /**
  * RAKKA Cloud Edge Hook - Serverless Barcode Aggregator & Community Cache
  * Designed for Cloudflare Workers (100,000 free requests/day)
