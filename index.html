@@ -24524,23 +24524,23 @@ function renderHistory() {
         if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.remove('hidden');
         if (lotAuditResultBox) lotAuditResultBox.classList.add('hidden');
 
-        // Start dynamic progress animation matching receipt auditor
+        // Smooth realistic progress animation pacing
         updateLotProgressUI(15, "Auditing Package Date Stamp", "Optimizing image calibration & isolating stamped ink...", 1);
         let lotElapsedMs = 0;
         if (lotProgressTimer) clearInterval(lotProgressTimer);
         lotProgressTimer = setInterval(() => {
-          lotElapsedMs += 250;
-          if (lotElapsedMs === 500) {
-            updateLotProgressUI(35, "Reading Printed Characters", "AI Vision scanning for stamped dates, lot codes & plant EST...", 2);
-          } else if (lotElapsedMs === 1200) {
-            updateLotProgressUI(65, "Verifying Recall Window", "Comparing stamped dates directly against active federal notice...", 3);
-          } else if (lotElapsedMs === 2200) {
-            updateLotProgressUI(88, "Formulating Safety Verdict", "Synthesizing packaging clearance & consumer directives...", 4);
-          } else if (lotElapsedMs > 3000 && lotElapsedMs < 7000) {
-            const gentlePct = Math.min(96, 88 + Math.floor((lotElapsedMs - 2200) / 600));
+          lotElapsedMs += 200;
+          if (lotElapsedMs === 600) {
+            updateLotProgressUI(38, "Reading Printed Characters", "AI Vision reading printed expiration dates & lot codes...", 2);
+          } else if (lotElapsedMs === 1600) {
+            updateLotProgressUI(68, "Verifying Recall Window", "Comparing stamped dates directly against active federal notice...", 3);
+          } else if (lotElapsedMs === 2800) {
+            updateLotProgressUI(86, "Formulating Safety Verdict", "Synthesizing packaging clearance & consumer directives...", 4);
+          } else if (lotElapsedMs > 3500) {
+            const gentlePct = Math.min(96, 86 + Math.floor((lotElapsedMs - 2800) / 700));
             updateLotProgressUI(gentlePct, "Finalizing Safety Verdict", "Synthesizing packaging clearance & consumer directives...", 4);
           }
-        }, 250);
+        }, 200);
 
         try {
           // Ultra-fast 800px compression (~40KB upload in <120ms)

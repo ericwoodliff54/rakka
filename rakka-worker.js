@@ -524,11 +524,14 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Cached or High-Speed Production Flash Models
-        // Prioritize cached successful model to cut latency to ~1.5s
-        const candidateModels = cachedWorkingLotModel
-          ? [cachedWorkingLotModel, 'gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
-          : ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+        // High-Speed Production Vision Models
+        // Give the primary model ample time (18s) to complete inference without aborting prematurely
+        const candidateModels = [
+          'gemini-1.5-flash',
+          'gemini-1.5-flash-latest',
+          'gemini-2.0-flash-exp',
+          'gemini-1.5-pro'
+        ];
 
         let geminiRes = null;
         let lastErrText = '';
@@ -536,7 +539,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
         for (const modelName of candidateModels) {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 4500); // 4.5s max per candidate to prevent hanging
+          const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s safe allowance for vision processing
 
           try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -555,6 +558,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 }],
                 generationConfig: {
                   temperature: 0.1,
+                  maxOutputTokens: 300, // Keep response fast and concise
                   response_mime_type: "application/json"
                 }
               })
@@ -564,7 +568,6 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             if (res.ok) {
               geminiRes = res;
               successfulModel = modelName;
-              cachedWorkingLotModel = modelName; // Cache for sub-2s future requests!
               break;
             } else {
               lastErrText = await res.text();
