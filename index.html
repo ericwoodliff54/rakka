@@ -1890,6 +1890,34 @@
       background: #ffffff !important;
       border: 1.5px solid #cbd5e1 !important;
     }
+    /* Recalls Page Consumer Health Directive & FDA Directive in Light Mode */
+    html.theme-light .consumer-directive-box {
+      background-color: #fff1f2 !important;
+      border: 1.5px solid #fca5a5 !important;
+      color: #7f1d1d !important;
+    }
+    html.theme-light .consumer-directive-box span {
+      color: #991b1b !important;
+      font-weight: 800 !important;
+    }
+    html.theme-light .consumer-directive-box p {
+      color: #881337 !important;
+      font-weight: 500 !important;
+    }
+    html.theme-light .fda-directive-box {
+      background-color: #fffbeb !important;
+      border: 1.5px solid #fde68a !important;
+      color: #92400e !important;
+    }
+    html.theme-light .fda-directive-box span {
+      color: #b45309 !important;
+      font-weight: 800 !important;
+    }
+    html.theme-light .fda-directive-box p {
+      color: #78350f !important;
+      font-weight: 500 !important;
+    }
+
     html.theme-light .watchlist-drawer-content {
       background: #f8fafc !important;
       border-color: #e2e8f0 !important;
@@ -2959,23 +2987,20 @@
 
             <!-- Automatic Food Additives & Chemical Screener -->
       <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-3 shadow-sm">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-300 shrink-0">
+        <div class="flex items-start justify-between gap-2.5">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
               <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
               <span class="font-bold text-sm text-white block">Continuous Chemical & Additive Shield</span>
-              <span class="text-xs text-slate-400 font-medium">37 High-Risk Dyes, Industrial Emulsifiers & Banned Additives</span>
+              <p class="text-xs text-slate-400 font-medium mt-0.5 leading-snug">Every scan is automatically screened for 37 scrutinized dyes, industrial emulsifiers & banned additives.</p>
             </div>
           </div>
-          <span id="additiveProStatusBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0">
-            ACTIVE (PLUS)
+          <span id="additiveProStatusBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0 pointer-events-none select-none">
+            PLUS
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 leading-relaxed">
-          Every scan is automatically screened against 37 synthetic petroleum dyes, California- & EU-banned additives, endocrine disruptors, and confectionery replacers.
-        </p>
 
         <!-- Interactive Directory Toggle -->
         <button 
@@ -18435,8 +18460,8 @@
         openPaywallBtn.innerHTML = `<span>RAKKA Plus Active (VIP Member)</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-slate-800 border border-slate-700 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "AUTO-ACTIVE (PLUS)";
-          additiveBadge.className = "px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
+          additiveBadge.textContent = "PLUS";
+          additiveBadge.className = "px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0 pointer-events-none select-none";
         }
       } else if (plusStatusType === 'trial') {
         if (headerPlusBadgeText) headerPlusBadgeText.textContent = `PLUS TRIAL (${trialDaysRemaining}D)`;
@@ -18446,8 +18471,8 @@
         openPaywallBtn.innerHTML = `<span>3-Day Plus Trial Active (${trialDaysRemaining}d left) • View Plans</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
-          additiveBadge.textContent = "TRIAL ACTIVE (PLUS)";
-          additiveBadge.className = "px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider shrink-0";
+          additiveBadge.textContent = "PLUS";
+          additiveBadge.className = "px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0 pointer-events-none select-none";
         }
       } else if (plusStatusType === 'expired') {
         if (headerPlusBadgeText) headerPlusBadgeText.textContent = "PLUS EXPIRED";
@@ -23233,7 +23258,7 @@ function renderHistory() {
 
             <!-- Expandable Detailed View -->
             <div id="${detailsId}" class="hidden pt-2.5 mt-2 border-t border-slate-800/80 space-y-2 text-xs">
-              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 space-y-1">
+              <div class="consumer-directive-box p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 space-y-1">
                 <span class="font-bold text-[11px] block text-rose-300">Consumer Health Directive:</span>
                 <p class="text-[11px] leading-relaxed">Do not consume or serve. Return to retailer for a full refund or discard immediately in sealed household trash.</p>
               </div>
@@ -23269,7 +23294,7 @@ function renderHistory() {
 
             <!-- Expandable Detailed View -->
             <div id="${detailsId}" class="hidden pt-2.5 mt-2 border-t border-slate-800/80 space-y-2 text-xs">
-              <div class="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-200 space-y-1">
+              <div class="fda-directive-box p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-amber-200 space-y-1">
                 <span class="font-bold text-[11px] block text-amber-300">Official openFDA Hazard Finding:</span>
                 <p class="text-[11px] leading-relaxed">${f.reason}</p>
               </div>
