@@ -22412,12 +22412,12 @@
       const getGroupKey = (i) => {
         let k = i.receiptId;
         const isReceiptItem = Boolean(i.source === 'receipt' || (k && k.startsWith('rcpt_') && k !== 'rcpt_Direct_Barcode_Scans'));
-        const isUploadItem = Boolean(i.source === 'upload' || i.source === 'photo' || k === 'group_upload');
+        const isManualItem = Boolean(i.source === 'manual' || k === 'group_manual');
         if (isReceiptItem) {
           const store = i.receiptStore || i.brand || 'store';
           return k || ('rcpt_' + String(store).replace(/[^a-zA-Z0-9]/g, '_'));
-        } else if (isUploadItem) {
-          return 'group_upload';
+        } else if (isManualItem) {
+          return 'group_manual';
         } else {
           return 'group_camera';
         }
@@ -22427,7 +22427,7 @@
       const count = matchingItems.length;
       if (count === 0) return;
 
-      const groupName = receiptKey === 'group_camera' ? 'Camera Scans' : (receiptKey === 'group_upload' ? 'UPC Uploads' : (matchingItems[0].receiptStore || matchingItems[0].brand || 'Grocery Receipt'));
+      const groupName = receiptKey === 'group_camera' ? 'Camera Scans' : (receiptKey === 'group_manual' ? 'Manual Entries' : (matchingItems[0].receiptStore || matchingItems[0].brand || 'Grocery Receipt'));
       if (!confirm(`Discard all ${count} items from ${groupName}?`)) return;
 
       scanHistory = scanHistory.filter(i => getGroupKey(i) !== receiptKey);
@@ -22521,16 +22521,16 @@ function renderHistory() {
             const rawStore = item.receiptStore || item.brand || 'Grocery Store';
             const rawDate = item.receiptDate || item.date || item.time || 'Recent Scan';
             const isReceipt = (item.source === 'receipt');
-            const isUpload = (item.source === 'upload' || item.source === 'photo');
+            const isManual = (item.source === 'manual');
 
             if (isReceipt) {
               item.receiptId = 'rcpt_' + String(rawStore).replace(/[^a-zA-Z0-9]/g, '_') + '_' + String(rawDate).split('•')[0].trim().replace(/[^a-zA-Z0-9]/g, '_');
               item.receiptStore = rawStore;
               item.receiptDate = rawDate;
               item.receiptTimestamp = item.timestamp || Date.now();
-            } else if (isUpload) {
-              item.receiptId = 'group_upload';
-              item.receiptStore = 'UPC Uploads';
+            } else if (isManual) {
+              item.receiptId = 'group_manual';
+              item.receiptStore = 'Manual Entries';
               item.receiptDate = rawDate;
               item.receiptTimestamp = item.timestamp || Date.now();
             } else {
@@ -22663,12 +22663,12 @@ function renderHistory() {
         return;
       }
 
-      // 3. Group filtered items into Receipts, Camera Scans, or UPC Uploads
+      // 3. Group filtered items into Receipts, Camera Scans, or Manual Entries
       const receiptGroups = {};
       filteredItems.forEach(item => {
         let rKey = item.receiptId;
         const isReceiptItem = Boolean(item.source === 'receipt' || (rKey && rKey.startsWith('rcpt_') && rKey !== 'rcpt_Direct_Barcode_Scans'));
-        const isUploadItem = Boolean(item.source === 'upload' || item.source === 'photo' || rKey === 'group_upload');
+        const isManualItem = Boolean(item.source === 'manual' || rKey === 'group_manual');
 
         let groupType = 'camera';
         let defaultStoreName = 'Camera Scans';
@@ -22676,10 +22676,10 @@ function renderHistory() {
           groupType = 'receipt';
           defaultStoreName = item.receiptStore || item.brand || 'Grocery Store';
           rKey = rKey || ('rcpt_' + String(defaultStoreName).replace(/[^a-zA-Z0-9]/g, '_'));
-        } else if (isUploadItem) {
-          groupType = 'upload';
-          defaultStoreName = 'UPC Uploads';
-          rKey = 'group_upload';
+        } else if (isManualItem) {
+          groupType = 'manual';
+          defaultStoreName = 'Manual Entries';
+          rKey = 'group_manual';
         } else {
           groupType = 'camera';
           defaultStoreName = 'Camera Scans';
@@ -22690,11 +22690,13 @@ function renderHistory() {
           let storeName = defaultStoreName;
           if (groupType === 'receipt') {
             storeName = item.receiptStore || item.brand || 'Grocery Store';
-            if (storeName === 'Direct Barcode Scans') storeName = 'Camera Scans';
+            if (storeName === 'Direct Barcode Scans' || storeName === 'Camera Scans' || storeName === 'Manual Entries') {
+              storeName = item.receiptStore || 'Grocery Store';
+            }
           }
           receiptGroups[rKey] = {
             id: rKey,
-            type: groupType, // 'receipt', 'camera', or 'upload'
+            type: groupType, // 'receipt', 'camera', or 'manual'
             store: storeName,
             date: item.receiptDate || item.date || item.time || 'Recent Scan',
             timestamp: item.receiptTimestamp || item.timestamp || 0,
@@ -23003,29 +23005,13 @@ function renderHistory() {
           statusPill = `<span class="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert</span>`;
         }
 
-        // Dedicated Group Tag Pill: RECEIPT for receipts, CAMERA for camera scans, UPLOAD for uploads
-        let tagText = 'RECEIPT';
-        let tagClasses = 'group-tag-pill tag-receipt text-sky-400/90 bg-sky-950/80 border-sky-500/30';
-        if (rcpt.type === 'camera') {
-          tagText = 'CAMERA';
-          tagClasses = 'group-tag-pill tag-camera text-cyan-400/90 bg-cyan-950/80 border-cyan-500/30';
-        } else if (rcpt.type === 'upload') {
-          tagText = 'UPLOAD';
-          tagClasses = 'group-tag-pill tag-upload text-teal-400/90 bg-teal-950/80 border-teal-500/30';
-        } else {
-          tagText = 'RECEIPT';
-          tagClasses = 'group-tag-pill tag-receipt text-sky-400/90 bg-sky-950/80 border-sky-500/30';
-        }
-        const groupTagPill = `<span class="group-tag-pill text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${tagClasses}">${tagText}</span>`;
-
-        // Distinctly shaded group window without icons on the left
+        // Group window with clean title (no redundant tag pills)
         finalHtml += `
           <div class="receipt-group rounded-2xl border border-slate-700/80 bg-slate-900 shadow-md overflow-hidden transition-all duration-200">
-            <!-- Group Header Bar (No icon on the left, clean tags) -->
+            <!-- Group Header Bar (Clean store name, Camera Scans, or Manual Entries) -->
             <div class="receipt-header-bar p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer select-none bg-slate-800 hover:bg-slate-750 active:bg-slate-700 transition" onclick="toggleReceiptGroup('${rcpt.id}')" role="button" tabindex="0">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
-                  ${groupTagPill}
                   <h3 class="font-display font-bold text-white text-sm sm:text-base tracking-tight truncate">${rcpt.store}</h3>
                   ${statusPill}
                 </div>
