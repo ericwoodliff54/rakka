@@ -2985,35 +2985,38 @@
       <!-- Allergen Tick Box Grid (FDA Big 9 + Gluten, Corn, Sulfites & Yeast) -->
       <div class="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
 
-            <!-- Automatic Food Additives & Chemical Screener -->
-      <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-3 shadow-sm">
-        <div class="flex items-start justify-between gap-2.5">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+            <!-- Automatic Food Additives & Chemical Screener (Sleek 2-Tier Mobile Layout) -->
+      <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-2.5 shadow-sm">
+        <!-- Tier 1: Clean Header Row -->
+        <div class="flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-300 shrink-0">
               <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
-            <div>
-              <span class="font-bold text-sm text-white block">Continuous Chemical & Additive Shield</span>
-              <p class="text-xs text-slate-400 font-medium mt-0.5 leading-snug">Every scan is automatically screened for 37 scrutinized dyes, industrial emulsifiers & banned additives.</p>
-            </div>
+            <h3 class="font-bold text-sm sm:text-base text-white leading-snug truncate">Continuous Chemical & Additive Shield</h3>
           </div>
           <span id="additiveProStatusBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider shrink-0 pointer-events-none select-none">
             PLUS
           </span>
         </div>
 
-        <!-- Interactive Directory Toggle -->
+        <!-- Tier 2: Full-Width Subheader (Spans complete card width without awkward breaks) -->
+        <p class="text-xs text-slate-400 font-medium leading-relaxed">
+          Every scan is automatically screened for 37 scrutinized dyes, industrial emulsifiers & banned additives.
+        </p>
+
+        <!-- Interactive Directory Toggle (No multi-line text wrapping on mobile) -->
         <button 
           type="button" 
           id="toggleAdditivesDirectoryBtn" 
           onclick="toggleAdditivesDirectory()" 
-          class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-800 text-sky-400 hover:text-white font-bold text-xs flex items-center justify-between transition active:scale-[0.99] shadow-sm cursor-pointer"
+          class="w-full py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-800 text-sky-400 hover:text-white font-bold text-xs flex items-center justify-between gap-2 transition active:scale-[0.99] shadow-sm cursor-pointer mt-1"
         >
-          <span class="flex items-center gap-2">
+          <span class="flex items-center gap-2 min-w-0 flex-1 truncate">
             <svg class="w-4 h-4 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
-            <span>Browse Full Directory of All 37 Screened Chemicals</span>
+            <span class="truncate">Directory of 37 Screened Chemicals</span>
           </span>
-          <span id="additivesDirectoryArrow" class="text-slate-400 font-semibold text-[11px]">▼ View All</span>
+          <span id="additivesDirectoryArrow" class="text-slate-400 font-semibold text-[11px] whitespace-nowrap shrink-0">▼ View All</span>
         </button>
 
         <!-- Expandable Chemical Directory Drawer -->
@@ -21268,75 +21271,62 @@
         }
       }
 
-      // Render 12 Allergen Guardrail Toggles (Default to unchecked; locked in Free mode, customizable in Plus)
-      // 12 Allergen Guardrail Toggles (Compact 2-column mobile cards, highly visible & clickable)
+      // Render 12 Allergen Guardrail Toggles (Clean, roomy, uncrammed cards)
       allergenCheckboxesContainer.innerHTML = ALLERGEN_OPTIONS.map(opt => {
         const isChecked = isPlusActive && userAllergens.includes(opt.id);
         const activeBg = isChecked 
           ? 'bg-cyan-950/70 border-cyan-400 shadow-md shadow-cyan-950/50 ring-1 ring-cyan-400/40 text-white' 
           : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-300';
 
-        let lockIcon = '';
+        let rightAffordance = '';
         if (!isPlusActive) {
-          lockIcon = `
-            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-0.5 shrink-0 shadow-xs pointer-events-none">
-              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-              <span>PLUS</span>
-            </span>
+          rightAffordance = `
+            <div class="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0 pointer-events-none shadow-xs" style="width: 24px; height: 24px; min-width: 24px; min-height: 24px;">
+              <svg class="w-3 h-3 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
           `;
         } else if (isChecked) {
-          lockIcon = `
-            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-sm transition shrink-0 pointer-events-none" style="width: 22px; height: 22px; min-width: 22px; min-height: 22px;">
+          rightAffordance = `
+            <div class="w-6 h-6 rounded-lg flex items-center justify-center bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-sm transition shrink-0 pointer-events-none" style="width: 24px; height: 24px; min-width: 24px; min-height: 24px;">
               <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
           `;
         } else {
-          lockIcon = `
-            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 border-slate-600 bg-slate-900/60 group-hover:border-slate-400 transition shrink-0 pointer-events-none" style="width: 22px; height: 22px; min-width: 22px; min-height: 22px;"></div>
+          rightAffordance = `
+            <div class="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-900/60 group-hover:border-slate-400 transition shrink-0 pointer-events-none" style="width: 24px; height: 24px; min-width: 24px; min-height: 24px;"></div>
           `;
         }
 
         return `
           <div 
-            class="allergen-toggle-btn min-h-[58px] sm:min-h-[62px] p-2 sm:p-2.5 rounded-2xl border text-left flex items-center justify-between transition ${activeBg} gap-1.5 shadow-xs select-none relative"
+            class="allergen-toggle-btn min-h-[56px] p-2.5 rounded-2xl border text-left flex items-center justify-between transition ${activeBg} gap-2 shadow-xs select-none cursor-pointer"
             data-id="${opt.id}"
           >
-            <!-- Left Info Clickable Area: Icon + Allergen Name + (i) Button ALL open info sheet -->
+            <!-- Left Area: Icon + Allergen Name (Ample breathing room without colliding badges) -->
             <div 
-              class="allergen-info-trigger flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 cursor-pointer select-none group/info"
+              class="allergen-info-trigger flex items-center gap-2.5 min-w-0 flex-1 select-none"
               data-id="${opt.id}"
               title="View screened ingredients for ${opt.name}"
-              role="button"
-              tabindex="0"
             >
-              <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-800/80 border border-slate-700/80 group-hover/info:border-cyan-400/60 flex items-center justify-center text-sky-400 shrink-0 transition" style="width: 34px; height: 34px; min-width: 34px; min-height: 34px;">
-                ${getAllergenIcon(opt.id, "w-4.5 h-4.5 sm:w-5 sm:h-5")}
+              <div class="w-8 h-8 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-sky-400 shrink-0 transition" style="width: 32px; height: 32px; min-width: 32px; min-height: 32px;">
+                ${getAllergenIcon(opt.id, "w-4.5 h-4.5")}
               </div>
-              <div class="flex items-center gap-1 min-w-0 flex-1">
-                <span class="font-bold text-xs sm:text-sm text-white group-hover/info:text-cyan-300 leading-snug transition whitespace-normal break-words">${opt.name}</span>
-                <span 
-                  class="allergen-info-btn text-slate-400 group-hover/info:text-cyan-300 flex items-center justify-center transition shrink-0 opacity-70 group-hover/info:opacity-100"
-                  title="Screened ingredients info"
-                >
-                  <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path stroke-linecap="round" d="M12 16v-4m0-4h.01"></path>
-                  </svg>
-                </span>
+              <div class="min-w-0 flex-1">
+                <span class="font-bold text-xs sm:text-sm text-white leading-tight block truncate">${opt.name}</span>
               </div>
             </div>
 
-            <!-- Right Dedicated Checkbox Target (THE ONLY PART THAT TOGGLES CHECK) -->
+            <!-- Right Dedicated Checkbox / Lock Target -->
             <button 
               type="button"
-              class="allergen-checkbox-target group p-1 -mr-0.5 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition cursor-pointer shrink-0"
+              class="allergen-checkbox-target group p-0.5 rounded-lg flex items-center justify-center hover:bg-white/10 active:scale-90 transition cursor-pointer shrink-0"
               data-id="${opt.id}"
               aria-label="${isChecked ? `Uncheck ${opt.name}` : `Check ${opt.name}`}"
-              title="${isPlusActive ? `Tap checkbox to toggle ${opt.name}` : `RAKKA Plus required`}"
+              title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Plus required`}"
             >
-              ${lockIcon}
+              ${rightAffordance}
             </button>
           </div>
         `;
