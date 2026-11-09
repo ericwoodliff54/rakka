@@ -24101,17 +24101,6 @@ function renderHistory() {
       updateSyncUI();
       if (navigator.onLine) {
         syncStoreReadyRecalls(false);
-    initStaplesCatalog();
-    initTheme();
-    setNavTab('allergens');
-
-    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const selected = btn.getAttribute('data-theme');
-        if (selected) applyTheme(selected, true);
-      });
-    });
-
       }
     }
     window.addEventListener('online', updateOnlineStatus);
@@ -24286,7 +24275,7 @@ function renderHistory() {
     syncStoreReadyRecalls(false);
     initStaplesCatalog();
     initTheme();
-    setNavTab('allergens');
+    setNavTab('barcodes');
 
     document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
