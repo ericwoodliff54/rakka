@@ -19010,6 +19010,7 @@
         toggleCameraBtn.classList.replace('to-cyan-500', 'to-slate-800');
         cameraPlaceholder.classList.add('hidden');
         if (toggleTorchBtn) toggleTorchBtn.classList.remove('hidden');
+        if (typeof resetCameraIdleTimer === 'function') resetCameraIdleTimer();
       } catch (err) {
         console.error("Camera access error:", err);
         
@@ -19023,7 +19024,33 @@
       }
     }
 
+    let cameraIdleTimeout = null;
+    function resetCameraIdleTimer() {
+      if (cameraIdleTimeout) clearTimeout(cameraIdleTimeout);
+      cameraIdleTimeout = setTimeout(() => {
+        if (typeof isCameraRunning !== 'undefined' && isCameraRunning) {
+          stopCamera();
+          showScannerMessage("Camera paused automatically to preserve battery.");
+        }
+      }, 90000); // 90-second safety cutoff for active camera
+    }
+
+    // Auto-stop camera whenever screen locks, user switches apps, or browser is backgrounded
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && typeof isCameraRunning !== 'undefined' && isCameraRunning) {
+          if (typeof stopCamera === 'function') {
+            stopCamera();
+          }
+        }
+      });
+    }
+
     async function stopCamera() {
+      if (cameraIdleTimeout) {
+        clearTimeout(cameraIdleTimeout);
+        cameraIdleTimeout = null;
+      }
       // Turn off hardware flashlight automatically when stopping camera
       await setTorchState(false);
 
@@ -19481,16 +19508,22 @@
         }, 800);
       }
 
+      // Immediately stop camera sensor and hardware stream to eliminate pocket battery drain
+      if (typeof isCameraRunning !== 'undefined' && isCameraRunning) {
+        try {
+          await stopCamera();
+        } catch (stopErr) {
+          console.warn("Auto-stopping camera error:", stopErr);
+        }
+      }
+
       // Process product and allergen analysis
       try {
         await processUPC(code, 'scanner');
       } catch (err) {
         console.error("Barcode processing error:", err);
       } finally {
-        // Automatically release the scan lock after 1.2s so consecutive/different products scan smoothly
-        setTimeout(() => {
-          isScanningLocked = false;
-        }, 1200);
+        isScanningLocked = false;
       }
     }
 
