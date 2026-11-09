@@ -24434,86 +24434,10 @@ function renderHistory() {
           let serverErrorMsg = "";
           let data = null;
 
-          // 1. FAST PATH: If user configured key in app Settings, call Gemini directly (1.2 second response!)
-          if (clientApiKey) {
-            try {
-              const cleanB64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-              const lotPrompt = `You are an expert food safety inspector reviewing a customer's package photo for a federal food recall.
-Recall Details:
-- Food: ${currentAuditorRecall.brand || ''} - ${currentAuditorRecall.title || ''}
-- Hazard: ${currentAuditorRecall.hazard || ''}
-- Known Recall Batch Window: ${currentAuditorRecall.expectedLots || ''}
-
-Task:
-1. Inspect the packaging photo.
-2. Read any stamped date (Best By, Use By) or lot code.
-3. Compare against the recall window.
-
-Respond STRICTLY in JSON:
-{
-  "extractedCode": "Stamped text or 'Unclear'",
-  "isMatch": true,
-  "verdictTitle": "CONFIRMED RECALL MATCH or CLEARED - OUTSIDE RECALL WINDOW",
-  "severity": "danger",
-  "explanation": "2-3 sentences explaining match or safety.",
-  "action": "Immediate directive."
-}`;
-
-              // Primary: gemini-1.5-flash & gemini-1.5-pro (proven production models)
-              const fastModels = ['gemini-1.5-flash', 'gemini-2.5-flash'];
-              for (const dModel of fastModels) {
-                const ctrl = new AbortController();
-                const tid = setTimeout(() => ctrl.abort(), 20000); // 20s safety timeout
-                try {
-                  // Pass ?key= in URL with standard protobuf inline_data
-                  const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent?key=${encodeURIComponent(clientApiKey)}`, {
-                    method: 'POST',
-                    signal: ctrl.signal,
-                    headers: {
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      contents: [{
-                        parts: [
-                          { text: lotPrompt },
-                          { inline_data: { mime_type: 'image/jpeg', data: cleanB64 } }
-                        ]
-                      }],
-                      generationConfig: {
-                        temperature: 0.1,
-                        response_mime_type: "application/json"
-                      }
-                    })
-                  });
-                  clearTimeout(tid);
-
-                  if (dRes.ok) {
-                    const dJson = await dRes.json();
-                    const rawTxt = dJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-                    const cleaned = rawTxt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-                    const parsed = JSON.parse(cleaned);
-                    if (parsed && parsed.extractedCode) {
-                      renderLotAuditVerdict(parsed);
-                      return;
-                    }
-                  }
-                } catch (dmErr) {
-                  clearTimeout(tid);
-                  console.warn(`Direct model ${dModel} notice:`, dmErr.message || dmErr);
-                }
-              }
-            } catch (directErr) {
-              console.warn("Direct Gemini vision call error:", directErr);
-            }
-          }
-
-          // 2. EDGE PATH: Call Cloudflare Worker edge hook (with strict 7-second timeout)
+          // Direct Edge Call: Exactly matching fetchReceiptSegment architecture (no client-side CORS delays)
           try {
-            const edgeCtrl = new AbortController();
-            const edgeTid = setTimeout(() => edgeCtrl.abort(), 25000);
             const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
               method: 'POST',
-              signal: edgeCtrl.signal,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 imageBase64: dataUrl,
@@ -24525,7 +24449,6 @@ Respond STRICTLY in JSON:
                 clientApiKey: clientApiKey
               })
             });
-            clearTimeout(edgeTid);
 
             if (res.ok) {
               data = await res.json();
@@ -24540,7 +24463,7 @@ Respond STRICTLY in JSON:
               } catch (_) {}
             }
           } catch (netErr) {
-            serverErrorMsg = (netErr.name === 'AbortError') ? "Edge hook request timed out" : "Edge hook or network unavailable";
+            serverErrorMsg = "Edge hook or network unavailable";
           }
 
           // 3. Simulated test image support

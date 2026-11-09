@@ -523,10 +523,10 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Multi-Model Fallback identical to Receipt Scanner engine
+        // Production Flash Models (Ultra-fast, zero-throttling vision models)
         const candidateModels = [
           'gemini-1.5-flash',
-          'gemini-2.5-flash'
+          'gemini-2.0-flash'
         ];
 
         let geminiRes = null;
@@ -544,12 +544,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 contents: [{
                   parts: [
                     { text: prompt },
-                    { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
                   ]
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  response_mime_type: "application/json"
+                  responseMimeType: "application/json"
                 }
               })
             });
@@ -566,7 +566,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           }
         }
 
-        // Automatic Dynamic Discovery: If static names fail, query ModelService just like Receipt Scanner!
+        // Fast Vision Fallback: If static names fail, only query fast flash/vision models
         if (!geminiRes || !geminiRes.ok) {
           try {
             const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
@@ -574,9 +574,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             });
             if (listRes.ok) {
               const listData = await listRes.json();
-              const availableModels = (listData.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
-              for (const m of availableModels) {
-                const modelPath = m.name; // e.g. "models/gemini-..."
+              const availableModels = (listData.models || []).filter(m => 
+                (m.supportedGenerationMethods || []).includes('generateContent') &&
+                (m.name.includes('flash') || m.name.includes('vision'))
+              );
+              for (const m of availableModels.slice(0, 3)) { // max 3 fast candidates
+                const modelPath = m.name;
                 const cleanModelName = modelPath.replace(/^models\//, '');
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
                   method: 'POST',
@@ -588,12 +591,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                     contents: [{
                       parts: [
                         { text: prompt },
-                        { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                        { inlineData: { mimeType: mimeType, data: cleanBase64 } }
                       ]
                     }],
                     generationConfig: {
                       temperature: 0.1,
-                      response_mime_type: "application/json"
+                      responseMimeType: "application/json"
                     }
                   })
                 });
