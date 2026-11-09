@@ -5889,6 +5889,114 @@
         "ingredients": "Pasteurized Milk, Salt, Enzymes, Culture, Powdered Cellulose (Added to Prevent Caking)."
 },
       // WHOLE FOODS 365 ORGANIC BABY SPINACH (5 OZ CLAMSHELL) - UPC 00994824552 / 0994824552
+            "099482455280": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
+      "099482455284": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
+      "09948245528": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
+      "0099482455280": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
+      "9948245528": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
+      "994824552": {
+        isRecalled: true,
+        brand: "365 by Whole Foods Market",
+        product: "365 Organic Baby Spinach (5 oz)",
+        upc: "009948245528",
+        recallDate: "Nov 04, 2026",
+        hazard: "FDA Class I Public Health Recall: Potential contamination with Listeria monocytogenes and Salmonella enterica in pre-packaged organic baby spinach.",
+        expectedLots: "Best-if-used-by dates between SEP 18 2026 and OCT 04 2026 (Lot L-241011)",
+        action: "Do not consume. Immediately discard this product or return to your local Whole Foods Market for a 100% full refund.",
+        severity: "Class I Recall (High Health Risk)",
+        agency: "FDA Food Safety Wire",
+        tag: "Active Class I Recall",
+        states: ['ALL'],
+        stores: ['Whole Foods Market', 'Amazon Fresh'],
+        allergens: [],
+        additives_tags: [],
+        ingredients: "Organic Baby Spinach."
+      },
       "009948245528": {
         isRecalled: true,
         brand: "365 by Whole Foods Market",
@@ -17780,17 +17888,19 @@
       const clean = String(rawCode).replace(/\D/g, '');
       if (!clean) return null;
 
+      // 1. Direct Lookup
       if (RECALL_DATABASE[clean]) return RECALL_DATABASE[clean];
 
-      // Check algorithmic UPC-E expansion (e.g. 03424607 -> 034000002467)
+      // 2. Algorithmic UPC-E expansion (e.g. 03424607 -> 034000002467)
       const upceExpanded = expandUPCE(clean);
       if (upceExpanded && RECALL_DATABASE[upceExpanded]) return RECALL_DATABASE[upceExpanded];
 
-      const withZero = clean.startsWith('0') ? clean : '0' + clean;
-      if (RECALL_DATABASE[withZero]) return RECALL_DATABASE[withZero];
-
+      // 3. Multi-padding variations (0-prefixed, stripped-zeros, 12-digit, 13-digit)
       const strippedZero = clean.replace(/^0+/, '');
-      if (RECALL_DATABASE[strippedZero]) return RECALL_DATABASE[strippedZero];
+      if (strippedZero && RECALL_DATABASE[strippedZero]) return RECALL_DATABASE[strippedZero];
+
+      const withZero = '0' + clean;
+      if (RECALL_DATABASE[withZero]) return RECALL_DATABASE[withZero];
 
       const pad12 = clean.padStart(12, '0');
       if (RECALL_DATABASE[pad12]) return RECALL_DATABASE[pad12];
@@ -17798,9 +17908,21 @@
       const pad13 = clean.padStart(13, '0');
       if (RECALL_DATABASE[pad13]) return RECALL_DATABASE[pad13];
 
+      // 4. Check digit truncation variations (remove last check digit if scanned with/without it)
+      if (clean.length >= 11) {
+        const noCheckDigit = clean.slice(0, -1);
+        if (RECALL_DATABASE[noCheckDigit]) return RECALL_DATABASE[noCheckDigit];
+        const noCheckStripped = noCheckDigit.replace(/^0+/, '');
+        if (noCheckStripped && RECALL_DATABASE[noCheckStripped]) return RECALL_DATABASE[noCheckStripped];
+      }
+
+      // 5. Intelligent Substring Stem Matching (matches 8+ digit core identifiers)
       for (const [key, val] of Object.entries(RECALL_DATABASE)) {
-        if (key.length >= 10 && (clean.includes(key) || key.includes(clean))) {
-          return val;
+        const cleanKey = key.replace(/^0+/, '');
+        if (cleanKey.length >= 8) {
+          if (strippedZero.includes(cleanKey) || cleanKey.includes(strippedZero)) {
+            return val;
+          }
         }
       }
       return null;
@@ -24573,9 +24695,12 @@ function renderHistory() {
               if (data && data.success && data.audit) {
                 if (lotProgressTimer) clearInterval(lotProgressTimer);
                 updateLotProgressUI(100, "Verdict Ready", "Audit complete!", 5);
+                if (data.latencyMs) {
+                  showCustomizeToast(`AI Vision: ${data.modelUsed || 'Gemini Flash'} in ${(data.latencyMs/1000).toFixed(1)}s`);
+                }
                 setTimeout(() => {
                   renderLotAuditVerdict(data.audit);
-                }, 300);
+                }, 200);
                 return;
               }
             } else {
