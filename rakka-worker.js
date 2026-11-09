@@ -525,12 +525,10 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 }`;
 
         // High-Speed Parallel Vision Race (Promise.any)
-        // Concurrently races ultra-fast Gemini 2.0 Flash and Gemini 1.5 Flash
-        // The first model to respond wins, cutting latency to ~2-3 seconds!
+        // gemini-flash-latest is verified by production telemetry as the active working model
         const modelsToRace = [
-          'gemini-2.0-flash-exp',
-          'gemini-1.5-flash',
-          'gemini-1.5-flash-latest'
+          'gemini-flash-latest',
+          'gemini-1.5-flash'
         ];
 
         const startTime = Date.now();
@@ -584,6 +582,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           const winner = await Promise.any(racePromises);
           rawJsonText = winner.text;
           successfulModel = winner.modelName;
+          cachedWorkingLotModel = winner.modelName;
         } catch (allModelsFailed) {
           console.warn("All parallel vision models failed:", allModelsFailed);
         }
@@ -778,9 +777,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 // Multi-Model Fallback: Try current Gemini 2.0/2.5 Flash, followed by latest Flash revisions
         // If static names fail, dynamically discover which model this key is permitted to call!
         const candidateModels = [
+          'gemini-flash-latest',
           'gemini-1.5-flash',
-          'gemini-2.5-flash',
-          'gemini-1.5-flash-8b'
+          'gemini-2.5-flash'
         ];
 
         let geminiRes = null;
