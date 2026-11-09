@@ -501,26 +501,29 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
         const recallBrand = body.recallBrand || '';
         const expectedLots = body.expectedLots || '';
 
-        const prompt = `You are an expert food safety inspector reviewing a customer's package photo for a federal food recall.
+        const prompt = `You are an expert federal food safety inspector reviewing a customer's package photo for a food recall.
 Recall Details:
-- Food / Firm: ${recallBrand} - ${recallTitle}
+- Food / Brand: ${recallBrand} - ${recallTitle}
 - Hazard: ${recallReason}
-- Known Affected Lots / Best-By Dates: ${expectedLots}
+- Known Affected Recall Window / Lots: ${expectedLots}
 
-Task:
-1. Carefully inspect the photo of the product package/stamp.
-2. Extract any stamped "Best By", "Use By", "Sell By" dates, Julian lot codes, or establishment numbers (e.g., EST. or P-numbers).
-3. Determine whether the extracted stamped date or code falls within the recall window, or if it is outside the recall, or if the stamp is unclear.
-4. Give a clear, compassionate, and definitive verdict for a worried family.
+CRITICAL RULES FOR RECALL WINDOW & LOT VERIFICATION:
+1. DATE WINDOW HAS STRICT PRECEDENCE OVER LOT PREFIXES:
+   - If the recall defines an affected date window (e.g., "between SEP 18 2026 and OCT 04 2026"):
+     * ANY product stamped with a Best-By date AFTER the recall end date (for example, OCT 18 2026 is after OCT 04 2026) was produced AFTER the contaminated run. It is 100% OUTSIDE the recall window and MUST be CLEARED / SAFE (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
+     * Do NOT flag a package as recalled if its stamped date is after the recall window end date, even if it shares a facility or lot prefix like L-241011. In food manufacturing, lot prefixes identify the facility/line, but dates define the batch boundary.
+     * A product is ONLY an affected match (isMatch: true, severity: "danger") if its stamped date falls ON or BETWEEN the start and end dates of the recall window.
+2. STAMP READABILITY:
+   - If the stamped date is completely illegible or cut off, set isMatch: null, severity: "warning", verdictTitle: "UNCLEAR STAMP".
 
 Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, no markdown, no backticks):
 {
   "extractedCode": "Exact date/lot text found stamped on packaging, or 'Unclear' if illegible",
-  "isMatch": true, // true if recalled lot/date, false if cleared/safe, null if indeterminate
-  "verdictTitle": "Short bold verdict (e.g. 'CONFIRMED RECALL MATCH', 'CLEARED - OUTSIDE RECALL WINDOW', or 'UNCLEAR STAMP')",
-  "severity": "danger", // 'danger' for match, 'safe' for clear, 'warning' for unclear
-  "explanation": "2-3 sentences explaining exactly why this lot is affected or safe based on the stamped dates and the recall window.",
-  "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
+  "isMatch": false, // boolean: true ONLY if within recall dates/lots, false if outside recall window / safe, null if illegible
+  "verdictTitle": "CLEARED - OUTSIDE RECALL WINDOW", // or 'CONFIRMED RECALL MATCH' or 'UNCLEAR STAMP'
+  "severity": "safe", // 'safe' if cleared/outside window, 'danger' if confirmed match, 'warning' if unclear
+  "explanation": "2-3 clear sentences explaining why this package is safe or recalled based strictly on whether its stamped date falls inside or outside the stated recall window.",
+  "action": "Safe to consume as directed, or discard/return if recalled."
 }`;
 
         // Exact 1:1 Implementation Model of the Battle-Tested Receipt Scanner
