@@ -1,3 +1,4 @@
+let cachedWorkingLotModel = null;
 /**
  * RAKKA Cloud Edge Hook - Serverless Barcode Aggregator & Community Cache
  * Designed for Cloudflare Workers (100,000 free requests/day)
@@ -523,20 +524,24 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Production Flash Models: latest flash aliases with zero throttling
-        const candidateModels = [
-          'gemini-1.5-flash-latest',
-          'gemini-1.5-flash',
-          'gemini-2.0-flash-exp'
-        ];
+        // Cached or High-Speed Production Flash Models
+        // Prioritize cached successful model to cut latency to ~1.5s
+        const candidateModels = cachedWorkingLotModel
+          ? [cachedWorkingLotModel, 'gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+          : ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
 
         let geminiRes = null;
         let lastErrText = '';
+        let successfulModel = '';
 
         for (const modelName of candidateModels) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4500); // 4.5s max per candidate to prevent hanging
+
           try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
+              signal: controller.signal,
               headers: { 
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
@@ -545,24 +550,28 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 contents: [{
                   parts: [
                     { text: prompt },
-                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                    { inline_data: { mime_type: mimeType, data: cleanBase64 } }
                   ]
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  responseMimeType: "application/json"
+                  response_mime_type: "application/json"
                 }
               })
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               geminiRes = res;
+              successfulModel = modelName;
+              cachedWorkingLotModel = modelName; // Cache for sub-2s future requests!
               break;
             } else {
               lastErrText = await res.text();
               console.warn(`Lot Audit Model ${modelName} returned HTTP ${res.status}:`, lastErrText);
             }
           } catch (modelErr) {
+            clearTimeout(timeoutId);
             console.warn(`Lot Audit Model ${modelName} notice:`, modelErr.message || modelErr);
           }
         }

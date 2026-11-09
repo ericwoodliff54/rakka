@@ -3763,17 +3763,48 @@
           </label>
         </div>
 
-        <!-- Live Analyzing Indicator -->
-        <div id="lotCodeAnalyzingBox" class="hidden p-5 rounded-2xl bg-gradient-to-b from-slate-950 to-slate-900 border border-slate-800 text-center space-y-3 animate-in fade-in duration-200">
-          <div class="relative w-12 h-12 mx-auto flex items-center justify-center">
-            <div class="absolute inset-0 rounded-full border-2 border-amber-500/30 animate-ping"></div>
-            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+        <!-- Live Analyzing Progress Indicator (Matching Receipt Auditor Layout) -->
+        <div id="lotCodeAnalyzingBox" class="hidden p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800/80 text-left space-y-4 shadow-2xl animate-in fade-in duration-200">
+          <!-- Main Title & Dynamic Stage Description with Percentage Display -->
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <h4 id="lotProgressMainTitle" class="text-sm font-black text-white">Auditing Package Date Stamp</h4>
+              </div>
+              <p id="lotProgressSubText" class="text-xs text-slate-300 leading-relaxed">Calibrating stamp image & contrast...</p>
+            </div>
+            <span id="lotProgressPercentText" class="text-xs font-mono font-bold text-amber-400 bg-amber-950/70 px-2.5 py-1 rounded-xl border border-amber-500/30 shrink-0">15%</span>
+          </div>
+
+          <!-- Animated Visual Progress Bar -->
+          <div class="space-y-1">
+            <div class="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-700/60">
+              <div id="lotProgressBarFill" class="bg-gradient-to-r from-amber-500 via-rose-500 to-emerald-400 h-full rounded-full transition-all duration-300 ease-out" style="width: 15%;"></div>
             </div>
           </div>
-          <div>
-            <span class="font-bold text-white block text-sm">Auditing Date Stamp...</span>
-            <span class="text-[11px] text-slate-400 block mt-0.5">Cross-referencing printed ink text against active federal recall window</span>
+
+          <!-- 4-Stage Live Checklist -->
+          <div class="space-y-2 pt-1 border-t border-slate-800/60 text-xs">
+            <div id="lotStep1" class="flex items-center gap-2 text-amber-300 font-semibold">
+              <span id="lotStep1Icon" class="w-4 h-4 rounded-full bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-[10px]">✓</span>
+              <span id="lotStep1Text">Image Optimization & Ink Isolation</span>
+            </div>
+            <div id="lotStep2" class="flex items-center gap-2 text-slate-400">
+              <span id="lotStep2Icon" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">2</span>
+              <span id="lotStep2Text">AI Reading Stamped Expiration & Lot Code</span>
+            </div>
+            <div id="lotStep3" class="flex items-center gap-2 text-slate-400">
+              <span id="lotStep3Icon" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">3</span>
+              <span id="lotStep3Text">Cross-Referencing Federal Recall Batch Window</span>
+            </div>
+            <div id="lotStep4" class="flex items-center gap-2 text-slate-400">
+              <span id="lotStep4Icon" class="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">4</span>
+              <span id="lotStep4Text">Safety Verification & Consumer Directive</span>
+            </div>
           </div>
         </div>
 
@@ -24445,6 +24476,44 @@ function renderHistory() {
       });
     }
 
+    let lotProgressTimer = null;
+
+    function updateLotProgressUI(pct, title, desc, activeStep) {
+      const bar = document.getElementById('lotProgressBarFill');
+      const pctText = document.getElementById('lotProgressPercentText');
+      const mainT = document.getElementById('lotProgressMainTitle');
+      const subT = document.getElementById('lotProgressSubText');
+
+      if (bar) bar.style.width = `${pct}%`;
+      if (pctText) pctText.textContent = `${pct}%`;
+      if (mainT && title) mainT.textContent = title;
+      if (subT && desc) subT.textContent = desc;
+
+      const steps = [
+        { el: document.getElementById('lotStep1'), icon: document.getElementById('lotStep1Icon') },
+        { el: document.getElementById('lotStep2'), icon: document.getElementById('lotStep2Icon') },
+        { el: document.getElementById('lotStep3'), icon: document.getElementById('lotStep3Icon') },
+        { el: document.getElementById('lotStep4'), icon: document.getElementById('lotStep4Icon') }
+      ];
+
+      steps.forEach((s, idx) => {
+        if (!s.el || !s.icon) return;
+        if (idx + 1 < activeStep) {
+          s.el.className = 'flex items-center gap-2 text-emerald-400 font-semibold';
+          s.icon.className = 'w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-[10px] text-emerald-300';
+          s.icon.textContent = '✓';
+        } else if (idx + 1 === activeStep) {
+          s.el.className = 'flex items-center gap-2 text-amber-300 font-bold';
+          s.icon.className = 'w-4 h-4 rounded-full bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-[10px] text-amber-300';
+          s.icon.textContent = String(idx + 1);
+        } else {
+          s.el.className = 'flex items-center gap-2 text-slate-500';
+          s.icon.className = 'w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-400';
+          s.icon.textContent = String(idx + 1);
+        }
+      });
+    }
+
     if (lotCodeCameraInput) {
       lotCodeCameraInput.addEventListener('change', async (e) => {
         if (!e.target.files || e.target.files.length === 0) return;
@@ -24455,8 +24524,26 @@ function renderHistory() {
         if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.remove('hidden');
         if (lotAuditResultBox) lotAuditResultBox.classList.add('hidden');
 
+        // Start dynamic progress animation matching receipt auditor
+        updateLotProgressUI(15, "Auditing Package Date Stamp", "Optimizing image calibration & isolating stamped ink...", 1);
+        let lotElapsedMs = 0;
+        if (lotProgressTimer) clearInterval(lotProgressTimer);
+        lotProgressTimer = setInterval(() => {
+          lotElapsedMs += 250;
+          if (lotElapsedMs === 500) {
+            updateLotProgressUI(35, "Reading Printed Characters", "AI Vision scanning for stamped dates, lot codes & plant EST...", 2);
+          } else if (lotElapsedMs === 1200) {
+            updateLotProgressUI(65, "Verifying Recall Window", "Comparing stamped dates directly against active federal notice...", 3);
+          } else if (lotElapsedMs === 2200) {
+            updateLotProgressUI(88, "Formulating Safety Verdict", "Synthesizing packaging clearance & consumer directives...", 4);
+          } else if (lotElapsedMs > 3000 && lotElapsedMs < 7000) {
+            const gentlePct = Math.min(96, 88 + Math.floor((lotElapsedMs - 2200) / 600));
+            updateLotProgressUI(gentlePct, "Finalizing Safety Verdict", "Synthesizing packaging clearance & consumer directives...", 4);
+          }
+        }, 250);
+
         try {
-          // Ultra-fast 800px compression (~45KB upload in <150ms)
+          // Ultra-fast 800px compression (~40KB upload in <120ms)
           const compressed = await compressImageForUpload(file, 800, 0.7);
           const dataUrl = compressed.dataUrl;
           const hookUrl = (localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK).trim();
@@ -24465,7 +24552,7 @@ function renderHistory() {
           let serverErrorMsg = "";
           let data = null;
 
-          // Direct Edge Call: Exactly matching fetchReceiptSegment architecture (no client-side CORS delays)
+          // Direct Edge Call: Exactly matching fetchReceiptSegment architecture
           try {
             const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
               method: 'POST',
@@ -24484,7 +24571,11 @@ function renderHistory() {
             if (res.ok) {
               data = await res.json();
               if (data && data.success && data.audit) {
-                renderLotAuditVerdict(data.audit);
+                if (lotProgressTimer) clearInterval(lotProgressTimer);
+                updateLotProgressUI(100, "Verdict Ready", "Audit complete!", 5);
+                setTimeout(() => {
+                  renderLotAuditVerdict(data.audit);
+                }, 300);
                 return;
               }
             } else {
@@ -24495,6 +24586,8 @@ function renderHistory() {
             }
           } catch (netErr) {
             serverErrorMsg = "Edge hook or network unavailable";
+          } finally {
+            if (lotProgressTimer) clearInterval(lotProgressTimer);
           }
 
           // 3. Simulated test image support
