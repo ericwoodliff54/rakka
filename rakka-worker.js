@@ -295,7 +295,7 @@ export default {
         // Optional: If an image was submitted, call Gemini 1.5 Flash OCR (free tier)
         if (body.imageBase64 && env && env.GEMINI_API_KEY && !ingredients) {
           try {
-            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`, {
+            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey || (env && env.GEMINI_API_KEY) || "")}`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -403,7 +403,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
   }
 }`;
 
-        const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
+        const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey || (env && env.GEMINI_API_KEY) || "")}', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -526,8 +526,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         // Fast Vision Models (gemini-1.5-flash is primary: responds in 1.2s with zero capacity throttling)
         const candidateModels = [
           'gemini-1.5-flash',
-          'gemini-1.5-flash-8b',
-          'gemini-2.0-flash'
+          'gemini-2.5-flash',
+          'gemini-1.5-flash-8b'
         ];
 
         let geminiRes = null;
@@ -537,7 +537,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s strict timeout per model
           try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               signal: controller.signal,
               headers: { 
@@ -719,9 +719,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 // Multi-Model Fallback: Try current Gemini 2.0/2.5 Flash, followed by latest Flash revisions
         // If static names fail, dynamically discover which model this key is permitted to call!
         const candidateModels = [
-          'gemini-2.0-flash',
           'gemini-1.5-flash',
-          'gemini-flash-latest'
+          'gemini-2.5-flash',
+          'gemini-1.5-flash-8b'
         ];
 
         let geminiRes = null;
@@ -729,7 +729,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
         for (const modelName of candidateModels) {
           try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -773,7 +773,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
               for (const m of availableModels) {
                 const modelPath = m.name; // e.g. "models/gemini-..."
                 const cleanModelName = modelPath.replace(/^models\//, '');
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
                   method: 'POST',
                   headers: { 
                     'Content-Type': 'application/json',

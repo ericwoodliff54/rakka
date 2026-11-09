@@ -24459,18 +24459,18 @@ Respond STRICTLY in JSON:
   "action": "Immediate directive."
 }`;
 
-              // Primary: gemini-1.5-flash (fastest and most stable, ~1.2s response time)
-              const fastModels = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash'];
+              // Primary: gemini-1.5-flash & gemini-2.5-flash (zero-throttling production vision models)
+              const fastModels = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b'];
               for (const dModel of fastModels) {
                 const ctrl = new AbortController();
-                const tid = setTimeout(() => ctrl.abort(), 6000); // 6s timeout
+                const tid = setTimeout(() => ctrl.abort(), 6500); // 6.5s safety timeout
                 try {
-                  const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent`, {
+                  // Pass ?key= in URL (canonical Google AI Studio browser CORS endpoint)
+                  const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent?key=${encodeURIComponent(clientApiKey)}`, {
                     method: 'POST',
                     signal: ctrl.signal,
                     headers: {
-                      'Content-Type': 'application/json',
-                      'x-goog-api-key': clientApiKey
+                      'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                       contents: [{
