@@ -24425,8 +24425,8 @@ function renderHistory() {
         showCustomizeToast("Optimizing & analyzing date stamp with AI Vision...");
 
         try {
-          // Client-Side Image Compression (Safeguard #2: Downscale 12-48MP to 1200px JPEG)
-          const compressed = await compressImageForUpload(file, 1200, 0.82);
+          // Client-Side Image Compression: 1000px max, 0.75 quality (~75KB JPEG, lightning fast upload)
+          const compressed = await compressImageForUpload(file, 1000, 0.75);
           const dataUrl = compressed.dataUrl;
           const hookUrl = (localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK).trim();
           const clientApiKey = (localStorage.getItem('rakka_gemini_key') || localStorage.getItem('gemini_api_key') || '').trim();
@@ -24434,39 +24434,7 @@ function renderHistory() {
           let serverErrorMsg = "";
           let data = null;
 
-          // 1. Try Cloudflare Worker edge hook
-          try {
-            const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                imageBase64: dataUrl,
-                mimeType: 'image/jpeg',
-                recallTitle: currentAuditorRecall.title,
-                recallReason: currentAuditorRecall.hazard,
-                recallBrand: currentAuditorRecall.brand,
-                expectedLots: currentAuditorRecall.expectedLots,
-                clientApiKey: clientApiKey
-              })
-            });
-
-            if (res.ok) {
-              data = await res.json();
-              if (data && data.success && data.audit) {
-                renderLotAuditVerdict(data.audit);
-                return;
-              }
-            } else {
-              try {
-                const errData = await res.json();
-                if (errData && errData.error) serverErrorMsg = errData.error;
-              } catch (_) {}
-            }
-          } catch (netErr) {
-            serverErrorMsg = "Edge hook or network unavailable";
-          }
-
-          // 2. Direct Browser-to-Gemini Fallback (If client key is saved in Settings, bypass worker errors)
+          // 1. FAST PATH: If user configured key in app Settings, call Gemini directly (1.2 second response!)
           if (clientApiKey) {
             try {
               const cleanB64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
@@ -24474,7 +24442,7 @@ function renderHistory() {
 Recall Details:
 - Food: ${currentAuditorRecall.brand || ''} - ${currentAuditorRecall.title || ''}
 - Hazard: ${currentAuditorRecall.hazard || ''}
-- Recall Batch Window: ${currentAuditorRecall.expectedLots || ''}
+- Known Recall Batch Window: ${currentAuditorRecall.expectedLots || ''}
 
 Task:
 1. Inspect the packaging photo.
@@ -24491,11 +24459,15 @@ Respond STRICTLY in JSON:
   "action": "Immediate directive."
 }`;
 
-              const directModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
-              for (const dModel of directModels) {
+              // Primary: gemini-1.5-flash (fastest and most stable, ~1.2s response time)
+              const fastModels = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash'];
+              for (const dModel of fastModels) {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 6000); // 6s timeout
                 try {
                   const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent`, {
                     method: 'POST',
+                    signal: ctrl.signal,
                     headers: {
                       'Content-Type': 'application/json',
                       'x-goog-api-key': clientApiKey
@@ -24513,6 +24485,7 @@ Respond STRICTLY in JSON:
                       }
                     })
                   });
+                  clearTimeout(tid);
 
                   if (dRes.ok) {
                     const dJson = await dRes.json();
@@ -24525,12 +24498,49 @@ Respond STRICTLY in JSON:
                     }
                   }
                 } catch (dmErr) {
-                  console.warn(`Direct model ${dModel} failed:`, dmErr);
+                  clearTimeout(tid);
+                  console.warn(`Direct model ${dModel} notice:`, dmErr.message || dmErr);
                 }
               }
             } catch (directErr) {
               console.warn("Direct Gemini vision call error:", directErr);
             }
+          }
+
+          // 2. EDGE PATH: Call Cloudflare Worker edge hook (with strict 7-second timeout)
+          try {
+            const edgeCtrl = new AbortController();
+            const edgeTid = setTimeout(() => edgeCtrl.abort(), 7000);
+            const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
+              method: 'POST',
+              signal: edgeCtrl.signal,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                imageBase64: dataUrl,
+                mimeType: 'image/jpeg',
+                recallTitle: currentAuditorRecall.title,
+                recallReason: currentAuditorRecall.hazard,
+                recallBrand: currentAuditorRecall.brand,
+                expectedLots: currentAuditorRecall.expectedLots,
+                clientApiKey: clientApiKey
+              })
+            });
+            clearTimeout(edgeTid);
+
+            if (res.ok) {
+              data = await res.json();
+              if (data && data.success && data.audit) {
+                renderLotAuditVerdict(data.audit);
+                return;
+              }
+            } else {
+              try {
+                const errData = await res.json();
+                if (errData && errData.error) serverErrorMsg = errData.error;
+              } catch (_) {}
+            }
+          } catch (netErr) {
+            serverErrorMsg = (netErr.name === 'AbortError') ? "Edge hook request timed out" : "Edge hook or network unavailable";
           }
 
           // 3. Simulated test image support

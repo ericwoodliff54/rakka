@@ -11,7 +11,16 @@ function resolveGeminiApiKey(env, body) {
   if (typeof EMBEDDED_GEMINI_KEY === 'string' && EMBEDDED_GEMINI_KEY.trim().length > 0) {
     return { key: EMBEDDED_GEMINI_KEY.trim().replace(/^[\"\']|[\"\']$/g, ''), source: 'embedded_code' };
   }
-  const envAliases = ['GEMINI_API_KEY', 'gemini_api_key', 'GEMINI_KEY', 'gemini_key', 'GOOGLE_API_KEY', 'google_api_key', 'API_KEY', 'api_key'];
+  const bodyKey = body && (body.clientApiKey || body.apiKey || body.geminiApiKey);
+  if (typeof bodyKey === 'string' && bodyKey.trim().length > 0) {
+    return { key: bodyKey.trim().replace(/^[\"\']|[\"\']$/g, ''), source: 'client_payload' };
+  }
+  const envAliases = [
+    'GEMINI_API_KEY', 'gemini_api_key', 'GEMINI_KEY', 'gemini_key',
+    'GOOGLE_API_KEY', 'google_api_key', 'API_KEY', 'api_key',
+    'GEMINI_TOKEN', 'gemini_token', 'GOOGLE_KEY', 'google_key',
+    'AI_VISION_KEY', 'ai_vision_key', 'GEMINI', 'gemini'
+  ];
   if (env && typeof env === 'object') {
     for (const alias of envAliases) {
       if (typeof env[alias] === 'string' && env[alias].trim().length > 0) {
@@ -19,9 +28,12 @@ function resolveGeminiApiKey(env, body) {
       }
     }
   }
-  const bodyKey = body && (body.clientApiKey || body.apiKey);
-  if (typeof bodyKey === 'string' && bodyKey.trim().length > 0) {
-    return { key: bodyKey.trim().replace(/^[\"\']|[\"\']$/g, ''), source: 'client_payload' };
+  if (typeof globalThis !== 'undefined') {
+    for (const alias of envAliases) {
+      if (typeof globalThis[alias] === 'string' && globalThis[alias].trim().length > 0) {
+        return { key: globalThis[alias].trim().replace(/^[\"\']|[\"\']$/g, ''), source: `globalThis (${alias})` };
+      }
+    }
   }
   return { key: '', source: 'none' };
 }
@@ -511,21 +523,23 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Multi-Model Fallback for Lot & Date Stamp OCR
+        // Fast Vision Models (gemini-1.5-flash is primary: responds in 1.2s with zero capacity throttling)
         const candidateModels = [
-          'gemini-2.0-flash',
           'gemini-1.5-flash',
-          'gemini-flash-latest',
-          'gemini-2.5-flash'
+          'gemini-1.5-flash-8b',
+          'gemini-2.0-flash'
         ];
 
         let geminiRes = null;
         let lastErrText = '';
 
         for (const modelName of candidateModels) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s strict timeout per model
           try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
               method: 'POST',
+              signal: controller.signal,
               headers: { 
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
@@ -543,6 +557,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 }
               })
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               geminiRes = res;
@@ -552,49 +567,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
               console.warn(`Lot Audit Model ${modelName} returned HTTP ${res.status}:`, lastErrText);
             }
           } catch (modelErr) {
-            console.warn(`Lot Audit Model ${modelName} fetch exception:`, modelErr);
-          }
-        }
-
-        // If candidate list failed, query Google ModelService for models enabled on this key
-        if (!geminiRes || !geminiRes.ok) {
-          try {
-            const listRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
-              headers: { 'x-goog-api-key': apiKey }
-            });
-            if (listRes.ok) {
-              const listData = await listRes.json();
-              const availableModels = (listData.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
-              for (const m of availableModels) {
-                const modelPath = m.name;
-                const cleanModelName = modelPath.replace(/^models\//, '');
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent`, {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': apiKey
-                  },
-                  body: JSON.stringify({
-                    contents: [{
-                      parts: [
-                        { text: prompt },
-                        { inlineData: { mimeType: mimeType, data: cleanBase64 } }
-                      ]
-                    }],
-                    generationConfig: {
-                      temperature: 0.1,
-                      responseMimeType: "application/json"
-                    }
-                  })
-                });
-                if (res.ok) {
-                  geminiRes = res;
-                  break;
-                }
-              }
-            }
-          } catch (listErr) {
-            console.warn('Dynamic lot audit model discovery error:', listErr);
+            clearTimeout(timeoutId);
+            console.warn(`Lot Audit Model ${modelName} notice:`, modelErr.message || modelErr);
           }
         }
 
