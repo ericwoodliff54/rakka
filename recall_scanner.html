@@ -295,8 +295,7 @@
     html.theme-light input::placeholder {
       color: #64748b !important;
     }
-    html.theme-light #clearSearchBtn,
-    html.theme-light #clearBtn {
+        html.theme-light #clearBtn {
       background-color: #e2e8f0 !important;
       color: #000000 !important;
     }
@@ -752,8 +751,7 @@
 
     /* Watchlist & Search Items */
     html.theme-light #historyList > div,
-    html.theme-light #searchResultsBox > div,
-    html.theme-light .search-result-item {
+        html.theme-light .search-result-item {
       background-color: #ffffff !important;
       border-color: #cbd5e1 !important;
       color: #000000 !important;
@@ -2758,85 +2756,7 @@
         </form>
       </div>
 
-      <!-- 3. BRAND & PRODUCT NAME SEARCH WINDOW -->
-      <div id="brandSearchSection" class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg scroll-mt-28">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="font-display text-sm font-bold text-slate-100 flex items-center gap-2">
-              <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-              <span>Search by Food or Product Name</span>
-            </h3>
-          </div>
-        </div>
-
-        <form id="brandSearchForm" class="space-y-3" onsubmit="event.preventDefault();">
-          <div>
-            <label for="brandSearchInput" class="block text-xs font-medium text-slate-300 mb-1.5">Food or Brand Name</label>
-            <div class="flex items-center gap-2">
-              <div class="relative flex-1">
-                <input 
-                  type="text" 
-                  id="brandSearchInput" 
-                  autocomplete="off"
-                  enterkeyhint="search"
-                  placeholder="e.g. Kit Kat, Peanut Butter, Spinach..."
-                  class="w-full min-h-[48px] pl-11 pr-10 py-3.5 rounded-xl border border-slate-700 bg-slate-950 text-white text-[16px] sm:text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition shadow-sm"
-                >
-                <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                  </svg>
-                </div>
-                <button 
-                  type="button" 
-                  id="clearSearchBtn" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white text-base font-bold w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 rounded-xl hidden transition active:scale-95"
-                  aria-label="Clear search input"
-                >&times;</button>
-              </div>
-
-              <button 
-                type="submit" 
-                id="executeSearchBtn" class="shrink-0 px-5 py-3 min-h-[52px] rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-sm sm:text-base shadow-lg shadow-cyan-950/60 ring-1 ring-amber-400/40 flex items-center justify-center gap-1.5 transition active:scale-95"
-                title="Search products and recalls"
-              >
-                <span>Search</span>
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <div id="searchResultsBox" class="hidden space-y-2 pt-1 max-h-72 overflow-y-auto rounded-2xl"></div>
-      </div>
-
-      <!-- 4. UPLOAD UPC PHOTO WINDOW (Dedicated function below search box) -->
-      <div id="uploadUpcSection" class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="font-display text-sm font-bold text-slate-100 flex items-center gap-2">
-              <svg class="w-4 h-4 text-teal-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              <span>Upload UPC Image</span>
-            </h3>
-          </div>
-        </div>
-
-        <div>
-          <label 
-            for="barcodeFileInput" 
-            class="cursor-pointer w-full min-h-[52px] py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-sm shadow-lg shadow-cyan-950/60 ring-1 ring-amber-400/40 transition active:scale-[0.98] flex items-center justify-center gap-2.5"
-            title="Upload photo of a product barcode"
-          >
-            <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-            </svg>
-            <span>Upload Photo of Barcode</span>
-            <input type="file" id="barcodeFileInput" accept="image/*" class="hidden">
-          </label>
-        </div>
-      </div>
+      
 
       <!-- 5. PRODUCT INFO WINDOW DISPLAY AREA (Loads at bottom of page below upload box) -->
       <section id="scannerResultContainer" class="hidden transition-all duration-300 scroll-mt-36 space-y-4 pt-1" aria-live="polite"></section>
@@ -3252,6 +3172,29 @@
           </svg>
           <span>Refresh</span>
         </button>
+      </div>
+
+            <!-- Search Recalls by Food, Brand, or Hazard -->
+      <div class="relative">
+        <input 
+          type="text" 
+          id="recallSearchInput" 
+          autocomplete="off"
+          enterkeyhint="search"
+          placeholder="Search recalls by food, brand, or hazard (e.g. spinach, Boar's Head, listeria)..."
+          class="w-full min-h-[48px] pl-11 pr-10 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white text-[16px] sm:text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition shadow-sm"
+        >
+        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+          <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+        <button 
+          type="button" 
+          id="clearRecallSearchBtn" 
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white text-base font-bold w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 rounded-xl hidden transition active:scale-95"
+          aria-label="Clear recall search"
+        >&times;</button>
       </div>
 
       <!-- Regional & Retailer Filter Bar -->
@@ -18277,14 +18220,9 @@
     const settingsSyncBtnText = document.getElementById('settingsSyncBtnText');
 
         const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-    const barcodeFileInput = document.getElementById('barcodeFileInput');
     const scannerMessage = document.getElementById('scannerMessage');
 
     // Brand / Product Search
-    const brandSearchInput = document.getElementById('brandSearchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-    const searchResultsBox = document.getElementById('searchResultsBox');
-    const searchChips = document.querySelectorAll('.search-chip');
 
     // State & Store Filter Elements
     const stateFilterSelect = document.getElementById('stateFilterSelect');
@@ -18306,6 +18244,8 @@
     const historyList = document.getElementById('historyList');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const bulletinFeedList = document.getElementById('bulletinFeedList');
+    const recallSearchInput = document.getElementById('recallSearchInput');
+    const clearRecallSearchBtn = document.getElementById('clearRecallSearchBtn');
     const refreshFeedBtn = document.getElementById('refreshFeedBtn');
 
     const allergenCheckboxesContainer = document.getElementById('allergenCheckboxesContainer');
@@ -19083,236 +19023,7 @@
       cameraPlaceholder.classList.remove('hidden');
     }
 
-        // Advanced Multi-Stage Barcode Locator for Whole-Package Photos (Detects barcodes in corners, on boxes, cans & pouches)
-    async function scanBarcodeFromPackageImage(file, qrEngine) {
-      // Stage 1: Ultra-Fast Hardware-Accelerated Native BarcodeDetector Multi-Pass (0ms - 25ms total)
-      let nativeDetector = null;
-      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-        try {
-          const supportedFormats = await BarcodeDetector.getSupportedFormats().catch(() => []);
-          const targetFormats = ['upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128', 'qr_code'];
-          const formats = targetFormats.filter(f => supportedFormats.includes(f));
-          if (formats.length > 0) {
-            nativeDetector = new BarcodeDetector({ formats });
-            const bitmap = await createImageBitmap(file);
-            const barcodes = await nativeDetector.detect(bitmap);
-            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-              if (bitmap.close) bitmap.close();
-              return barcodes[0].rawValue;
-            }
-            if (bitmap.close) bitmap.close();
-          }
-        } catch (_) {}
-      }
-
-      // Stage 2: Fast Pre-Scaled Image Loading (Max 1200px - 10x faster canvas rendering, 90% less memory)
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-
-        img.onload = async () => {
-          URL.revokeObjectURL(url);
-          const origW = img.naturalWidth || img.width;
-          const origH = img.naturalHeight || img.height;
-
-          // Scale factor to cap maximum dimension at 1200px for instant scanning
-          const scale = Math.min(1, 1200 / Math.max(origW, origH));
-          const w = Math.round(origW * scale);
-          const h = Math.round(origH * scale);
-
-          // Top 4 High-Probability Packaging Regions (Full, Bottom Half, Bottom-Right, 90° Rotated)
-          const rois = [
-            { x: 0, y: 0, w: w, h: h, rotate: 0 },
-            { x: 0, y: Math.floor(h * 0.40), w: w, h: Math.floor(h * 0.60), rotate: 0 },
-            { x: Math.floor(w * 0.40), y: Math.floor(h * 0.40), w: Math.floor(w * 0.60), h: Math.floor(h * 0.60), rotate: 0 },
-            { x: 0, y: 0, w: w, h: h, rotate: 90 }
-          ];
-
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-          for (const roi of rois) {
-            try {
-              if (roi.rotate === 90) {
-                canvas.width = roi.h;
-                canvas.height = roi.w;
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate((90 * Math.PI) / 180);
-                ctx.drawImage(img, -roi.w / 2, -roi.h / 2, roi.w, roi.h);
-                ctx.restore();
-              } else {
-                canvas.width = roi.w;
-                canvas.height = roi.h;
-                ctx.drawImage(img, roi.x, roi.y, roi.w, roi.h, 0, 0, roi.w, roi.h);
-              }
-
-              // Fast Path: Try Native BarcodeDetector on cropped/rotated canvas (takes 2ms vs 1500ms ZXing)
-              if (nativeDetector) {
-                try {
-                  const detectedBarcodes = await nativeDetector.detect(canvas);
-                  if (detectedBarcodes && detectedBarcodes.length > 0 && detectedBarcodes[0].rawValue) {
-                    resolve(detectedBarcodes[0].rawValue);
-                    return;
-                  }
-                } catch (_) {}
-              }
-
-              // Fallback Path: Fast GPU-accelerated contrast filter + ZXing scan
-              if (qrEngine && typeof qrEngine.scanFile === 'function') {
-                const blob = await new Promise(bRes => canvas.toBlob(bRes, 'image/jpeg', 0.85));
-                if (blob) {
-                  const cropFile = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
-                  const decoded = await qrEngine.scanFile(cropFile, false).catch(() => null);
-                  if (decoded) {
-                    resolve(decoded);
-                    return;
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-
-          reject(new Error("No barcode detected on packaging photo"));
-        };
-
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error("Could not load image"));
-        };
-
-        img.src = url;
-      });
-    }
-
-    // Photo file scanner (Upload UPC) - Multi-Stage Whole-Package Barcode Locator
-    barcodeFileInput.addEventListener('change', async (e) => {
-      if (!e.target.files || e.target.files.length === 0) return;
-      const file = e.target.files[0];
-      try {
-        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-        showScannerMessage("Locating barcode on packaging photo...");
-
-        const decodedText = await scanBarcodeFromPackageImage(file, html5QrCode);
-        hideScannerMessage();
-        e.target.value = ''; // Reset input so same file or next file can be uploaded consecutively
-
-        // Always unlock scanning locks for deliberate user file uploads
-        isScanningLocked = false;
-        lastScannedCode = null;
-        lastScanTimestamp = 0;
-
-        triggerHaptic([80, 40, 80]);
-        sound.playScanBeep();
-
-        // Directly process uploaded barcode without populating manual search box
-        await processUPC(decodedText, 'upload');
-      } catch (opticalErr) {
-        console.warn("Optical barcode detection missed, trying Cloud Edge AI Packaging Vision:", opticalErr);
-        
-        // Edge AI Vision Fallback: Upload whole package to Cloudflare Worker Gemini Vision
-        const hookUrl = (localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK).trim();
-        if (hookUrl && file) {
-          try {
-            showScannerMessage("Optimizing & analyzing whole package with AI Vision...");
-            
-            // Client-Side Image Compression (Safeguard #2: Downscale 12-48MP to 1200px JPEG)
-            const compressed = await compressImageForUpload(file, 1200, 0.8);
-            const dataUrl = compressed.dataUrl;
-
-            const visionRes = await fetch(`${hookUrl.replace(/\/+$/, '')}/detect-package`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                imageBase64: dataUrl,
-                mimeType: 'image/jpeg'
-              })
-            });
-
-            if (visionRes.ok) {
-              const visionData = await visionRes.json();
-              if (visionData && visionData.found && visionData.product) {
-                hideScannerMessage();
-                e.target.value = '';
-                triggerHaptic([80, 40, 80]);
-                sound.playScanBeep();
-
-                const p = visionData.product;
-                const detectedCode = p.upc && p.upc !== 'VISION-DETECTED' ? p.upc : '';
-
-                // Autonomous 1-Shot Lot Code & Recall Verification
-                if (p.lotCode) {
-                  showCustomizeToast(`1-Shot AI Vision: Stamped date spotted (${p.lotCode})`);
-                }
-
-                let isRecalled = false;
-                let recallRecord = findRecallRecord(detectedCode);
-                let terminatedNotice = null;
-
-                // If AI Vision detected a recall match or safe batch directly from the stamped packaging
-                if (p.lotAudit) {
-                  if (p.lotAudit.isMatch === true) {
-                    isRecalled = true;
-                    recallRecord = {
-                      product: p.name,
-                      brand: p.brand,
-                      hazard: p.lotAudit.explanation || 'Packaging date matches active federal recall window.',
-                      action: p.lotAudit.action || 'Do not consume. Discard or return to retailer for full refund.',
-                      severity: 'Class I Recall',
-                      recallDate: p.lotCode || 'Matched Lot Batch',
-                      agency: 'FDA Public Health Alert (1-Shot AI Audit)'
-                    };
-                  } else if (p.lotAudit.isMatch === false) {
-                    isRecalled = false;
-                    terminatedNotice = {
-                      date: p.lotCode || 'Verified Lot Batch',
-                      reason: p.lotAudit.explanation || '1-Shot AI Verified: Stamped expiration date is outside the federal recall window. Product is safe to consume.',
-                      agency: 'FDA Cleared Batch (1-Shot AI Audit)',
-                      product: p.name
-                    };
-                  }
-                }
-
-                // If not determined by vision, fallback to standard database lookup
-                if (!isRecalled && !terminatedNotice && detectedCode) {
-                  recallRecord = findRecallRecord(detectedCode);
-                  if (recallRecord) {
-                    isRecalled = Boolean(recallRecord.isRecalled);
-                    terminatedNotice = recallRecord.terminatedNotice || null;
-                  }
-                }
-
-                // Display resolved product with unified 1-shot recall/lot audit
-                displayResult({
-                  upc: detectedCode || 'AI-VISION',
-                  source: 'manual',
-                  status: isRecalled ? 'recalled' : 'clear',
-                  productName: p.name,
-                  brand: p.brand,
-                  ingredients: p.ingredients || '',
-                  isRecalled: isRecalled,
-                  recallRecord: recallRecord,
-                  terminatedNotice: terminatedNotice,
-                  detectedAllergens: [],
-                  detectedAdditives: [],
-                  lotCode: p.lotCode || null,
-                  lotAudit: p.lotAudit || null
-                }, 'manual');
-                return;
-              }
-            }
-          } catch (visionErr) {
-            console.warn("Edge AI Vision fallback notice:", visionErr);
-          }
-        }
-
-        e.target.value = '';
-        hideScannerMessage();
-        showScannerMessage("Could not spot a barcode on that package. Try getting slightly closer to the barcode or type digits manually.");
-      }
-    });
-
-    // SINGLE-SCAN DEBOUNCE & AUTO-PAUSE (Eliminates repeated multiple scans)
+        // SINGLE-SCAN DEBOUNCE & AUTO-PAUSE (Eliminates repeated multiple scans)
     
     // ==========================================
     // ROCK-SOLID SCAN CONSISTENCY & VALIDATION ENGINE
@@ -19566,369 +19277,7 @@
       cameraPlaceholder.classList.add('hidden');
     }
 
-        // Brand & Product Search Engine (Active Recalls + Watched Items Only; Excludes static catalog)
-    const brandSearchForm = document.getElementById('brandSearchForm');
-    const brandSearchSection = document.getElementById('brandSearchSection');
-    const executeSearchBtn = document.getElementById('executeSearchBtn');
-    let searchDebounceTimer = null;
-
-    brandSearchInput.addEventListener('focus', () => {
-      clearSearchBtn.classList.toggle('hidden', brandSearchInput.value.trim() === '');
-      if (brandSearchInput.value.trim() !== '') {
-        brandSearchInput.select();
-      }
-    });
-
-    // Typing in search input only toggles the clear button; does NOT auto-fetch results
-    brandSearchInput.addEventListener('input', () => {
-      const query = brandSearchInput.value.trim();
-      clearSearchBtn.classList.toggle('hidden', query === '');
-      // If user clears the text box, close the results box
-      if (query === '') {
-        searchResultsBox.classList.add('hidden');
-        searchResultsBox.innerHTML = '';
-      }
-    });
-
-    // Execute Search: Dismisses mobile keyboard, triggers search, and scrolls down to reveal results
-    function triggerFoodSearch() {
-      // 1. Immediately dismiss mobile on-screen keyboard
-      brandSearchInput.blur();
-      if (document.activeElement && typeof document.activeElement.blur === 'function') {
-        document.activeElement.blur();
-      }
-
-      const query = brandSearchInput.value.trim().toLowerCase();
-      if (!query || query.length < 2) {
-        showCustomizeToast("Please type at least 2 letters to search.");
-        searchResultsBox.classList.add('hidden');
-        searchResultsBox.innerHTML = '';
-        return;
-      }
-
-      triggerHaptic([30]);
-      sound.playScanBeep();
-      // Execute search with auto-scroll enabled
-      performBrandSearch(query, true);
-    }
-
-    // Enter key press inside search input
-    brandSearchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        triggerFoodSearch();
-      }
-    });
-
-    if (brandSearchForm) {
-      brandSearchForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        triggerFoodSearch();
-      });
-    }
-
-    if (executeSearchBtn) {
-      executeSearchBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        triggerFoodSearch();
-      });
-    }
-
-    clearSearchBtn.addEventListener('click', () => {
-      triggerHaptic([20]);
-      brandSearchInput.value = '';
-      clearSearchBtn.classList.add('hidden');
-      searchResultsBox.classList.add('hidden');
-      searchResultsBox.innerHTML = '';
-      brandSearchInput.focus();
-    });
-
-
-
-    function performBrandSearch(query, shouldScroll = false) {
-      if (!query || query.length < 2) {
-        searchResultsBox.classList.add('hidden');
-        searchResultsBox.innerHTML = '';
-        return;
-      }
-
-      const seenKeys = new Set();
-      const activeAlertsList = [];
-      const watchedItemsList = [];
-
-      // 1. Search NATIONAL_BULLETINS for Active Recalls
-      NATIONAL_BULLETINS.forEach(item => {
-        const text = `${item.brand || ''} ${item.title || ''} ${item.reason || ''}`.toLowerCase();
-        if (text.includes(query)) {
-          const key = 'bulletin_' + item.id;
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            activeAlertsList.push({
-              isBulletin: true,
-              bulletinId: item.id,
-              upc: (item.upcs && item.upcs.length > 0) ? item.upcs[0] : null,
-              title: item.title,
-              brand: item.brand,
-              severity: item.severity || 'Class I',
-              agency: item.agency || 'USDA-FSIS / FDA',
-              date: item.date || 'Active',
-              hazard: item.reason,
-              stores: item.stores || [],
-              states: item.states || ['ALL'],
-              alertType: 'recall'
-            });
-          }
-        }
-      });
-
-      // 2. Search cachedFDARecalls for OpenFDA Live Wire Alerts
-      if (typeof cachedFDARecalls !== 'undefined' && Array.isArray(cachedFDARecalls)) {
-        cachedFDARecalls.forEach(item => {
-          const text = `${item.brand || ''} ${item.product || ''} ${item.reason || ''} ${item.raw || ''}`.toLowerCase();
-          if (text.includes(query)) {
-            const key = 'fda_' + item.id;
-            if (!seenKeys.has(key)) {
-              seenKeys.add(key);
-              activeAlertsList.push({
-                isBulletin: true,
-                bulletinId: item.id,
-                upc: (item.upcs && item.upcs.length > 0) ? item.upcs[0] : null,
-                title: item.product,
-                brand: item.brand,
-                severity: item.severity || 'Class I',
-                agency: 'openFDA Wire',
-                date: item.date || 'Recent',
-                hazard: item.reason,
-                stores: [],
-                states: ['ALL'],
-                alertType: 'recall'
-              });
-            }
-          }
-        });
-      }
-
-      // 3. Search RECALL_DATABASE strictly for Recalled Products (isRecalled === true)
-      if (typeof RECALL_DATABASE !== 'undefined') {
-        Object.values(RECALL_DATABASE).forEach(item => {
-          if (!item.upc || !item.isRecalled) return;
-          const key = 'upc_' + item.upc;
-          if (seenKeys.has(key)) return;
-
-          const text = `${item.brand || ''} ${item.product || ''} ${item.hazard || ''}`.toLowerCase();
-          if (text.includes(query)) {
-            seenKeys.add(key);
-            activeAlertsList.push({
-              isBulletin: false,
-              upc: item.upc,
-              title: item.product,
-              brand: item.brand,
-              severity: item.severity || 'Class I Alert',
-              agency: item.agency || 'FDA',
-              date: item.recallDate || 'Active',
-              hazard: item.hazard || 'Active federal recall notice',
-              alertType: 'recall'
-            });
-          }
-        });
-      }
-
-      // 4. Search user's actual Watchlist (scanHistory) for previously scanned items
-      if (typeof scanHistory !== 'undefined' && Array.isArray(scanHistory)) {
-        scanHistory.forEach(item => {
-          if (!item.upc) return;
-          const key = 'watched_' + item.upc;
-          if (seenKeys.has(key)) return;
-
-          const text = `${item.brand || ''} ${item.productName || ''}`.toLowerCase();
-          if (text.includes(query)) {
-            seenKeys.add(key);
-            if (item.recalledNow || item.isRecalled || item.status === 'recalled') {
-              // Recalled item in user's watchlist
-              activeAlertsList.push({
-                isBulletin: false,
-                upc: item.upc,
-                title: item.productName,
-                brand: item.brand,
-                severity: 'Class I Alert',
-                agency: 'FDA / USDA',
-                date: 'Watched Item',
-                hazard: item.activeRecallHazard || 'Recalled item in your household watchlist.',
-                alertType: 'recall'
-              });
-            } else {
-              // Safe watched item in user's watchlist
-              watchedItemsList.push({
-                isBulletin: false,
-                upc: item.upc,
-                title: item.productName,
-                brand: item.brand,
-                time: item.time
-              });
-            }
-          }
-        });
-      }
-
-      searchResultsBox.classList.remove('hidden');
-
-      if (activeAlertsList.length === 0 && watchedItemsList.length === 0) {
-        searchResultsBox.innerHTML = `
-          <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 text-center space-y-1">
-            <span class="text-emerald-400 font-bold block text-sm">${UI_ICONS.checkCircle} No Active Recalls Found</span>
-            <span>Zero federal FDA/USDA food safety recalls or watched items match "${query}".</span>
-          </div>
-        `;
-        if (shouldScroll) ensureSearchInView();
-        return;
-      }
-
-      let html = '';
-
-      // TIER 1: ACTIVE RECALLS (Always front and center!)
-      if (activeAlertsList.length > 0) {
-        html += `
-          <div class="p-2.5 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center justify-between">
-            <span class="font-bold flex items-center gap-1.5 text-rose-300">
-              ${UI_ICONS.alertTriangle}
-              <span>${activeAlertsList.length} Active Recall${activeAlertsList.length > 1 ? 's' : ''} Found</span>
-            </span>
-            <span class="text-[10px] text-rose-300 font-bold tracking-wide">Tap to Inspect</span>
-          </div>
-          <div class="space-y-1.5 pt-0.5">
-            ${activeAlertsList.map(item => `
-              <div 
-                class="p-3 rounded-xl bg-rose-950/40 border border-rose-600/60 hover:border-rose-400 transition cursor-pointer search-result-item active:scale-[0.99] shadow-sm space-y-1" 
-                data-type="${item.isBulletin ? 'bulletin' : 'product'}" 
-                data-upc="${item.upc || ''}" 
-                data-bulletin-id="${item.bulletinId || ''}" 
-                data-title="${item.title}"
-                data-brand="${item.brand}"
-                data-hazard="${item.hazard || ''}"
-                data-severity="${item.severity || 'Class I'}"
-                data-agency="${item.agency || 'FDA'}"
-                data-date="${item.date || 'Active'}"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="text-[10px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded border bg-rose-500/30 text-rose-200 border-rose-500/60 ">
-                    ${item.severity || 'Class I'} RECALL
-                  </span>
-                  <span class="text-[10px] text-rose-300 font-mono">${item.date || 'Active Alert'}</span>
-                </div>
-                <h4 class="text-xs font-bold text-white leading-snug">${item.title}</h4>
-                <p class="text-[11px] text-slate-300">${item.brand} • <span class="text-rose-300">${item.agency || 'Safety Alert'}</span></p>
-                <p class="text-[11px] text-rose-200 leading-tight">${item.hazard}</p>
-                ${item.stores && item.stores.length > 0 ? `<p class="text-[10px] text-slate-400 pt-0.5">Retailers: ${item.stores.join(', ')}</p>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-
-      // TIER 2: ITEMS FROM USER'S WATCHLIST (Only shown if user actually scanned them and they are in watchlist!)
-      if (watchedItemsList.length > 0) {
-        html += `
-          <div class="pt-2 space-y-1.5">
-            <div class="flex items-center justify-between pb-1 px-1 text-[11px] text-slate-400">
-              <span class="font-bold text-emerald-400 flex items-center gap-1.5">
-                ${UI_ICONS.shieldCheck}
-                <span>From Your Watchlist (${watchedItemsList.length})</span>
-              </span>
-              <span class="text-[10px] text-slate-400 font-medium">0 Recalls on file</span>
-            </div>
-            ${watchedItemsList.map(item => `
-              <div 
-                class="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/60 transition cursor-pointer search-result-item active:scale-[0.99] shadow-sm space-y-1" 
-                data-type="product" 
-                data-upc="${item.upc}" 
-                data-title="${item.title}"
-                data-brand="${item.brand}"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
-                    WATCHED IN PANTRY
-                  </span>
-                  <span class="text-[10px] text-slate-400 font-medium">UPC: ${item.upc}</span>
-                </div>
-                <h4 class="text-xs font-semibold text-slate-200 leading-snug">${item.title}</h4>
-                <p class="text-[11px] text-slate-400">${item.brand}</p>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-
-      searchResultsBox.innerHTML = html;
-
-      // Click handler: Renders directly into scannerResultContainer and smoothly scrolls up!
-      document.querySelectorAll('.search-result-item').forEach(el => {
-        el.addEventListener('click', () => {
-          triggerHaptic([30]);
-          const upc = el.getAttribute('data-upc');
-          const title = el.getAttribute('data-title') || '';
-          const brand = el.getAttribute('data-brand') || '';
-          const hazard = el.getAttribute('data-hazard') || '';
-          const severity = el.getAttribute('data-severity') || 'Class I Alert';
-          const agency = el.getAttribute('data-agency') || 'USDA-FSIS / FDA';
-          const date = el.getAttribute('data-date') || 'Recent';
-          const bulletinId = el.getAttribute('data-bulletin-id');
-
-          // Keep search box populated and KEEP the 'X' clear button visible!
-          brandSearchInput.value = title;
-          clearSearchBtn.classList.remove('hidden');
-          searchResultsBox.classList.add('hidden');
-          brandSearchInput.blur(); // Dismiss mobile keyboard
-
-          if (upc && upc !== '' && upc !== 'null' && typeof RECALL_DATABASE !== 'undefined' && RECALL_DATABASE[upc]) {
-            processUPC(upc, 'scanner');
-          } else if (upc && upc !== '' && upc !== 'null' && typeof staplesCatalog !== 'undefined' && staplesCatalog[upc]) {
-            processUPC(upc, 'scanner');
-          } else {
-            // Bulletin or item without UPC: construct complete display record
-            const bulletinRecord = {
-              productName: title,
-              brand: brand,
-              upc: upc || bulletinId || 'RECALL-NOTICE',
-              time: date,
-              isRecalled: true,
-              recallRecord: {
-                product: title,
-                brand: brand,
-                severity: severity,
-                agency: agency,
-                hazard: hazard || 'Active federal public health notice issued on this food item.',
-                action: 'Do not consume or serve. Return to place of purchase for full refund or discard immediately.',
-                stores: [],
-                states: ['ALL']
-              },
-              detectedAllergens: [],
-              detectedAdditives: [],
-              ingredients: ''
-            };
-            displayResult(bulletinRecord, 'scanner');
-          }
-        });
-      });
-
-      if (shouldScroll) {
-        ensureSearchInView();
-      }
-    }
-
-    function ensureSearchInView() {
-      // 200ms delay allows the mobile virtual keyboard to retract and restore full viewport height
-      setTimeout(() => {
-        if (!brandSearchSection) return;
-        const rect = brandSearchSection.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        // Position search box right under the sticky header (~85px offset) so results below are fully revealed
-        const navOffset = 85;
-        const targetY = scrollTop + rect.top - navOffset;
-        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
-      }, 200);
-    }
-
-    // State & Store Filter Handlers
+        // State & Store Filter Handlers
     stateFilterSelect.addEventListener('change', () => {
       triggerHaptic([30]);
       bulletinFdaVisibleCount = 20;
@@ -19941,8 +19290,34 @@
       renderBulletins();
     });
 
+    if (recallSearchInput) {
+      recallSearchInput.addEventListener('input', () => {
+        const q = recallSearchInput.value.trim();
+        if (clearRecallSearchBtn) clearRecallSearchBtn.classList.toggle('hidden', q === '');
+        bulletinFdaVisibleCount = 20;
+        renderBulletins();
+      });
+    }
+
+    if (clearRecallSearchBtn) {
+      clearRecallSearchBtn.addEventListener('click', () => {
+        triggerHaptic([20]);
+        if (recallSearchInput) {
+          recallSearchInput.value = '';
+          recallSearchInput.focus();
+        }
+        clearRecallSearchBtn.classList.add('hidden');
+        bulletinFdaVisibleCount = 20;
+        renderBulletins();
+      });
+    }
+
     clearRegionalFilterBtn.addEventListener('click', () => {
       triggerHaptic([30]);
+      if (recallSearchInput) {
+        recallSearchInput.value = '';
+        if (clearRecallSearchBtn) clearRecallSearchBtn.classList.add('hidden');
+      }
       stateFilterSelect.value = 'ALL';
       storeFilterSelect.value = 'ALL';
       bulletinFdaVisibleCount = 20;
@@ -23738,6 +23113,7 @@ function renderHistory() {
     function renderBulletins() {
       const selectedState = stateFilterSelect.value;
       const selectedStore = storeFilterSelect.value;
+      const searchQuery = (typeof recallSearchInput !== 'undefined' && recallSearchInput) ? recallSearchInput.value.trim().toLowerCase() : '';
 
       const filtered = NATIONAL_BULLETINS.filter(item => {
         const matchesState = (selectedState === 'ALL') || 
@@ -23751,7 +23127,14 @@ function renderHistory() {
                                item.stores.some(s => s.toLowerCase().includes(selectedStore.toLowerCase()) || selectedStore.toLowerCase().includes(s.toLowerCase()))
                              ));
 
-        return matchesState && matchesStore;
+        if (!matchesState || !matchesStore) return false;
+
+        if (searchQuery) {
+          const itemText = `${item.brand || ''} ${item.title || ''} ${item.reason || ''} ${(item.stores || []).join(' ')} ${(item.upcs || []).join(' ')}`.toLowerCase();
+          if (!itemText.includes(searchQuery)) return false;
+        }
+
+        return true;
       });
 
       // Filter live synced openFDA cached enforcement reports across all 50 states and chains
@@ -23798,8 +23181,14 @@ function renderHistory() {
                                   combined.includes(' ' + stCode) ||
                                   combined.includes('(' + stCode + ')') ||
                                   combined.includes('/' + stCode);
-            return mentionsState;
+            if (!mentionsState) return false;
           }
+
+          // Keyword Search Filter for FDA Live Wire
+          if (searchQuery) {
+            if (!combined.includes(searchQuery)) return false;
+          }
+
           return true;
         });
       }
@@ -23813,7 +23202,9 @@ function renderHistory() {
       const hasMore = displayedFda.length < fdaFiltered.length;
       const remainingCount = fdaFiltered.length - displayedFda.length;
 
-      if (selectedState === 'ALL' && selectedStore === 'ALL') {
+      if (searchQuery) {
+        filteredCountNotice.textContent = `Found ${totalCount} active recall notice(s) matching "${searchQuery}"`;
+      } else if (selectedState === 'ALL' && selectedStore === 'ALL') {
         if (currentlyShownCount < totalCount) {
           filteredCountNotice.textContent = `Showing ${currentlyShownCount} of ${totalCount} active notices (${filtered.length} priority + ${displayedFda.length} of ${fdaFiltered.length} FDA wire reports)`;
         } else {
