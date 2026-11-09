@@ -533,12 +533,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         let lastErrText = '';
 
         for (const modelName of candidateModels) {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s strict timeout per model
           try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
               method: 'POST',
-              signal: controller.signal,
               headers: { 
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
@@ -556,7 +553,6 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 }
               })
             });
-            clearTimeout(timeoutId);
 
             if (res.ok) {
               geminiRes = res;
@@ -566,7 +562,6 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
               console.warn(`Lot Audit Model ${modelName} returned HTTP ${res.status}:`, lastErrText);
             }
           } catch (modelErr) {
-            clearTimeout(timeoutId);
             console.warn(`Lot Audit Model ${modelName} notice:`, modelErr.message || modelErr);
           }
         }

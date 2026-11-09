@@ -24463,7 +24463,7 @@ Respond STRICTLY in JSON:
               const fastModels = ['gemini-1.5-flash', 'gemini-2.5-flash'];
               for (const dModel of fastModels) {
                 const ctrl = new AbortController();
-                const tid = setTimeout(() => ctrl.abort(), 6500); // 6.5s safety timeout
+                const tid = setTimeout(() => ctrl.abort(), 20000); // 20s safety timeout
                 try {
                   // Pass ?key= in URL with standard protobuf inline_data
                   const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent?key=${encodeURIComponent(clientApiKey)}`, {
@@ -24510,7 +24510,7 @@ Respond STRICTLY in JSON:
           // 2. EDGE PATH: Call Cloudflare Worker edge hook (with strict 7-second timeout)
           try {
             const edgeCtrl = new AbortController();
-            const edgeTid = setTimeout(() => edgeCtrl.abort(), 7000);
+            const edgeTid = setTimeout(() => edgeCtrl.abort(), 25000);
             const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
               method: 'POST',
               signal: edgeCtrl.signal,
