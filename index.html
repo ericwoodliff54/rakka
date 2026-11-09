@@ -24459,13 +24459,13 @@ Respond STRICTLY in JSON:
   "action": "Immediate directive."
 }`;
 
-              // Primary: gemini-1.5-flash & gemini-2.5-flash (zero-throttling production vision models)
-              const fastModels = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b'];
+              // Primary: gemini-1.5-flash & gemini-1.5-pro (proven production models)
+              const fastModels = ['gemini-1.5-flash', 'gemini-2.5-flash'];
               for (const dModel of fastModels) {
                 const ctrl = new AbortController();
                 const tid = setTimeout(() => ctrl.abort(), 6500); // 6.5s safety timeout
                 try {
-                  // Pass ?key= in URL (canonical Google AI Studio browser CORS endpoint)
+                  // Pass ?key= in URL with standard protobuf inline_data
                   const dRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${dModel}:generateContent?key=${encodeURIComponent(clientApiKey)}`, {
                     method: 'POST',
                     signal: ctrl.signal,
@@ -24476,12 +24476,12 @@ Respond STRICTLY in JSON:
                       contents: [{
                         parts: [
                           { text: lotPrompt },
-                          { inlineData: { mimeType: 'image/jpeg', data: cleanB64 } }
+                          { inline_data: { mime_type: 'image/jpeg', data: cleanB64 } }
                         ]
                       }],
                       generationConfig: {
                         temperature: 0.1,
-                        responseMimeType: "application/json"
+                        response_mime_type: "application/json"
                       }
                     })
                   });

@@ -523,11 +523,10 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "action": "Immediate directive (e.g., 'Do not consume. Discard immediately or return to retailer for a full refund.')"
 }`;
 
-        // Fast Vision Models (gemini-1.5-flash is primary: responds in 1.2s with zero capacity throttling)
+        // Multi-Model Fallback identical to Receipt Scanner engine
         const candidateModels = [
           'gemini-1.5-flash',
-          'gemini-2.5-flash',
-          'gemini-1.5-flash-8b'
+          'gemini-2.5-flash'
         ];
 
         let geminiRes = null;
@@ -548,12 +547,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 contents: [{
                   parts: [
                     { text: prompt },
-                    { inlineData: { mimeType: mimeType, data: cleanBase64 } }
+                    { inline_data: { mime_type: mimeType, data: cleanBase64 } }
                   ]
                 }],
                 generationConfig: {
                   temperature: 0.1,
-                  responseMimeType: "application/json"
+                  response_mime_type: "application/json"
                 }
               })
             });
@@ -569,6 +568,48 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           } catch (modelErr) {
             clearTimeout(timeoutId);
             console.warn(`Lot Audit Model ${modelName} notice:`, modelErr.message || modelErr);
+          }
+        }
+
+        // Automatic Dynamic Discovery: If static names fail, query ModelService just like Receipt Scanner!
+        if (!geminiRes || !geminiRes.ok) {
+          try {
+            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+              headers: { 'x-goog-api-key': apiKey }
+            });
+            if (listRes.ok) {
+              const listData = await listRes.json();
+              const availableModels = (listData.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
+              for (const m of availableModels) {
+                const modelPath = m.name; // e.g. "models/gemini-..."
+                const cleanModelName = modelPath.replace(/^models\//, '');
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                  },
+                  body: JSON.stringify({
+                    contents: [{
+                      parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                      ]
+                    }],
+                    generationConfig: {
+                      temperature: 0.1,
+                      response_mime_type: "application/json"
+                    }
+                  })
+                });
+                if (res.ok) {
+                  geminiRes = res;
+                  break;
+                }
+              }
+            }
+          } catch (listErr) {
+            console.warn('Dynamic model discovery error in lot audit:', listErr);
           }
         }
 
