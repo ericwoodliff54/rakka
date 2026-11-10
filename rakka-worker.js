@@ -508,11 +508,13 @@ Recall Details:
 - Known Affected Recall Window / Lots: ${expectedLots}
 
 CRITICAL RULES FOR RECALL WINDOW & LOT VERIFICATION:
-1. DATE WINDOW HAS STRICT PRECEDENCE OVER LOT PREFIXES:
-   - If the recall defines an affected date window (e.g., "between SEP 18 2026 and OCT 04 2026"):
-     * ANY product stamped with a Best-By date AFTER the recall end date (for example, OCT 18 2026 is after OCT 04 2026) was produced AFTER the contaminated run. It is 100% OUTSIDE the recall window and MUST be CLEARED / SAFE (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
-     * Do NOT flag a package as recalled if its stamped date is after the recall window end date, even if it shares a facility or lot prefix like L-241011. In food manufacturing, lot prefixes identify the facility/line, but dates define the batch boundary.
-     * A product is ONLY an affected match (isMatch: true, severity: "danger") if its stamped date falls ON or BETWEEN the start and end dates of the recall window.
+1. STRICT EVALUATION AGAINST THIS PRODUCT'S DEFINED RECALL CRITERIA:
+   - Compare the package's stamped date and lot code strictly against this specific product's defined recall parameters: "${expectedLots}".
+   - If the recall defines an affected date window (e.g., "between [Start Date] and [End Date]"):
+     * If the stamped Best-By date falls ON or BETWEEN the start and end dates (or matches the affected lot code): The package is a direct match and RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
+     * If the stamped Best-By date is strictly AFTER the recall window end date (e.g., produced after the contaminated period ended or facility was sanitized): The package is CLEARED / SAFE (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
+     * If the recall specifies "on or before [Date]" (or dates prior to a cutoff), any stamped date on or before that cutoff is RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
+   - If the stamped date or lot code directly matches the recalled batch parameters, you MUST mark isMatch: true and severity: "danger". Only clear as safe if the stamped date is verified to be outside/after the contaminated recall window.
 2. STAMP READABILITY:
    - If the stamped date is completely illegible or cut off, set isMatch: null, severity: "warning", verdictTitle: "UNCLEAR STAMP".
 
