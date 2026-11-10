@@ -722,7 +722,13 @@ CRITICAL RECEIPT SOURCE & FORMAT INSTRUCTIONS:
    - A dark-mode screenshot, terminal output, or text simulation (e.g., white or cyan text on dark/black background).
    - A screenshot of a phone screen containing a receipt block inside chat or notes (ignore surrounding phone UI chrome like battery, time, chat headers like "Gemini", or input textboxes, and extract the grocery lines from the receipt block).
 2. The receipt may be missing its top banner or store logo; identify the store from the private-label item nomenclature, prices, or store format (e.g., Great Value / BTRGDS = Walmart; 365 = Whole Foods; 6-digit codes = ALDI).
-3. Extract ALL purchased food, beverage, produce, dairy, and grocery items shown on the tape or screen:
+3. Extract ALL purchased food, beverage, produce, dairy, and grocery items shown strictly on the register tape:
+   - RECEIPT TAPE BOUNDARIES (CRITICAL):
+     * ONLY extract purchased lines that represent real grocery items with printed prices.
+     * DO NOT extract items from instructional text boxes, testing cards, or notes labeled '[TESTING KEY — DO NOT SCAN AS RECEIPT]' or 'Expected RAKKA Outcome'.
+     * DO NOT mistake register metadata, transaction barcodes (e.g. 'STORE #624', 'TRAN 3190', '*00624...*'), or store slogans like 'NEIGHBORHOOD GROCERY STORE' for grocery items!
+     * Each purchased grocery item corresponds to exactly ONE line. NEVER duplicate items (e.g. do not emit two spinach items for a single receipt line).
+     * Trader Joe's Mandarin Orange Chicken is 100% safe and NOT recalled. Never flag it as recalled.
    - Support common register line layouts and store formats:
      * Walmart: Register shorthand followed by 12-digit barcode and price (e.g., "NIGHT HAWK 004170901935 F 2.78", "HEALTHCHOICE 007265545445 F 2.98", "MANGO YOGURT 005360000026 F 0.50", "BANAN YOGURT 005360000030 F 0.50", "POTATOES 089286700194 F 2.94", "SUGAR GRANU 007874237117 F 4.98", "BULK LEMONS 000000004958KF 0.48").
      * Giant Eagle / Kroger / Meijer / Regional Grocers: Item description with price and tax flags (e.g., "GALILEO SALAME 2.99 F", "COLE SLAW 4.99 F", "PICNIC CHICKEN AC 9.99 F", "BE NATURAL MASHED 2.99 F", "TIC TAC ORANGE BOT 4.19 F").

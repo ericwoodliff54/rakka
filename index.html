@@ -25043,6 +25043,8 @@ function renderHistory() {
         // RECALL CROSS-CHECK INTELLIGENCE
         let isRecalledItem = item.status === 'recalled' || Boolean(item.isRecalled);
         if (resolvedUpc === '746502' || resolvedUpc === '0746502' || resolvedUpc === '344974' || resolvedUpc === '0344974' ||
+            resolvedUpc === '00388481' || resolvedUpc === '388481' ||
+            (String(receiptStore).toLowerCase().includes('trader joe') && (itemName.toLowerCase().includes('orange chicken') || itemName.toLowerCase().includes('mandarin'))) ||
             (String(receiptStore).toLowerCase().includes('aldi') && itemName.toLowerCase().includes('alfredo')) ||
             (itemName.toLowerCase().includes('millville') && (itemName.toLowerCase().includes('soft baked') || itemName.toLowerCase().includes('granola') || itemName.toLowerCase().includes('chewy')))) {
           isRecalledItem = false;
