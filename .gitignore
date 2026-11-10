@@ -1,0 +1,23 @@
+# Node & Wrangler Dependencies
+node_modules/
+.npm/
+.wrangler/
+package-lock.json
+
+# Large Raw Datasets (USDA & Bulks)
+*.csv
+*.tsv
+FoodData_Central_*/
+rakka_community_seed_*.json
+community_seed_*.json
+staples_kv_seed.json
+
+# Archive Backups
+*.zip
+*.tar.gz
+
+# System & Logs
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
