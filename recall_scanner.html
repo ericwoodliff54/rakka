@@ -20607,7 +20607,7 @@
       let allergenSummaryText = `0 Conflicts • Safe for All Profiles (${familyProfiles.length} Screened)`;
       let allergenDrawerContent = '';
 
-      if (hasFamilyMatches) {
+      if (isPlusActive && hasFamilyMatches) {
         allergenBorderClass = 'border-amber-400 shadow-amber-950/50';
         allergenBgClass = 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900';
         allergenIconBgClass = 'bg-amber-500/25 text-amber-300 border border-amber-500/40';
@@ -20692,18 +20692,31 @@
           `;
         }
       } else {
+        // FREE TIER: 100% LOCKED BEHIND PLUS
         allergenBorderClass = 'border-slate-800';
+        allergenBgClass = 'bg-slate-900/90';
+        allergenIconBgClass = 'bg-slate-800 text-amber-300 border border-slate-700';
+        allergenIcon = UI_ICONS.lock;
         allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
-        allergenBadgeText = 'Plus Feature';
-        allergenSummaryText = 'Multi-Member Household Profiles Locked';
+        allergenBadgeText = 'Locked (Plus)';
+        allergenSubtextClass = 'text-amber-200/80';
+        allergenSummaryText = 'Household Allergen Shield Requires Plus';
 
         allergenDrawerContent = `
-          <div class="space-y-2 bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-xs">
-            <p class="text-slate-400 leading-normal">
-              Screening 12 allergens across multi-member family profiles is a RAKKA Plus feature.
-            </p>
-            <button type="button" class="open-paywall-trigger w-full mt-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
-              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Allergen Guard</span></span>
+          <div class="space-y-3 bg-slate-950/80 rounded-xl p-3.5 border border-amber-500/30 text-xs">
+            <div class="flex items-start gap-2.5">
+              <span class="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              </span>
+              <div>
+                <span class="font-bold text-white block">Household Allergen Protection</span>
+                <p class="text-slate-300 leading-relaxed mt-0.5">
+                  Screening products for the Top 12 food allergens (Gluten, Dairy, Peanuts, Tree Nuts, Soy, Eggs, Shellfish, and more) across custom household profiles is a <strong>RAKKA Plus</strong> feature.
+                </p>
+              </div>
+            </div>
+            <button type="button" onclick="openPaywall()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer">
+              <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Household Allergen Shield</span></span>
             </button>
           </div>
         `;
@@ -21318,6 +21331,12 @@
         // Switch profile click (instant, fluid, zero drag lag)
         document.querySelectorAll('.select-profile-btn').forEach(b => {
           b.addEventListener('click', () => {
+            if (!isPlusActive) {
+              triggerHaptic([40, 40]);
+              openPaywall();
+              showCustomizeToast("RAKKA Plus required to customize household profiles.");
+              return;
+            }
             triggerHaptic([30]);
             activeProfileId = b.getAttribute('data-id');
             saveFamilyProfiles();
@@ -21544,6 +21563,12 @@
     const deleteProfileModalBtn = document.getElementById('deleteProfileModalBtn');
 
     function openProfileModal(profileIdToEdit = null) {
+      if (!isPlusActive) {
+        triggerHaptic([40, 40]);
+        openPaywall();
+        showCustomizeToast("RAKKA Plus required to customize household profiles.");
+        return;
+      }
       currentEditingProfileId = profileIdToEdit;
 
       if (profileIdToEdit) {
@@ -21712,6 +21737,12 @@
 
     if (saveNewProfileBtn) {
       saveNewProfileBtn.addEventListener('click', () => {
+        if (!isPlusActive) {
+          triggerHaptic([40, 40]);
+          openPaywall();
+          showCustomizeToast("RAKKA Plus required to customize household profiles.");
+          return;
+        }
         const name = newProfileNameInput.value.trim();
         if (!name) {
           showCustomizeToast("Please enter a profile name.");
