@@ -252,10 +252,9 @@ async function run() {
       const brandName = (parts[bBrandNameIdx] || '').toLowerCase();
       const category = (parts[bCatIdx] || '').toLowerCase();
 
-      const matchesPriority = PRIORITY_BRANDS.some(pb => brandOwner.includes(pb) || brandName.includes(pb));
-      const isStapleCat = ['cereal', 'bread', 'bakery', 'milk', 'cheese', 'yogurt', 'butter', 'peanut butter', 'snack', 'waffle', 'pasta', 'sauce', 'poultry', 'soup'].some(cat => category.includes(cat));
-
-      if (!matchesPriority && !isStapleCat) continue;
+      // Exclude non-food items (pet food, beauty, personal care)
+      const isNonFood = /pet\s*food|dog|cat|bird|litter|shampoo|soap|lotion|cosmetic|cleaner|detergent|paper|towel|napkin|diaper/i.test(category);
+      if (isNonFood) continue;
 
       const fdcId = parts[bFdcIdx];
       const desc = descriptions[fdcId] || parts[bSubBrandIdx] || 'Packaged Grocery Item';
@@ -298,7 +297,7 @@ async function run() {
 
   const kvRecords = Array.from(kvMap.entries()).map(([key, value]) => ({ key, value }));
 
-  const chunkSize = 5000;
+  const chunkSize = 10000;
   let part = 1;
   const batchFiles = [];
 
