@@ -2060,6 +2060,26 @@
       color: #92400e !important;
     }
 
+    /* Privacy Modal Light Mode Styling */
+    html.theme-light #privacyPolicyModal > div {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+    html.theme-light #privacyPolicyModal p,
+    html.theme-light #privacyPolicyModal span {
+      color: #334155 !important;
+    }
+    html.theme-light #privacyPolicyModal strong,
+    html.theme-light #privacyPolicyModal h3 {
+      color: #0f172a !important;
+    }
+    html.theme-light #privacyPolicyModal a.bg-slate-800 {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+      color: #0284c7 !important;
+    }
+
     /* Settings Page Privacy & Twin Ravens Buttons in Light Mode */
     html.theme-light #openPrivacyModalBtn,
     html.theme-light #settingsTwinRavensLink {
@@ -25633,9 +25653,24 @@ function renderHistory() {
         <p><strong>5. Support & Inquiries:</strong> Twin Ravens Digital LLC • Email: <a href="mailto:contact@twinravensdigital.com" class="text-cyan-400 underline">contact@twinravensdigital.com</a> • Web Policy: <a href="https://twinravensdigital.com/privacy" target="_blank" rel="noopener" class="text-cyan-400 underline">twinravensdigital.com/privacy</a></p>
       </div>
 
-      <button type="button" onclick="closePrivacyModal()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 text-white font-bold text-xs transition active:scale-98 cursor-pointer shadow-md">
-        Understood & Close
-      </button>
+      <div class="flex items-center gap-2 pt-1">
+        <a 
+          href="https://twinravensdigital.com/privacy" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold text-xs border border-slate-700 transition active:scale-98 flex items-center justify-center gap-1.5 shadow-sm text-center"
+        >
+          <span>Open Web Policy</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+        <button 
+          type="button" 
+          onclick="closePrivacyModal()" 
+          class="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 text-white font-bold text-xs transition active:scale-98 cursor-pointer shadow-md text-center"
+        >
+          Close
+        </button>
+      </div>
     </div>
   </div>
     
