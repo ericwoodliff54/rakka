@@ -7014,6 +7014,39 @@
     // EMBEDDED HIGH-SPEED OFFLINE STAPLES REGISTRY
     // ==========================================
     const STAPLES_CATALOG_EMBEDDED = {
+      "819215022727": {
+        "upc": "819215022727",
+        "brand": "Waterloo",
+        "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+        "ingredients": "Purified Carbonated Water, Natural Flavors.",
+        "allergens": [],
+        "additives": [],
+        "isRecalled": false,
+        "terminatedNotice": null,
+        "status": "clear"
+      },
+      "0819215022727": {
+        "upc": "0819215022727",
+        "brand": "Waterloo",
+        "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+        "ingredients": "Purified Carbonated Water, Natural Flavors.",
+        "allergens": [],
+        "additives": [],
+        "isRecalled": false,
+        "terminatedNotice": null,
+        "status": "clear"
+      },
+      "00819215022727": {
+        "upc": "00819215022727",
+        "brand": "Waterloo",
+        "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+        "ingredients": "Purified Carbonated Water, Natural Flavors.",
+        "allergens": [],
+        "additives": [],
+        "isRecalled": false,
+        "terminatedNotice": null,
+        "status": "clear"
+      },
   "886926377002": {
     "product": "Meijer Creamy Peanut Butter (16 oz / 40 oz)",
     "brand": "Meijer",
@@ -19958,7 +19991,7 @@
             if (brandName && brandName !== "Grocery Brand" && brandName.length > 2) {
               const cleanBrand = brandName.replace(/[^a-zA-Z0-9\s]/g, '').trim().split(' ')[0];
               if (cleanBrand.length >= 3) {
-                fdaQueries.push(`search=(recalling_firm:"${encodeURIComponent(cleanBrand)}"+OR+product_description:"${encodeURIComponent(cleanBrand)}")&limit=1`);
+                fdaQueries.push(`search=recalling_firm:"${encodeURIComponent(cleanBrand)}"&limit=1`);
               }
             }
 
@@ -20014,7 +20047,7 @@
                   const hasCode = codeInfo.includes(code) || desc.includes(code);
 
                   // 2. High-Precision Tier 2 Brand & Variety Matcher (eliminates brand over-matching across different product lines)
-                  const genericStopWords = new Set(['food', 'foods', 'brand', 'brands', 'item', 'product', 'products', 'pack', 'package', 'organic', 'classic', 'original', 'natural', 'flavor', 'flavored', 'treat', 'snack', 'snacks', 'slices', 'sliced', 'whole', 'fresh', 'mini', 'minis', 'size', 'family', 'ounce']);
+                  const genericStopWords = new Set(['food', 'foods', 'brand', 'brands', 'item', 'product', 'products', 'pack', 'package', 'organic', 'classic', 'original', 'natural', 'flavor', 'flavored', 'treat', 'snack', 'snacks', 'slices', 'sliced', 'whole', 'fresh', 'mini', 'minis', 'size', 'family', 'ounce', 'water', 'sparkling', 'seltzer', 'drink', 'drinks', 'beverage', 'beverages', 'soda', 'pure', 'sweet', 'cane', 'syrup', 'liquid']);
                   const specificProdWords = productName.toLowerCase().split(/\s+/).filter(w => w.length >= 4 && !genericStopWords.has(w));
                   const matchingWords = specificProdWords.filter(w => desc.includes(w));
                   
@@ -20023,7 +20056,7 @@
                     (specificProdWords.length === 1 && matchingWords.length === 1) ||
                     (specificProdWords.length >= 2 && matchingWords.length >= 2)
                   );
-                  const hasBrandMatch = (brandName.length >= 3 && brandName !== 'Grocery Brand') && (firm.includes(brandName.toLowerCase()) || desc.includes(brandName.toLowerCase()));
+                  const hasBrandMatch = (brandName.length >= 3 && brandName !== 'Grocery Brand') && firm.includes(brandName.toLowerCase());
 
                   if (hasCode) {
                     if (isHistoricalOrResolved) {
@@ -20049,6 +20082,12 @@
                       break;
                     }
                   } else if (hasBrandMatch && hasSpecificProdTitle) {
+                    // Category Conflict Guardrail: Beverages and sparkling water cannot match solid bakery/meat/peanut recalls without a barcode match
+                    const isBeverage = /water|sparkling|seltzer|beverage|drink|soda|juice|tea|coffee/.test(productName.toLowerCase());
+                    const isSolidFoodRecall = /peanut|nut|meat|poultry|chicken|pork|beef|fish|seafood|ice\s*cream|cheese|pasta|salad|bakery|cookie|cake|pie|sandwich|waffle|bread/.test(desc + ' ' + (item.reason_for_recall || '').toLowerCase());
+                    if (isBeverage && isSolidFoodRecall && !desc.includes('sparkling') && !desc.includes('seltzer') && !desc.includes('water')) {
+                      continue; // Category mismatch: skip false recall
+                    }
                     if (isHistoricalOrResolved) {
                       terminatedNotice = {
                         date: fdaDateStr,

@@ -25375,5 +25375,38 @@
       "Giant Eagle"
     ],
     "isRecalled": false
+  },
+  "819215022727": {
+    "upc": "819215022727",
+    "brand": "Waterloo",
+    "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+    "ingredients": "Purified Carbonated Water, Natural Flavors.",
+    "allergens": [],
+    "additives": [],
+    "isRecalled": false,
+    "terminatedNotice": null,
+    "status": "clear"
+  },
+  "0819215022727": {
+    "upc": "0819215022727",
+    "brand": "Waterloo",
+    "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+    "ingredients": "Purified Carbonated Water, Natural Flavors.",
+    "allergens": [],
+    "additives": [],
+    "isRecalled": false,
+    "terminatedNotice": null,
+    "status": "clear"
+  },
+  "00819215022727": {
+    "upc": "00819215022727",
+    "brand": "Waterloo",
+    "product": "Waterloo Sparkling Water (12 fl oz Cans)",
+    "ingredients": "Purified Carbonated Water, Natural Flavors.",
+    "allergens": [],
+    "additives": [],
+    "isRecalled": false,
+    "terminatedNotice": null,
+    "status": "clear"
   }
 }
