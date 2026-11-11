@@ -3390,23 +3390,12 @@
     <!-- SECTION 5: SETTINGS & PREFERENCES -->
     <section id="customizePanel" class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4 hidden">
       <div class="border-b border-slate-800 pb-3">
-        <h2 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
-          <span>Settings & Preferences</span>
-        </h2>
-        <p class="text-xs text-slate-400 mt-0.5">Control audio alerts, haptic feedback, subscription tiers, and offline updates.</p>
+        <h2 class="font-display text-base font-bold text-slate-100">Settings & Preferences</h2>
       </div>
 
       <!-- APPEARANCE / THEME SWITCHER (System | Light | Dark) -->
       <div class="space-y-2 text-xs">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-              <span>Appearance</span>
-            </h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">Choose light mode for bright store aisles, or dark mode for night</p>
-          </div>
-        </div>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Appearance</h3>
 
         <div class="p-1 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-1 shadow-inner" id="themeSegmentedControl">
           <button 
@@ -3440,6 +3429,9 @@
 
 
       <!-- RAKKA PLUS MEMBERSHIP SETTINGS -->
+      <div class="space-y-2 text-xs">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">RAKKA Plus Membership</h3>
+      </div>
       <div class="p-3.5 rounded-xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 shadow-lg space-y-2.5">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -3496,12 +3488,7 @@
 
             <!-- DEVICE SYSTEM PUSH NOTIFICATIONS -->
       <div class="space-y-2 text-xs">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-          </svg>
-          <span>Recall Push Notifications</span>
-        </h3>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Recall Push Notifications</h3>
 
         <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-inner">
           <div class="min-w-0 flex-1 space-y-1">
@@ -3667,10 +3654,7 @@
 
       <!-- PRIVACY & APP STORE COMPLIANCE SECTION -->
       <div class="space-y-2 pt-3 border-t border-slate-800 text-xs">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-          <span>Privacy & App Store Compliance</span>
-        </h3>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Privacy & App Store Compliance</h3>
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
           <p class="text-[11px] text-slate-300 leading-relaxed">
             <strong>100% Client-Side Privacy:</strong> RAKKA stores personal household profiles, allergen filters, and pantry scans strictly on your device. We do not sell, rent, or monetize your personal grocery purchase data.
@@ -3701,7 +3685,7 @@
       <!-- DATA & FACTORY RESET (Very Bottom of Functional Settings) -->
       <div class="pt-3 border-t border-slate-800/80 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-300">Data & Factory Reset</span>
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Data & Factory Reset</h3>
           <span class="text-[10px] text-rose-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">Irreversible</span>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
@@ -25405,7 +25389,6 @@ function renderHistory() {
     <div class="bg-slate-900 border-2 border-cyan-500/50 max-w-md w-full rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2">
-          <span class="w-7 h-7 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center font-bold text-xs">🛡️</span>
           <h3 class="font-display text-sm font-bold text-slate-100">Privacy Policy & Terms of Service</h3>
         </div>
         <button type="button" onclick="closePrivacyModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer" aria-label="Close">
