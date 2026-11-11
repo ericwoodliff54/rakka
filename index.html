@@ -2053,6 +2053,54 @@
       color: #0284c7 !important;
     }
 
+  
+    /* Distinct Shading for Watchlist Receipt & Camera Scan Group Drawers */
+    /* Dark Mode Distinct Tray */
+    .receipt-drawer-well {
+      background: #090d16 !important;
+      border-top: 1px solid #1e293b !important;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+    }
+    .receipt-header-bar {
+      background: #1e293b !important;
+    }
+    .receipt-header-bar:hover {
+      background: #243046 !important;
+    }
+    .receipt-group {
+      border: 1px solid #334155 !important;
+      background: #0f172a !important;
+    }
+    .receipt-drawer-well .watchlist-item-card {
+      background: #131d31 !important;
+      border-color: #23334d !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    /* Light Mode Distinct Tray */
+    html.theme-light .receipt-group {
+      background: #f8fafc !important;
+      border: 1.5px solid #cbd5e1 !important;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
+    }
+    html.theme-light .receipt-header-bar {
+      background: #f1f5f9 !important;
+      border-bottom: 1px solid #cbd5e1 !important;
+    }
+    html.theme-light .receipt-header-bar:hover {
+      background: #e2e8f0 !important;
+    }
+    html.theme-light .receipt-drawer-well {
+      background: #e9eef5 !important;
+      border-top: 1.5px solid #cbd5e1 !important;
+      box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.07) !important;
+    }
+    html.theme-light .receipt-drawer-well .watchlist-item-card {
+      background: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+    }
+
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
@@ -3196,7 +3244,7 @@
           <input 
             type="search" 
             id="watchlistSearchInput" 
-            placeholder="Search by grocery store, food item, or barcode..." 
+            placeholder="Search by Store, Food, UPC" 
             class="w-full py-3.5 pl-11 pr-12 rounded-xl bg-slate-950 border border-slate-700/80 text-white placeholder-slate-400 text-[16px] sm:text-sm focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/40 focus:outline-none transition shadow-inner"
             autocomplete="off"
             spellcheck="false"
@@ -23264,8 +23312,8 @@ function renderHistory() {
 
     
     // Collapsible Recalls Windows State
-    let isPriorityAlertsOpen = true;
-    let isFdaWireOpen = true;
+    let isPriorityAlertsOpen = false;
+    let isFdaWireOpen = false;
 
     function togglePriorityAlertsWindow() {
       if (typeof triggerHaptic === 'function') triggerHaptic([20]);
