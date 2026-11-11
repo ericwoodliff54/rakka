@@ -2101,6 +2101,21 @@
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
     }
 
+  
+    /* Light Mode Family Profiles Window */
+    html.theme-light .family-profiles-window {
+      background-color: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
+    }
+    html.theme-light .family-profiles-window h3 {
+      color: #0f172a !important;
+    }
+    html.theme-light #activeProfileNotice > div {
+      background-color: #f8fafc !important;
+      border: 1.5px solid #cbd5e1 !important;
+    }
+
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
@@ -3052,16 +3067,16 @@
         </button>
       </div>
 
-            <!-- Family Dietary Profiles Switcher -->
-      <div class="space-y-2.5 pt-1 pb-1">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <!-- Family Dietary Profiles Switcher (Roomier & Scaled Window) -->
+      <div class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-md family-profiles-window">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <svg class="w-5 h-5 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             <span>Family Profiles</span>
-          </span>
-          <span class="text-[11px] text-slate-400 font-medium">Tap to select • Hold & drag pill to reorder</span>
+          </h3>
+          <span class="text-xs text-slate-400 font-medium">Tap to select • Drag to reorder</span>
         </div>
-        <div class="flex items-center gap-2.5 overflow-x-auto pb-2 pt-0.5" id="familyProfilesBar"></div>
+        <div class="flex items-center gap-3 overflow-x-auto pb-2.5 pt-1" id="familyProfilesBar"></div>
         <div id="activeProfileNotice" class="w-full"></div>
       </div>
 
@@ -21257,22 +21272,22 @@
 
       if (activeProfileNotice) {
         const photoEl = currentProfile.photo 
-          ? `<img src="${currentProfile.photo}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-sky-400 shadow-md shrink-0 aspect-square" style="width: 84px; height: 84px; min-width: 84px; min-height: 84px;" alt="${currentProfile.name}">`
-          : `<div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-md profile-hero-avatar aspect-square" style="width: 84px; height: 84px; min-width: 84px; min-height: 84px;">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-11 h-11 sm:w-12 sm:h-12")}</div>`;
+          ? `<img src="${currentProfile.photo}" class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-sky-400 shadow-md shrink-0 aspect-square" style="width: 96px; height: 96px; min-width: 96px; min-height: 96px;" alt="${currentProfile.name}">`
+          : `<div class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-800 border-2 border-sky-400 flex items-center justify-center text-sky-300 shrink-0 shadow-md profile-hero-avatar aspect-square" style="width: 96px; height: 96px; min-width: 96px; min-height: 96px;">${getProfileAvatarSvg(currentProfile.icon || 'user', "w-13 h-13 sm:w-14 sm:h-14")}</div>`;
           
         activeProfileNotice.innerHTML = `
-          <div class="flex items-center justify-between bg-slate-950/95 border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 shadow-md gap-2">
-            <div class="flex items-center gap-2.5 min-w-0">
+          <div class="flex items-center justify-between bg-slate-950/95 border border-slate-800/90 rounded-3xl p-3.5 sm:p-4 shadow-md gap-3">
+            <div class="flex items-center gap-3 min-w-0">
               ${photoEl}
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Active Guard:</span>
-                  <span class="text-sm font-bold text-white leading-tight truncate">${currentProfile.name}</span>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${userAllergens.length > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
+              <div class="min-w-0 space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Active Guard:</span>
+                  <span class="text-base sm:text-lg font-bold text-white leading-tight truncate">${currentProfile.name}</span>
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${userAllergens.length > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
                     ${userAllergens.length === 0 ? 'No Restrictions' : `${userAllergens.length} Alert${userAllergens.length > 1 ? 's' : ''}`}
                   </span>
                 </div>
-                <span class="text-[11px] text-slate-400 block truncate mt-0.5">Position ${activeIdx + 1} of ${familyProfiles.length} • Hold & drag pill to reorder</span>
+                <span class="text-xs text-slate-400 block truncate">Position ${activeIdx + 1} of ${familyProfiles.length} • Hold & drag pill to reorder</span>
               </div>
             </div>
             
@@ -21280,7 +21295,7 @@
               <!-- Edit Member Button -->
               <button 
                 type="button" 
-                class="edit-profile-btn h-9 px-3.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 hover:text-white border border-sky-500/40 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0 shadow-sm" 
+                class="edit-profile-btn h-10 px-4 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 hover:text-white border border-sky-500/40 text-xs sm:text-sm font-bold flex items-center gap-2 transition active:scale-95 shrink-0 shadow-sm" 
                 data-edit="${currentProfile.id}" 
                 title="Edit ${currentProfile.name}'s name, photo, or avatar"
               >
@@ -21323,20 +21338,20 @@
           const count = (p.allergens || []).length;
           
           const avatarEl = p.photo 
-            ? `<img src="${p.photo}" class="w-10 h-10 rounded-xl object-cover shrink-0 border-2 ${isActive ? 'border-cyan-400 shadow-sm ring-1 ring-cyan-400/50' : 'border-slate-700'} profile-avatar-box" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;" alt="${p.name}">`
-            : `<div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 profile-avatar-box ${isActive ? 'bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 shadow-sm ring-1 ring-cyan-400/50' : 'bg-slate-800 border border-slate-700 text-sky-400'}" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;">${getProfileAvatarSvg(p.icon || 'user', "w-5 h-5")}</div>`;
+            ? `<img src="${p.photo}" class="w-12 h-12 rounded-xl object-cover shrink-0 border-2 ${isActive ? 'border-cyan-400 shadow-sm ring-1 ring-cyan-400/50' : 'border-slate-700'} profile-avatar-box" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px;" alt="${p.name}">`
+            : `<div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 profile-avatar-box ${isActive ? 'bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 shadow-sm ring-1 ring-cyan-400/50' : 'bg-slate-800 border border-slate-700 text-sky-400'}" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px;">${getProfileAvatarSvg(p.icon || 'user', "w-6 h-6")}</div>`;
 
           return `
             <div 
               draggable="true" 
-              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-2.5 px-3 py-2 min-h-[56px] h-[56px] rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle} ${isActive ? 'active-profile-pill' : ''}"
+              class="family-profile-pill select-profile-btn shrink-0 flex items-center gap-3 px-3.5 py-2.5 min-h-[64px] h-[64px] rounded-2xl border transition cursor-pointer select-none active:scale-[0.98] ${activeStyle} ${isActive ? 'active-profile-pill' : ''}"
               data-id="${p.id}"
               data-index="${index}"
               title="Tap to select • Drag to reorder"
             >
               ${avatarEl}
               <div class="flex flex-col min-w-0 pr-1 justify-center">
-                <span class="text-xs sm:text-sm font-bold leading-tight truncate max-w-[110px] sm:max-w-[130px] profile-name ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
+                <span class="text-sm sm:text-base font-bold leading-tight truncate max-w-[120px] sm:max-w-[150px] profile-name ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
                 <span class="text-[11px] font-semibold mt-0.5 profile-subtext ${isActive ? 'text-cyan-300' : 'text-slate-400'}">
                   ${count === 0 ? 'No Restrictions' : `${count} alert${count > 1 ? 's' : ''}`}
                 </span>
@@ -21347,15 +21362,15 @@
           <button 
             type="button" 
             id="addNewProfileBtn" 
-            class="shrink-0 flex items-center gap-2 px-3 py-2 min-h-[56px] h-[56px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs sm:text-sm font-bold transition active:scale-95 shadow-sm"
+            class="shrink-0 flex items-center gap-3 px-3.5 py-2.5 min-h-[64px] h-[64px] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-900/30 text-cyan-300 text-xs sm:text-sm font-bold transition active:scale-95 shadow-sm"
             title="Add a family member (${familyProfiles.length}/${MAX_FAMILY_MEMBERS} slots)"
           >
-            <span class="w-10 h-10 rounded-xl bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-cyan-400 shrink-0" style="width: 40px; height: 40px; min-width: 40px; min-height: 40px;">
-              <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span class="w-12 h-12 rounded-xl bg-sky-900/40 border border-sky-500/30 flex items-center justify-center text-cyan-400 shrink-0" style="width: 48px; height: 48px; min-width: 48px; min-height: 48px;">
+              <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             </span>
             <div class="flex flex-col text-left justify-center pr-1">
-              <span class="leading-tight font-bold">Add</span>
-              <span class="text-[10px] text-sky-400/80 font-normal leading-tight">${familyProfiles.length}/${MAX_FAMILY_MEMBERS} slots</span>
+              <span class="leading-tight font-bold text-sm">Add</span>
+              <span class="text-xs text-sky-400/80 font-medium leading-tight">${familyProfiles.length}/${MAX_FAMILY_MEMBERS}</span>
             </div>
           </button>
         ` : `
