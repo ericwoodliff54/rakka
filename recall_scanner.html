@@ -3226,10 +3226,7 @@
 
     <section id="bulletinsPanel" class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4 hidden">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="font-display text-base font-bold text-slate-100">Active Recalls</h2>
-          <p class="text-xs text-slate-400">Live FDA & USDA federal recall wire filtered by state and supermarket</p>
-        </div>
+        <h2 class="font-display text-base font-bold text-slate-100">Active Recalls</h2>
         <button id="refreshFeedBtn" class="text-xs text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition px-2 py-1 min-h-[36px]">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -3245,7 +3242,7 @@
           id="recallSearchInput" 
           autocomplete="off"
           enterkeyhint="search"
-          placeholder="Search recalls by food, brand, or hazard (e.g. spinach, Boar's Head, listeria)..."
+          placeholder="Search by Food, Brand, Recall"
           class="w-full min-h-[48px] pl-11 pr-10 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white text-[16px] sm:text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition shadow-sm"
         >
         <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
@@ -23265,6 +23262,25 @@ function renderHistory() {
 
     let bulletinFdaVisibleCount = 20;
 
+    
+    // Collapsible Recalls Windows State
+    let isPriorityAlertsOpen = true;
+    let isFdaWireOpen = true;
+
+    function togglePriorityAlertsWindow() {
+      if (typeof triggerHaptic === 'function') triggerHaptic([20]);
+      isPriorityAlertsOpen = !isPriorityAlertsOpen;
+      renderBulletins();
+    }
+    window.togglePriorityAlertsWindow = togglePriorityAlertsWindow;
+
+    function toggleFdaWireWindow() {
+      if (typeof triggerHaptic === 'function') triggerHaptic([20]);
+      isFdaWireOpen = !isFdaWireOpen;
+      renderBulletins();
+    }
+    window.toggleFdaWireWindow = toggleFdaWireWindow;
+
     function renderBulletins() {
       const selectedState = stateFilterSelect.value;
       const selectedStore = storeFilterSelect.value;
@@ -23486,7 +23502,40 @@ function renderHistory() {
         `;
       }
 
-      bulletinFeedList.innerHTML = priorityHtml + (fdaHtml ? `<div class="pt-2 pb-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">${UI_ICONS.radio}<span>Live Federal Enforcement Feed (showing ${displayedFda.length} of ${fdaFiltered.length} reports)</span></div>` + fdaHtml : '') + paginationHtml;
+      const priorityWindowHtml = `
+        <div class="rounded-2xl border border-rose-900/40 bg-slate-900/90 shadow-md overflow-hidden">
+          <button type="button" onclick="togglePriorityAlertsWindow()" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition active:scale-[0.99] cursor-pointer">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 shadow-sm shadow-rose-500/50"></span>
+              <span class="text-xs sm:text-sm font-bold text-slate-100">Priority Retail Alerts</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">${filtered.length} Active</span>
+            </div>
+            <span id="priorityAlertsChevron" class="text-xs text-slate-400 font-bold transition-transform">${isPriorityAlertsOpen ? '▲' : '▼'}</span>
+          </button>
+          <div id="priorityAlertsDrawer" class="${isPriorityAlertsOpen ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
+            ${priorityHtml || '<p class="text-xs text-slate-500 italic py-3 text-center">No active priority alerts match your current filter.</p>'}
+          </div>
+        </div>
+      `;
+
+      const fdaWindowHtml = `
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/90 shadow-md overflow-hidden">
+          <button type="button" onclick="toggleFdaWireWindow()" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition active:scale-[0.99] cursor-pointer">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-sm shadow-cyan-500/50"></span>
+              <span class="text-xs sm:text-sm font-bold text-slate-100">FDA Food Safety Wire</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">${fdaFiltered.length} Reports</span>
+            </div>
+            <span id="fdaWireChevron" class="text-xs text-slate-400 font-bold transition-transform">${isFdaWireOpen ? '▲' : '▼'}</span>
+          </button>
+          <div id="fdaWireDrawer" class="${isFdaWireOpen ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
+            ${fdaHtml || '<p class="text-xs text-slate-500 italic py-3 text-center">No FDA wire reports match your current filter.</p>'}
+            ${paginationHtml}
+          </div>
+        </div>
+      `;
+
+      bulletinFeedList.innerHTML = `<div class="space-y-3.5">${priorityWindowHtml}${fdaWindowHtml}</div>`;
 
       const loadMoreBtn = document.getElementById('loadMoreBulletinsBtn');
       if (loadMoreBtn) {
