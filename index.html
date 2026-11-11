@@ -18685,13 +18685,106 @@
       });
     }
 
+    // ============================================================================
+    // ANDROID HARDWARE & GESTURE BACK BUTTON MANAGER
+    // Intercepts browser popstate and native backButton to dismiss
+    // active modals, sheets, or settings views cleanly without exiting the app
+    // ============================================================================
+    const BackNav = {
+      activeModals: [],
+
+      pushModal(id, closeFn) {
+        this.activeModals = this.activeModals.filter(m => m.id !== id);
+        this.activeModals.push({ id, closeFn });
+        try {
+          history.pushState({ rakkaModal: id }, '');
+        } catch (e) {}
+      },
+
+      popModal(id) {
+        const idx = this.activeModals.findIndex(m => m.id === id);
+        if (idx !== -1) {
+          this.activeModals.splice(idx, 1);
+          if (history.state && history.state.rakkaModal === id) {
+            try {
+              history.back();
+            } catch (e) {}
+          }
+        }
+      },
+
+      dismissTop() {
+        // 1. Dismiss topmost open modal sheet
+        if (this.activeModals.length > 0) {
+          const top = this.activeModals.pop();
+          if (top && typeof top.closeFn === 'function') {
+            top.closeFn(true); // true = closed via back gesture
+            return true;
+          }
+        }
+
+        // 2. If in Settings panel (customizePanel), return to Barcodes scanner
+        const customizePanel = document.getElementById('customizePanel');
+        if (customizePanel && !customizePanel.classList.contains('hidden')) {
+          if (typeof setNavTab === 'function') {
+            setNavTab('barcodes');
+            return true;
+          }
+        }
+
+        // 3. Fallback: inspect DOM for any visible modals
+        const modalIds = [
+          'privacyPolicyModal',
+          'plusPaywallModal',
+          'addProfileModal',
+          'resetConfirmModal',
+          'lotAuditorModal',
+          'installHelpModal',
+          'allergenInfoModal',
+          'safetyDisclaimerModal'
+        ];
+        for (const mid of modalIds) {
+          const m = document.getElementById(mid);
+          if (m && !m.classList.contains('hidden')) {
+            m.classList.add('hidden');
+            return true;
+          }
+        }
+
+        return false;
+      }
+    };
+
+    window.BackNav = BackNav;
+
+    // Listen to browser history popstate (Android gesture navigation & Chrome back button)
+    window.addEventListener('popstate', (e) => {
+      BackNav.dismissTop();
+    });
+
+    // Listen to native Capacitor backButton on Android wrapper builds
+    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      try {
+        window.Capacitor.Plugins.App.addListener('backButton', ({ canGoBack }) => {
+          const handled = BackNav.dismissTop();
+          if (!handled && canGoBack) {
+            window.history.back();
+          }
+        });
+      } catch (capErr) {
+        console.warn("Capacitor backButton binding notice:", capErr);
+      }
+    }
+
     function openPaywall() {
       triggerHaptic([30]);
       plusPaywallModal.classList.remove('hidden');
+      BackNav.pushModal('plusPaywallModal', () => closePaywall(true));
     }
 
-    function closePaywall() {
+    function closePaywall(fromBackGesture = false) {
       plusPaywallModal.classList.add('hidden');
+      if (!fromBackGesture) BackNav.popModal('plusPaywallModal');
     }
 
     openPaywallBtn.addEventListener('click', openPaywall);
@@ -19033,6 +19126,12 @@
       ];
 
       // Triple-Lock Mutual Exclusion: CSS class + inline style + HTML5 hidden attribute
+      if (isCustomize) {
+        try {
+          history.pushState({ rakkaTab: 'customize' }, '');
+        } catch (e) {}
+      }
+
       panelList.forEach(p => {
         if (p.el) {
           if (p.active) {
@@ -21783,6 +21882,7 @@
 
       updateAvatarDisplayAndOptions();
       addProfileModal.classList.remove('hidden');
+      BackNav.pushModal('addProfileModal', () => closeAddProfileModal(true));
       setTimeout(() => newProfileNameInput.focus(), 100);
     }
 
@@ -21821,8 +21921,9 @@
       });
     }
 
-    function closeAddProfileModal() {
+    function closeAddProfileModal(fromBackGesture = false) {
       addProfileModal.classList.add('hidden');
+      if (!fromBackGesture) BackNav.popModal('addProfileModal');
     }
 
     if (closeAddProfileModalBtn) {
@@ -22147,13 +22248,15 @@
       triggerHaptic([30]);
       if (resetConfirmModal) {
         resetConfirmModal.classList.remove('hidden');
+        BackNav.pushModal('resetConfirmModal', () => closeResetConfirmModal(true));
       }
     }
 
-    function closeResetConfirmModal() {
+    function closeResetConfirmModal(fromBackGesture = false) {
       triggerHaptic([20]);
       if (resetConfirmModal) {
         resetConfirmModal.classList.add('hidden');
+        if (!fromBackGesture) BackNav.popModal('resetConfirmModal');
       }
     }
 
@@ -24357,7 +24460,10 @@ function renderHistory() {
       if (lotCodeCaptureTriggerBox) lotCodeCaptureTriggerBox.classList.remove('hidden');
       if (lotCodeCameraInput) lotCodeCameraInput.value = '';
       const targetLotModal = lotAuditorModal || document.getElementById('lotAuditorModal');
-      if (targetLotModal) targetLotModal.classList.remove('hidden');
+      if (targetLotModal) {
+        targetLotModal.classList.remove('hidden');
+        BackNav.pushModal('lotAuditorModal', () => closeLotAuditor(true));
+      }
     }
 
     function openLotAuditorForCurrentProduct() {
@@ -24402,9 +24508,12 @@ function renderHistory() {
     window.openLotAuditor = openLotAuditor;
     window.closeLotAuditor = closeLotAuditor;
 
-    function closeLotAuditor() {
+    function closeLotAuditor(fromBackGesture = false) {
       const targetLotModal = lotAuditorModal || document.getElementById('lotAuditorModal');
-      if (targetLotModal) targetLotModal.classList.add('hidden');
+      if (targetLotModal) {
+        targetLotModal.classList.add('hidden');
+        if (!fromBackGesture) BackNav.popModal('lotAuditorModal');
+      }
     }
 
     if (closeLotAuditorModalBtn) closeLotAuditorModalBtn.addEventListener('click', closeLotAuditor);
@@ -25622,14 +25731,20 @@ function renderHistory() {
     function openPrivacyModal() {
       if (typeof triggerHaptic === 'function') triggerHaptic([30]);
       const modal = document.getElementById('privacyPolicyModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        BackNav.pushModal('privacyPolicyModal', () => closePrivacyModal(true));
+      }
     }
     window.openPrivacyModal = openPrivacyModal;
 
-    function closePrivacyModal() {
+    function closePrivacyModal(fromBackGesture = false) {
       if (typeof triggerHaptic === 'function') triggerHaptic([20]);
       const modal = document.getElementById('privacyPolicyModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        if (!fromBackGesture) BackNav.popModal('privacyPolicyModal');
+      }
     }
     window.closePrivacyModal = closePrivacyModal;
 
