@@ -18480,6 +18480,7 @@
     let html5QrCode = null;
     let isCameraRunning = false;
     let isCameraPaused = false;
+    let lastCameraStopTime = 0;
     let isTorchOn = false;
 
     // Scan Debounce and Duplicate Suppression State
@@ -19126,10 +19127,17 @@
             toggleCameraBtn.classList.replace('to-cyan-500', 'to-slate-800');
             cameraPlaceholder.classList.add('hidden');
             if (toggleTorchBtn) toggleTorchBtn.classList.remove('hidden');
+
+            // Force WebKit / iOS Safari to play video if stalled
+            const v = document.querySelector('#reader video');
+            if (v && v.paused) {
+              v.play().catch(e => console.warn("Video play on fast resume:", e));
+            }
+            if (typeof resetCameraIdleTimer === 'function') resetCameraIdleTimer();
             return;
           }
         } catch (resumeErr) {
-          console.warn("Resume failed, restarting camera stream cleanly:", resumeErr);
+          console.warn("Fast resume failed, restarting camera stream cleanly:", resumeErr);
           await stopCamera();
         }
       }
@@ -19139,6 +19147,12 @@
         return;
       }
 
+      // WebKit AVFoundation safety buffer: ensure prior camera track teardown is complete (prevents black screen on iOS)
+      const elapsedSinceStop = Date.now() - lastCameraStopTime;
+      if (elapsedSinceStop < 250) {
+        await new Promise(r => setTimeout(r, 250 - elapsedSinceStop));
+      }
+
       try {
         const readerElem = document.getElementById('reader');
         if (readerElem && !html5QrCode) {
@@ -19146,6 +19160,32 @@
         }
         if (!html5QrCode) {
           html5QrCode = new Html5Qrcode("reader");
+        }
+
+        // Inline video playback enforcer for iOS Safari (prevents black screen stalls)
+        const applyIosVideoAttributes = () => {
+          const v = document.querySelector('#reader video');
+          if (v) {
+            v.setAttribute('playsinline', 'true');
+            v.setAttribute('webkit-playsinline', 'true');
+            v.setAttribute('muted', 'true');
+            v.setAttribute('autoplay', 'true');
+            v.muted = true;
+            v.playsInline = true;
+            v.autoplay = true;
+            if (v.paused) {
+              v.play().catch(err => console.warn("Forcing iOS video play:", err));
+            }
+          }
+        };
+
+        // MutationObserver catches the <video> the instant Html5Qrcode injects it into DOM
+        let videoObserver = null;
+        if (readerElem && typeof MutationObserver !== 'undefined') {
+          videoObserver = new MutationObserver(() => {
+            applyIosVideoAttributes();
+          });
+          videoObserver.observe(readerElem, { childList: true, subtree: true });
         }
 
         // Optical-matched barcode configuration with retail barcode format filtering (prevents ITF misreads)
@@ -19242,15 +19282,12 @@
           }
         }
 
-        // Ensure iOS Safari playsinline is strictly applied
-        try {
-          const v = document.querySelector('#reader video');
-          if (v) {
-            v.setAttribute('playsinline', 'true');
-            v.setAttribute('webkit-playsinline', 'true');
-            v.setAttribute('muted', 'true');
-          }
-        } catch (e) {}
+        // Enforce iOS Safari video playback and disconnect observer
+        applyIosVideoAttributes();
+        if (videoObserver) {
+          videoObserver.disconnect();
+          videoObserver = null;
+        }
 
         isCameraRunning = true;
         isCameraPaused = false;
@@ -19304,6 +19341,28 @@
       });
     }
 
+    async function pauseCamera() {
+      if (cameraIdleTimeout) {
+        clearTimeout(cameraIdleTimeout);
+        cameraIdleTimeout = null;
+      }
+      await setTorchState(false);
+
+      if (html5QrCode && isCameraRunning && !isCameraPaused) {
+        try {
+          if (typeof html5QrCode.pause === 'function') {
+            html5QrCode.pause(true); // pause decoding & freeze/pause video stream to save CPU & battery
+            isCameraPaused = true;
+          } else {
+            await stopCamera();
+          }
+        } catch (pauseErr) {
+          console.warn("Camera pause failed, stopping cleanly:", pauseErr);
+          await stopCamera();
+        }
+      }
+    }
+
     async function stopCamera() {
       if (cameraIdleTimeout) {
         clearTimeout(cameraIdleTimeout);
@@ -19321,6 +19380,7 @@
           console.warn("Stop camera error:", e);
         }
       }
+      lastCameraStopTime = Date.now();
       isCameraRunning = false;
       isCameraPaused = false;
       if (toggleTorchBtn) toggleTorchBtn.classList.add('hidden');
@@ -19537,12 +19597,12 @@
         }, 800);
       }
 
-      // Immediately stop camera sensor and hardware stream to eliminate pocket battery drain
+      // Pause camera decoding while user reviews the scanned item (keeps stream alive for instant scan next)
       if (typeof isCameraRunning !== 'undefined' && isCameraRunning) {
         try {
-          await stopCamera();
-        } catch (stopErr) {
-          console.warn("Auto-stopping camera error:", stopErr);
+          await pauseCamera();
+        } catch (pauseErr) {
+          console.warn("Auto-pausing camera error:", pauseErr);
         }
       }
 
@@ -19579,20 +19639,32 @@
       setNavTab('scanner');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // 4. Ensure camera stream is active and steady
-      if (!isCameraRunning || !html5QrCode) {
-        await startCamera();
-      } else if (isCameraPaused && typeof html5QrCode.resume === 'function') {
+      // 4. Ensure camera stream is active and steady (instant resume if paused, cold start otherwise)
+      if (html5QrCode && isCameraRunning && isCameraPaused) {
         try {
-          html5QrCode.resume();
-          isCameraPaused = false;
-        } catch (e) {
+          if (typeof html5QrCode.resume === 'function') {
+            html5QrCode.resume();
+            isCameraPaused = false;
+            // Force WebKit / iOS Safari to play video if paused
+            const v = document.querySelector('#reader video');
+            if (v && v.paused) {
+              v.play().catch(e => console.warn("Video play on resume:", e));
+            }
+          } else {
+            await startCamera();
+          }
+        } catch (resumeErr) {
+          console.warn("Fast resume failed, performing clean camera restart:", resumeErr);
           await stopCamera();
+          await new Promise(r => setTimeout(r, 200));
           await startCamera();
         }
+      } else if (!isCameraRunning || !html5QrCode) {
+        await startCamera();
       }
       cameraBtnText.textContent = "Stop Camera";
       cameraPlaceholder.classList.add('hidden');
+      if (typeof resetCameraIdleTimer === 'function') resetCameraIdleTimer();
     }
 
         // State & Store Filter Handlers
