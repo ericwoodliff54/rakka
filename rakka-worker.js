@@ -351,7 +351,7 @@ export default {
       }
     }
 
-        if (url.pathname === '/privacy' || url.pathname === '/privacy-policy') {
+        if (url.hostname.startsWith('privacy.') || url.pathname === '/privacy' || url.pathname === '/privacy-policy') {
       return new Response(PRIVACY_POLICY_HTML, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
