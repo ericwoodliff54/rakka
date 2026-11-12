@@ -18,6 +18,7 @@
   <link rel="manifest" href="./manifest.json">
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://fastly.jsdelivr.net/npm/barcode-detector@3/dist/iife/polyfill.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19420,7 +19421,10 @@
           readerElem.innerHTML = '';
         }
         if (!html5QrCode) {
-          html5QrCode = new Html5Qrcode("reader");
+          html5QrCode = new Html5Qrcode("reader", {
+            verbose: false,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+          });
         }
 
         // Inline video playback enforcer for iOS Safari (prevents black screen stalls)
@@ -19463,12 +19467,17 @@
           fps: 15,
           formatsToSupport: formatsToSupport,
           qrbox: (w, h) => {
-            const boxWidth = Math.floor(Math.min(w * 0.78, 280));
-            const boxHeight = Math.floor(Math.min(h * 0.50, 140));
+            const boxWidth = Math.floor(Math.min(w * 0.85, 360));
+            const boxHeight = Math.floor(Math.min(h * 0.55, 180));
             return {
-              width: Math.max(200, boxWidth),
-              height: Math.max(100, boxHeight)
+              width: Math.max(220, boxWidth),
+              height: Math.max(110, boxHeight)
             };
+          },
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 }
           }
         };
 
@@ -19545,6 +19554,23 @@
 
         // Enforce iOS Safari video playback and disconnect observer
         applyIosVideoAttributes();
+
+        // Request continuous autofocus and crisp HD resolution on the active video track
+        try {
+          const activeVideo = document.querySelector('#reader video');
+          const videoTrack = activeVideo && activeVideo.srcObject && activeVideo.srcObject.getVideoTracks ? activeVideo.srcObject.getVideoTracks()[0] : null;
+          if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
+            const caps = typeof videoTrack.getCapabilities === 'function' ? videoTrack.getCapabilities() : {};
+            const trackConstraints = {
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            };
+            if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+              trackConstraints.advanced = [{ focusMode: 'continuous' }];
+            }
+            videoTrack.applyConstraints(trackConstraints).catch(() => {});
+          }
+        } catch (_) {}
         if (videoObserver) {
           videoObserver.disconnect();
           videoObserver = null;
@@ -24514,7 +24540,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=85')
+        navigator.serviceWorker.register('./sw.js?v=86')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
