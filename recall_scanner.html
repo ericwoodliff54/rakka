@@ -20360,52 +20360,86 @@
           console.log("[Rakka Offline Engine] Zero cellular connection detected. Bypassing network lookups.");
         }
         const activeHookUrl = (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim();
-        if (!isDeviceOffline && (!ingredientsSummary || brandName === "Grocery Brand") && activeHookUrl) {
-              try {
+        if (!isDeviceOffline && (!ingredientsSummary || brandName === "Grocery Brand")) {
+              const fetchWorkerOnce = async () => {
+                if (!activeHookUrl) return null;
                 const hookCtrl = new AbortController();
-                const hookTimeout = setTimeout(() => hookCtrl.abort(), 3500);
-                const hookRes = await fetch(`${activeHookUrl.replace(/\/+$/, '')}/lookup?upc=${encodeURIComponent(code)}`, { signal: hookCtrl.signal });
-                clearTimeout(hookTimeout);
-                if (hookRes && hookRes.ok) {
-                  const hookData = await hookRes.json();
-                  if (hookData && hookData.found && hookData.product) {
-                    const hp = hookData.product;
-                    if (hp.name && !hp.name.startsWith('Retail Grocery Item')) productName = hp.name;
-                    if (hp.brand && hp.brand !== 'Grocery Brand') brandName = hp.brand;
-                    if (hp.ingredients) ingredientsSummary = hp.ingredients;
-                    if (Array.isArray(hp.additives)) productAdditivesTags.push(...hp.additives);
-                    if (Array.isArray(hp.allergens)) detectedAllergenIds.push(...hp.allergens);
-                    // Cache locally for instant future offline lookups
-                    saveCatalogProduct(code, {
-                      name: productName,
-                      brand: brandName,
-                      ingredients: ingredientsSummary,
-                      allergens: detectedAllergenIds,
-                      additives: productAdditivesTags
-                    });
+                const hookTimeout = setTimeout(() => hookCtrl.abort(), 4500);
+                try {
+                  const hookRes = await fetch(`${activeHookUrl.replace(/\/+$/, '')}/lookup?upc=${encodeURIComponent(code)}`, { signal: hookCtrl.signal });
+                  if (hookRes && hookRes.ok) {
+                    const hookData = await hookRes.json();
+                    return { ok: true, data: hookData };
+                  }
+                  return { ok: true, data: null };
+                } finally {
+                  clearTimeout(hookTimeout);
+                }
+              };
+
+              const fetchWorkerWithSilentRetry = async () => {
+                for (let attempt = 0; attempt < 2; attempt++) {
+                  try {
+                    const res = await fetchWorkerOnce();
+                    if (res && res.ok) return res.data;
+                  } catch (hookErr) {
+                    if (attempt === 1) console.warn("Cloud hook lookup notice:", hookErr);
                   }
                 }
-              } catch (hookErr) {
-                console.warn("Cloud hook lookup notice:", hookErr);
-              }
-            }
+                return null;
+              };
 
-            // Secondary Client Fallback: Direct Open Food Facts Query if Edge Hook Timed Out or Missed
-            if (!isDeviceOffline && (productName.startsWith('Retail Grocery Item') || !ingredientsSummary)) {
-              try {
-                const offVariants = [...new Set([code, code.padStart(12, '0'), code.padStart(13, '0'), code.replace(/^0+/, '')])].filter(c => c.length >= 8);
-                const offCtrl = new AbortController();
-                const offTimer = setTimeout(() => offCtrl.abort(), 2200);
-                let offProd = null;
+              const fetchOffFallback = async () => {
                 try {
-                  offProd = await Promise.any(offVariants.map(q =>
-                    fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(q)}.json`, { signal: offCtrl.signal })
-                      .then(r => r.ok ? r.json() : null)
-                      .then(d => (d && d.status === 1 && d.product) ? d.product : Promise.reject('not_found'))
-                  ));
-                } finally {
-                  clearTimeout(offTimer);
+                  const offVariants = [...new Set([code, code.padStart(12, '0'), code.padStart(13, '0'), code.replace(/^0+/, '')])].filter(c => c.length >= 8);
+                  const offCtrl = new AbortController();
+                  const offTimer = setTimeout(() => offCtrl.abort(), 2500);
+                  try {
+                    return await Promise.any(offVariants.map(q =>
+                      fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(q)}.json`, { signal: offCtrl.signal })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => (d && d.status === 1 && d.product) ? d.product : Promise.reject('not_found'))
+                    ));
+                  } finally {
+                    clearTimeout(offTimer);
+                  }
+                } catch (_) {
+                  return null;
                 }
+              };
+
+              let workerDone = false;
+              let offPromise = null;
+              const workerPromise = fetchWorkerWithSilentRetry().finally(() => { workerDone = true; });
+              const overlapTimer = setTimeout(() => {
+                if (!workerDone && !offPromise) {
+                  offPromise = fetchOffFallback();
+                }
+              }, 1800);
+
+              const hookData = await workerPromise;
+              clearTimeout(overlapTimer);
+
+              if (hookData && hookData.found && hookData.product) {
+                const hp = hookData.product;
+                if (hp.name && !hp.name.startsWith('Retail Grocery Item')) productName = hp.name;
+                if (hp.brand && hp.brand !== 'Grocery Brand') brandName = hp.brand;
+                if (hp.ingredients) ingredientsSummary = hp.ingredients;
+                if (Array.isArray(hp.additives)) productAdditivesTags.push(...hp.additives);
+                if (Array.isArray(hp.allergens)) detectedAllergenIds.push(...hp.allergens);
+                saveCatalogProduct(code, {
+                  name: productName,
+                  brand: brandName,
+                  ingredients: ingredientsSummary,
+                  allergens: detectedAllergenIds,
+                  additives: productAdditivesTags
+                });
+              }
+
+              // Secondary Client Fallback: Use overlapped Open Food Facts or start it if Worker missed
+              if (productName.startsWith('Retail Grocery Item') || !ingredientsSummary) {
+                if (!offPromise) offPromise = fetchOffFallback();
+                const offProd = await offPromise;
                 if (offProd) {
                   offProductData = offProd;
                   const resolvedName = offProd.product_name_en || offProd.product_name || offProd.generic_name;
@@ -20430,7 +20464,7 @@
                     additives: productAdditivesTags
                   });
                 }
-              } catch (_) {}
+              }
             }
 
             // Tertiary Tier: GS1 Manufacturer Prefix Intelligence
@@ -24691,7 +24725,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=93')
+        navigator.serviceWorker.register('./sw.js?v=94')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
