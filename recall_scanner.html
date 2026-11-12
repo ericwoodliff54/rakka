@@ -24559,7 +24559,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=88')
+        navigator.serviceWorker.register('./sw.js?v=89')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();

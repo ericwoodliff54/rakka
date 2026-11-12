@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v139';
+const CACHE_NAME = 'rakka-v140';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -71,7 +71,24 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 3. Network-first for external APIs (openFDA, etc.)
+  // 3. Cache-first for trusted static CDN dependencies (Tailwind, scanner engines, fonts)
+  const cdnHosts = ['cdn.tailwindcss.com', 'cdnjs.cloudflare.com', 'fastly.jsdelivr.net', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
+  if (cdnHosts.includes(url.hostname)) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        return cached || fetch(event.request).then(response => {
+          if (response && (response.status === 200 || response.type === 'opaque')) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // 4. Network-first for external APIs (openFDA, etc.)
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
   );
