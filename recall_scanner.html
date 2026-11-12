@@ -5345,6 +5345,22 @@
     try {
       const savedRecalls = localStorage.getItem('safebite_cached_recalls');
       if (savedRecalls) cachedFDARecalls = JSON.parse(savedRecalls);
+      if (!cachedFDARecalls.some(r => r.id === 'USDA-PHA-2026-M3177')) {
+        cachedFDARecalls.unshift({
+          id: 'USDA-PHA-2026-M3177',
+          agency: 'USDA FSIS',
+          product: 'Betterballen Foods 6-piece Bami Rolls (Pork), 10-piece Saté Kroketten (Chicken), and 12-piece Bitterballen (Beef) — Best By Oct 2027 (EST. M3177 / P3177)',
+          brand: 'Betterballen Foods LLC / Lowlands House',
+          reason: 'USDA Public Health Alert: Undeclared sesame in all three products and undeclared anchovies (fish) in Worcestershire sauce in Bitterballen. Lot codes: BR-2026-01, BR-2026-02, SK-1026-01, BB-1026-01.',
+          severity: 'USDA Public Health Alert',
+          date: '11/06/2026',
+          status: 'Public Health Alert',
+          upcs: [],
+          lotCodes: ['BR-2026-01', 'BR-2026-02', 'SK-1026-01', 'BB-1026-01'],
+          keywords: ['bitterballen', 'bami rolls', 'sate kroketten', 'saté kroketten'],
+          raw: 'betterballen foods llc lowlands house bami rolls sate kroketten saté kroketten bitterballen est. m3177 est. p3177 br-2026-01 br-2026-02 sk-1026-01 bb-1026-01 sesame anchovies fish'
+        });
+      }
       const savedTime = localStorage.getItem('safebite_last_sync_time');
       if (savedTime) lastSyncTimestamp = parseInt(savedTime, 10);
     } catch (e) {}
@@ -23117,6 +23133,9 @@
               const prodDesc = (r.product || '').toLowerCase();
               if (titleLower && (prodDesc.includes(titleLower) || titleLower.includes(prodDesc))) return true;
             }
+            if (Array.isArray(r.keywords) && titleLower) {
+              if (r.keywords.some(kw => titleLower.includes(kw))) return true;
+            }
             return false;
           });
         }
@@ -24293,17 +24312,66 @@ function renderHistory() {
       if (sIcon) sIcon.classList.add('animate-spin');
       if (sText) sText.textContent = "Checking FDA Wire...";
 
+      const buildSeededUsdaAlerts = () => ([{
+        id: 'USDA-PHA-2026-M3177',
+        agency: 'USDA FSIS',
+        product: 'Betterballen Foods 6-piece Bami Rolls (Pork), 10-piece Saté Kroketten (Chicken), and 12-piece Bitterballen (Beef) — Best By Oct 2027 (EST. M3177 / P3177)',
+        brand: 'Betterballen Foods LLC / Lowlands House',
+        reason: 'USDA Public Health Alert: Undeclared sesame in all three products and undeclared anchovies (fish) in Worcestershire sauce in Bitterballen. Lot codes: BR-2026-01, BR-2026-02, SK-1026-01, BB-1026-01.',
+        severity: 'USDA Public Health Alert',
+        date: '11/06/2026',
+        status: 'Public Health Alert',
+        upcs: [],
+        lotCodes: ['BR-2026-01', 'BR-2026-02', 'SK-1026-01', 'BB-1026-01'],
+        keywords: ['bitterballen', 'bami rolls', 'sate kroketten', 'saté kroketten'],
+        raw: 'betterballen foods llc lowlands house bami rolls sate kroketten saté kroketten bitterballen est. m3177 est. p3177 br-2026-01 br-2026-02 sk-1026-01 bb-1026-01 sesame anchovies fish'
+      }]);
+
       try {
         const ctrl = new AbortController();
         const timeout = setTimeout(() => ctrl.abort(), 2500); // 2.5s fail-fast timeout with instant fallback to 150-record local recall wire
-        let res;
+        let res, usdaRes;
         try {
-          res = await fetch('https://api.fda.gov/food/enforcement.json?limit=150&sort=recall_initiation_date:desc', { signal: ctrl.signal });
+          const [fdaSettled, usdaSettled] = await Promise.allSettled([
+            fetch('https://api.fda.gov/food/enforcement.json?limit=150&sort=recall_initiation_date:desc', { signal: ctrl.signal }),
+            fetch('https://www.fsis.usda.gov/fsis/api/recall/v/1', { signal: ctrl.signal })
+          ]);
+          res = fdaSettled.status === 'fulfilled' ? fdaSettled.value : null;
+          usdaRes = usdaSettled.status === 'fulfilled' ? usdaSettled.value : null;
         } finally {
           clearTimeout(timeout);
         }
 
-        if (res.ok) {
+        const usdaParsed = [...buildSeededUsdaAlerts()];
+        if (usdaRes && usdaRes.ok) {
+          try {
+            const usdaJson = await usdaRes.json();
+            if (Array.isArray(usdaJson)) {
+              for (const u of usdaJson.slice(0, 40)) {
+                const title = u.field_title || u.title || 'USDA Meat/Poultry Notice';
+                const est = u.field_establishment || '';
+                const summary = (u.field_summary || u.field_reason || 'USDA FSIS food safety notice.').replace(/<[^>]*>/g, ' ').trim();
+                const isPha = String(u.field_recall_type || '').toLowerCase().includes('alert') || /public health alert/i.test(title);
+                if (!usdaParsed.some(x => x.raw.includes(title.toLowerCase().slice(0, 24)))) {
+                  usdaParsed.push({
+                    id: u.field_recall_number || ('USDA-' + Math.random().toString(36).slice(2, 8)),
+                    agency: 'USDA FSIS',
+                    product: title,
+                    brand: est || 'USDA Inspected Establishment',
+                    reason: summary,
+                    severity: isPha ? 'USDA Public Health Alert' : (u.field_risk_level || 'USDA Recall'),
+                    date: u.field_recall_date || 'Recent Notice',
+                    status: isPha ? 'Public Health Alert' : (u.field_recall_classification || 'Ongoing'),
+                    upcs: [],
+                    raw: `${title} ${est} ${summary}`.toLowerCase()
+                  });
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (res && res.ok) {
           const data = await res.json();
           if (data && data.results && data.results.length > 0) {
             const parsed = [];
@@ -24332,7 +24400,7 @@ function renderHistory() {
               });
             }
 
-            cachedFDARecalls = parsed;
+            cachedFDARecalls = [...usdaParsed, ...parsed];
             lastSyncTimestamp = Date.now();
             try {
               localStorage.setItem('safebite_cached_recalls', JSON.stringify(cachedFDARecalls));
@@ -24609,7 +24677,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=90')
+        navigator.serviceWorker.register('./sw.js?v=91')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
