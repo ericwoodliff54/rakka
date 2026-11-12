@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v138';
+const CACHE_NAME = 'rakka-v139';
 const ASSETS = [
   './index.html',
   './manifest.json',

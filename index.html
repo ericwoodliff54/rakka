@@ -19621,7 +19621,7 @@
       cameraIdleTimeout = setTimeout(() => {
         if (typeof isCameraRunning !== 'undefined' && isCameraRunning) {
           stopCamera();
-          showScannerMessage("Camera paused automatically to preserve battery.");
+          showScannerMessage("Camera stopped automatically to preserve battery.");
         }
       }, 90000); // 90-second safety cutoff for active camera
     }
@@ -19638,9 +19638,8 @@
     }
 
     async function pauseCamera() {
-      if (cameraIdleTimeout) {
-        clearTimeout(cameraIdleTimeout);
-        cameraIdleTimeout = null;
+      if (typeof resetCameraIdleTimer === 'function') {
+        resetCameraIdleTimer();
       }
       await setTorchState(false);
 
@@ -24560,7 +24559,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=87')
+        navigator.serviceWorker.register('./sw.js?v=88')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
