@@ -19309,6 +19309,15 @@
     if (headerSettingsBtnEl) headerSettingsBtnEl.addEventListener('click', () => setNavTab('customize'));
 
     // Camera Handlers
+    const readerContainer = document.getElementById('reader');
+    if (readerContainer) {
+      readerContainer.addEventListener('click', () => {
+        if (isCameraRunning && isCameraPaused) {
+          resetAndScanNext();
+        }
+      });
+    }
+
     toggleCameraBtn.addEventListener('click', () => {
       triggerHaptic([40]);
       if (isCameraRunning && isCameraPaused) {
@@ -19640,6 +19649,11 @@
           if (typeof html5QrCode.pause === 'function') {
             html5QrCode.pause(true); // pause decoding & freeze/pause video stream to save CPU & battery
             isCameraPaused = true;
+            if (cameraBtnText) cameraBtnText.textContent = "Resume Scanner";
+            if (toggleCameraBtn) {
+              toggleCameraBtn.classList.replace('from-slate-700', 'from-cyan-600');
+              toggleCameraBtn.classList.replace('to-slate-800', 'to-cyan-500');
+            }
           } else {
             await stopCamera();
           }
@@ -19932,11 +19946,17 @@
           if (typeof html5QrCode.resume === 'function') {
             html5QrCode.resume();
             isCameraPaused = false;
+            if (cameraBtnText) cameraBtnText.textContent = "Stop Camera";
+            if (toggleCameraBtn) {
+              toggleCameraBtn.classList.replace('from-cyan-600', 'from-slate-700');
+              toggleCameraBtn.classList.replace('to-cyan-500', 'to-slate-800');
+            }
             // Force WebKit / iOS Safari to play video if paused
             const v = document.querySelector('#reader video');
             if (v && v.paused) {
               v.play().catch(e => console.warn("Video play on resume:", e));
             }
+            if (typeof resetCameraIdleTimer === 'function') resetCameraIdleTimer();
           } else {
             await startCamera();
           }
@@ -24540,7 +24560,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=86')
+        navigator.serviceWorker.register('./sw.js?v=87')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
