@@ -38,6 +38,81 @@ function resolveGeminiApiKey(env, body) {
   return { key: '', source: 'none' };
 }
 
+// ============================================================================
+// EDGE PER-IP SLIDING WINDOW RATE LIMITER (Zero-KV Cost Isolate Memory Protection)
+// Protects Gemini 1.5 Flash OCR endpoints from automated scraping & quota exhaustion
+// ============================================================================
+const IP_RATE_BUCKETS = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 60 seconds
+const RATE_LIMIT_CONFIG = {
+  'audit-receipt': 18,   // 18 req/min per IP (supports up to 6 full 3-slice tall receipts/min)
+  'audit-lot-code': 12,  // 12 req/min per IP for package stamp verification
+  'detect-package': 12,  // 12 req/min per IP for whole-package vision
+  'contribute-ocr': 10   // 10 req/min per IP for community ingredient OCR
+};
+
+function getClientIp(request) {
+  return (
+    request.headers.get('CF-Connecting-IP') ||
+    (request.headers.get('X-Forwarded-For') || '').split(',')[0].trim() ||
+    'edge-anon-client'
+  );
+}
+
+function checkEdgeRateLimit(request, endpointBucket) {
+  const maxRequests = RATE_LIMIT_CONFIG[endpointBucket] || 15;
+  const clientIp = getClientIp(request);
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const key = `${endpointBucket}:${clientIp}`;
+
+  // Periodic lightweight cleanup to prevent unbounded Map growth in long-lived isolates
+  if (IP_RATE_BUCKETS.size > 2000) {
+    for (const [k, timestamps] of IP_RATE_BUCKETS.entries()) {
+      const valid = timestamps.filter(ts => ts > windowStart);
+      if (valid.length === 0) IP_RATE_BUCKETS.delete(k);
+      else IP_RATE_BUCKETS.set(k, valid);
+    }
+  }
+
+  const prevTimestamps = IP_RATE_BUCKETS.get(key) || [];
+  const recentTimestamps = prevTimestamps.filter(ts => ts > windowStart);
+
+  if (recentTimestamps.length >= maxRequests) {
+    const oldestInWindow = recentTimestamps[0] || now;
+    const retryAfterSec = Math.max(1, Math.ceil((oldestInWindow + RATE_LIMIT_WINDOW_MS - now) / 1000));
+    return {
+      allowed: false,
+      limit: maxRequests,
+      remaining: 0,
+      retryAfterSec,
+      headers: {
+        'X-RateLimit-Limit': String(maxRequests),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(Math.ceil((oldestInWindow + RATE_LIMIT_WINDOW_MS) / 1000)),
+        'Retry-After': String(retryAfterSec)
+      }
+    };
+  }
+
+  recentTimestamps.push(now);
+  IP_RATE_BUCKETS.set(key, recentTimestamps);
+  const remaining = Math.max(0, maxRequests - recentTimestamps.length);
+
+  return {
+    allowed: true,
+    limit: maxRequests,
+    remaining,
+    retryAfterSec: 0,
+    headers: {
+      'X-RateLimit-Limit': String(maxRequests),
+      'X-RateLimit-Remaining': String(remaining),
+      'X-RateLimit-Reset': String(Math.ceil((now + RATE_LIMIT_WINDOW_MS) / 1000))
+    }
+  };
+}
+
+
 const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -306,13 +381,15 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
 
 export default {
   async fetch(request, env, ctx) {
-    // 1. CORS Preflight
+    // 1. Hardened CORS Preflight (Explicit 204 No Content + Custom Client & Auth Headers)
     if (request.method === 'OPTIONS') {
       return new Response(null, {
+        status: 204,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version, x-goog-api-key',
+          'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
           'Access-Control-Max-Age': '86400',
         },
       });
@@ -321,6 +398,9 @@ export default {
     const url = new URL(request.url);
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version, x-goog-api-key',
+      'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=86400',
     };
@@ -367,10 +447,16 @@ export default {
       return new Response(JSON.stringify({
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
-        version: '1.4.1',
+        version: '1.4.2',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',
+        rate_limiting: {
+          enabled: true,
+          window_seconds: 60,
+          limits_per_ip: RATE_LIMIT_CONFIG
+        },
+        cors_preflight: '204_no_content_hardened',
         detected_env_keys: env ? Object.keys(env) : [],
         timestamp: new Date().toISOString()
       }), { headers: corsHeaders });
@@ -568,8 +654,15 @@ export default {
         const brandName = String(body.brand || '').trim();
         let ingredients = String(body.ingredients || '').trim();
 
-        // Optional: If an image was submitted, call Gemini 1.5 Flash OCR (free tier)
+        // Optional: If an image was submitted, enforce per-IP OCR rate limit before calling Gemini 1.5 Flash
         if (body.imageBase64 && env && env.GEMINI_API_KEY && !ingredients) {
+          const rlContribute = checkEdgeRateLimit(request, 'contribute-ocr');
+          if (!rlContribute.allowed) {
+            return new Response(JSON.stringify({
+              error: `OCR rate limit exceeded (${rlContribute.limit} requests/min). Please wait ${rlContribute.retryAfterSec}s before trying again.`,
+              retryAfterSeconds: rlContribute.retryAfterSec
+            }), { status: 429, headers: { ...corsHeaders, ...rlContribute.headers, 'Cache-Control': 'no-store' } });
+          }
           try {
             const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey || (env && env.GEMINI_API_KEY) || "")}`, {
               method: 'POST',
@@ -638,6 +731,14 @@ export default {
 
     // 5. POST /detect-package: Multimodal AI Vision for whole-package photos
     if (request.method === 'POST' && (url.pathname === '/detect-package' || url.pathname === '/api/detect-package')) {
+      const rlPackage = checkEdgeRateLimit(request, 'detect-package');
+      if (!rlPackage.allowed) {
+        return new Response(JSON.stringify({
+          found: false,
+          error: `Rate limit reached (${rlPackage.limit} package scans/min). Please wait ${rlPackage.retryAfterSec}s before scanning again.`,
+          retryAfterSeconds: rlPackage.retryAfterSec
+        }), { status: 429, headers: { ...corsHeaders, ...rlPackage.headers, 'Cache-Control': 'no-store' } });
+      }
       try {
         const body = await request.json();
         if (!body.imageBase64) {
@@ -739,7 +840,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
 
           // Cache in community DB if barcode and name exist
           if (upc && productName && env && env.RAKKA_COMMUNITY_DB) {
-            ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put('upc:${upc}', JSON.stringify(resolvedRecord)));
+            ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(`upc:${upc}`, JSON.stringify(resolvedRecord)));
           }
 
           return new Response(JSON.stringify({
@@ -758,6 +859,14 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
 
     // 6. POST /audit-lot-code: AI Lot & Best-By Date Auditor
     if (request.method === 'POST' && (url.pathname === '/audit-lot-code' || url.pathname === '/api/audit-lot-code')) {
+      const rlLot = checkEdgeRateLimit(request, 'audit-lot-code');
+      if (!rlLot.allowed) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Lot auditor rate limit reached (${rlLot.limit} scans/min per IP). Please wait ${rlLot.retryAfterSec}s before scanning another stamp.`,
+          retryAfterSeconds: rlLot.retryAfterSec
+        }), { status: 429, headers: { ...corsHeaders, ...rlLot.headers, 'Cache-Control': 'no-store' } });
+      }
       try {
         const body = await request.json();
         // Support either server-side Cloudflare secret OR client-provided key
@@ -972,6 +1081,14 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
     // 7. POST /audit-receipt: AI Multi-Item Shopping Receipt Auditor
     if (request.method === 'POST' && (url.pathname === '/audit-receipt' || url.pathname === '/api/audit-receipt')) {
+      const rlReceipt = checkEdgeRateLimit(request, 'audit-receipt');
+      if (!rlReceipt.allowed) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Receipt scanner rate limit reached (${rlReceipt.limit} requests/min per IP). Please wait ${rlReceipt.retryAfterSec}s before scanning another receipt.`,
+          retryAfterSeconds: rlReceipt.retryAfterSec
+        }), { status: 429, headers: { ...corsHeaders, ...rlReceipt.headers, 'Cache-Control': 'no-store' } });
+      }
       try {
         const body = await request.json();
         // Support either server-side Cloudflare secret OR client-provided key
