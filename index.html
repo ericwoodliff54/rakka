@@ -2291,31 +2291,6 @@
       opacity: 1 !important;
     }
 
-  
-    /* Explicit Light & Dark Mode Icon Colors for Allergens (Shield) & Watchlist (Clipboard Checklist) */
-    #tabAllergens:not(.active-tab) svg {
-      color: #fbbf24 !important; /* Amber-400 in Dark Mode */
-    }
-    #tabWatchlist:not(.active-tab) svg,
-    #historyPanel h2 svg {
-      color: #2dd4bf !important; /* Teal-400 in Dark Mode */
-    }
-    html.theme-light #tabAllergens:not(.active-tab) svg,
-    html.theme-light #allergensPanel h2 svg {
-      color: #d97706 !important; /* Crisp Amber-600 in Light Mode */
-    }
-    html.theme-light #tabWatchlist:not(.active-tab) svg,
-    html.theme-light #historyPanel h2 svg {
-      color: #0d9488 !important; /* Crisp Teal-600 in Light Mode */
-    }
-    #tabAllergens.active-tab svg,
-    #tabWatchlist.active-tab svg,
-    html.theme-light #tabAllergens.active-tab svg,
-    html.theme-light #tabWatchlist.active-tab svg {
-      color: #ffffff !important;
-      stroke: #ffffff !important;
-    }
-
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
@@ -2441,7 +2416,7 @@
         <span id="watchlistNavRecallBadge" class="hidden absolute -top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white font-black text-[10px] leading-none shadow-md border border-slate-900 z-10 flex items-center justify-center">0</span>
         <div class="h-7 sm:h-8 flex items-center justify-center shrink-0">
           <svg class="w-6 h-6 sm:w-6.5 sm:h-6.5 text-teal-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
           </svg>
         </div>
         <span class="leading-tight text-[11px] sm:text-xs font-black tracking-tight whitespace-nowrap select-none">Watchlist</span>
@@ -3241,7 +3216,6 @@
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
           <h2 class="font-display text-sm font-bold text-slate-100 flex items-center gap-2">
-            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             <span>Allergen Guard: Ingredients & Additives</span>
           </h2>
           
@@ -3445,7 +3419,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h2 class="font-display text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
               <span>Pantry and Fridge Watchlist</span>
             </h2>
           </div>
@@ -3802,7 +3776,64 @@
         </div>
       </div>
 
+      <!-- CLOUDFLARE EDGE HOOK & GEMINI AI VISION SETTINGS (Hidden from Family Beta Testers) -->
+      <div id="cloudflareDevSettingsCard" class="hidden p-4 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border border-indigo-500/40 shadow-lg space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div>
+              <span class="font-bold text-sm text-white block">Cloudflare & AI Vision Hook</span>
+              <span class="text-xs text-slate-400 font-medium">Receipt OCR & Date Stamp Extraction</span>
+            </div>
+          </div>
+          <span id="edgeHookStatusBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+            Active
+          </span>
+        </div>
 
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Configure your personal Cloudflare Worker URL or Google Gemini API key (<code class="text-sky-300 font-mono">AQ.Ab...</code>) to power the Batch Receipt Auditor.
+        </p>
+
+        <div class="space-y-2 text-xs">
+          <div>
+            <label for="settingsWorkerUrlInput" class="block font-semibold text-slate-300 mb-1">Cloudflare Worker Hook URL:</label>
+            <input 
+              type="url" 
+              id="settingsWorkerUrlInput" 
+              placeholder="https://rakka-edge.ericwoodliff.workers.dev" 
+              class="w-full py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[16px] sm:text-xs focus:outline-none focus:border-indigo-400"
+            >
+          </div>
+
+          <div>
+            <label for="settingsGeminiKeyInput" class="block font-semibold text-slate-300 mb-1">Gemini API Key (Bypasses Cloudflare Dashboard):</label>
+            <input 
+              type="password" 
+              id="settingsGeminiKeyInput" 
+              placeholder="Paste AQ.Ab... or AIza... key here" 
+              class="w-full py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[16px] sm:text-xs focus:outline-none focus:border-indigo-400"
+            >
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <button 
+              type="button" 
+              id="saveEdgeSettingsBtn" onclick="saveEdgeHookSettings()" class="flex-1 min-h-[44px] py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <span>Save AI Settings</span>
+            </button>
+            <button 
+              type="button" 
+              id="testEdgeHookBtn" onclick="testEdgeHookConnection()" class="min-h-[44px] py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <span>Test Connection</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
 
       <!-- OFFLINE CACHE & APP UPDATES -->
@@ -3925,9 +3956,9 @@
         </button>
       </div>
 
-      <!-- Version Tag -->
+      <!-- Version Tag (Secret 5-Tap Developer Door to Reveal AI Vision Settings) -->
       <div class="pt-2 text-center">
-        <p id="appVersionDevTrigger" class="text-[11px] text-slate-400 font-medium select-none py-1">RAKKA v1.4 • Offline Engine & App Up to Date</p>
+        <p id="appVersionDevTrigger" class="text-[11px] text-slate-400 font-medium cursor-pointer select-none py-1" title="Version">RAKKA v1.3 • Offline Engine & App Up to Date</p>
       </div>
 </section>
 
@@ -24473,8 +24504,110 @@ function renderHistory() {
     // Service Worker Registration for PWA Installability and Offline Support
     if ('serviceWorker' in navigator) {
       
-    function initEdgeSettingsInputs() {}
-    if (keyInput) {
+    // ==========================================
+    // CLOUDFLARE WORKER & GEMINI API KEY SETTINGS
+    // ==========================================
+    window.saveEdgeHookSettings = function() {
+      const urlInput = document.getElementById('settingsWorkerUrlInput');
+      const keyInput = document.getElementById('settingsGeminiKeyInput');
+      
+      if (urlInput) {
+        const val = urlInput.value.trim();
+        if (val) localStorage.setItem('rakka_cloudflare_hook', val);
+      }
+      if (keyInput) {
+        const val = keyInput.value.trim();
+        if (val) {
+          localStorage.setItem('rakka_gemini_key', val);
+          localStorage.setItem('gemini_api_key', val);
+        }
+      }
+      triggerHaptic([30]);
+      showCustomizeToast("✓ AI Vision settings saved! You can now scan receipts directly.");
+    };
+
+    window.testEdgeHookConnection = async function() {
+      const urlInput = document.getElementById('settingsWorkerUrlInput');
+      const hook = (urlInput && urlInput.value.trim()) || localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK;
+      triggerHaptic([20]);
+      showCustomizeToast("Testing connection to Cloudflare edge hook...");
+      
+      try {
+        const res = await fetch(`${hook.replace(/\/+$/, '')}/health`);
+        if (res.ok) {
+          const data = await res.json();
+          const hasKey = data.ai_vision_key_configured === true || Boolean(localStorage.getItem('rakka_gemini_key'));
+          if (hasKey) {
+            showCustomizeToast("✓ Edge hook online & AI Vision ready!");
+          } else {
+            showCustomizeToast("Edge hook online, but AI key is missing in Cloudflare. Save it above!");
+          }
+        } else {
+          showCustomizeToast(`Edge hook returned HTTP ${res.status}`);
+        }
+      } catch (err) {
+        showCustomizeToast("Could not reach edge hook URL. Check domain name.");
+      }
+    };
+
+    
+    // ==========================================
+    // SECRET DEVELOPER GATEWAY FOR AI SETTINGS
+    // ==========================================
+    let devTapCount = 0;
+    let devTapTimer = null;
+
+    function revealDevAiSettings(showToast = true) {
+      const card = document.getElementById('cloudflareDevSettingsCard');
+      if (card) {
+        card.classList.remove('hidden');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        triggerHaptic([30, 40, 50]);
+        if (showToast) {
+          showCustomizeToast("🔓 Developer AI Vision & Cloudflare Settings Unlocked!");
+        }
+      }
+    }
+    window.revealDevAiSettings = revealDevAiSettings;
+
+    // Secret Tap Trigger on Version Tag at bottom of Settings
+    const versionTriggerEl = document.getElementById('appVersionDevTrigger');
+    if (versionTriggerEl) {
+      versionTriggerEl.addEventListener('click', () => {
+        devTapCount++;
+        triggerHaptic([20]);
+        clearTimeout(devTapTimer);
+        devTapTimer = setTimeout(() => {
+          devTapCount = 0;
+        }, 3000);
+
+        if (devTapCount >= 5) {
+          devTapCount = 0;
+          revealDevAiSettings(true);
+        }
+      });
+    }
+
+    // URL Param Shortcut: Opening app with ?dev=ai or ?ai=1 automatically reveals the settings
+    try {
+      const devParams = new URLSearchParams(window.location.search);
+      if (devParams.get('dev') === 'ai' || devParams.get('ai') === '1' || devParams.get('settings') === 'ai') {
+        window.addEventListener('DOMContentLoaded', () => {
+          setTimeout(() => {
+            if (typeof setNavTab === 'function') setNavTab('customize');
+            revealDevAiSettings(true);
+          }, 600);
+        });
+      }
+    } catch (_) {}
+
+    function initEdgeSettingsInputs() {
+      const urlInput = document.getElementById('settingsWorkerUrlInput');
+      const keyInput = document.getElementById('settingsGeminiKeyInput');
+      if (urlInput) {
+        urlInput.value = localStorage.getItem('rakka_cloudflare_hook') || DEFAULT_CLOUDFLARE_HOOK;
+      }
+      if (keyInput) {
         keyInput.value = localStorage.getItem('rakka_gemini_key') || '';
       }
     }
@@ -24796,7 +24929,9 @@ function renderHistory() {
               if (data && data.success && data.audit) {
                 if (lotProgressTimer) clearInterval(lotProgressTimer);
                 updateLotProgressUI(100, "Verdict Ready", "Audit complete!", 5);
-
+                if (data.latencyMs) {
+                  showCustomizeToast(`AI Vision: ${data.modelUsed || 'Gemini Flash'} in ${(data.latencyMs/1000).toFixed(1)}s`);
+                }
                 setTimeout(() => {
                   renderLotAuditVerdict(data.audit);
                 }, 200);
@@ -24833,12 +24968,15 @@ function renderHistory() {
           let explMsg = "";
           let actionMsg = "";
 
-          if (serverErrorMsg) {
-            explMsg = `Notice: ${serverErrorMsg}. Compare the printed date on your package directly against the recall window: ${recallWindowText}.`;
-            actionMsg = "Always verify the physical lot stamp on your packaging or return the item to the retailer if unsure.";
+          if (serverErrorMsg && serverErrorMsg.includes("temporarily busy")) {
+            explMsg = `Cloudflare Worker is running older code that needs the multi-model fallback. Compare your stamped package date directly against the recall window: ${recallWindowText}.`;
+            actionMsg = "To fix this: Open Cloudflare > Workers > rakka-edge > Edit Code, paste the updated rakka-worker.js, and click Deploy. Or paste your key in app Settings.";
+          } else if (serverErrorMsg) {
+            explMsg = `Edge status: ${serverErrorMsg}. Recall batch window: ${recallWindowText}. Compare your printed date directly.`;
+            actionMsg = clientApiKey ? "Check Cloudflare Worker settings or redeploy rakka-worker.js." : "Add your Gemini API key in Rakka Settings (gear icon) on this device, or deploy the updated rakka-worker.js to Cloudflare.";
           } else {
-            explMsg = `Compare the printed date on your package directly: Affected batches carry ${recallWindowText}. If your stamped date falls outside this window, it does not match the active recall.`;
-            actionMsg = "Please check your connection and retake the photo, or verify the printed packaging date directly.";
+            explMsg = `Compare the printed date on your package directly: Affected batches carry ${recallWindowText}. If your stamped date is outside this window, your package is clear.`;
+            actionMsg = "To enable automatic photo reading on this phone, paste your free Gemini API key into Rakka Settings (gear icon) > AI Integration.";
           }
 
           renderLotAuditVerdict({
