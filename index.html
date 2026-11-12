@@ -20296,62 +20296,235 @@
               }
             }
 
+            // Secondary Client Fallback: Direct Open Food Facts Query if Edge Hook Timed Out or Missed
+            if (!isDeviceOffline && (productName.startsWith('Retail Grocery Item') || !ingredientsSummary)) {
+              try {
+                const offVariants = [...new Set([code, code.padStart(12, '0'), code.padStart(13, '0'), code.replace(/^0+/, '')])].filter(c => c.length >= 8);
+                const offCtrl = new AbortController();
+                const offTimer = setTimeout(() => offCtrl.abort(), 2200);
+                let offProd = null;
+                try {
+                  offProd = await Promise.any(offVariants.map(q =>
+                    fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(q)}.json`, { signal: offCtrl.signal })
+                      .then(r => r.ok ? r.json() : null)
+                      .then(d => (d && d.status === 1 && d.product) ? d.product : Promise.reject('not_found'))
+                  ));
+                } finally {
+                  clearTimeout(offTimer);
+                }
+                if (offProd) {
+                  offProductData = offProd;
+                  const resolvedName = offProd.product_name_en || offProd.product_name || offProd.generic_name;
+                  const resolvedBrand = offProd.brands || offProd.brand_owner || (offProd.brands_tags && offProd.brands_tags[0]);
+                  const resolvedIng = extractCleanIngredients(offProd) || offProd.ingredients_text_en || offProd.ingredients_text || '';
+                  if (resolvedName && resolvedName.trim().length > 1 && productName.startsWith('Retail Grocery Item')) {
+                    productName = resolvedName.trim();
+                  }
+                  if (resolvedBrand && resolvedBrand.trim().length > 1 && (!brandName || brandName === 'Grocery Brand')) {
+                    brandName = resolvedBrand.split(',')[0].trim();
+                  }
+                  if (resolvedIng && !ingredientsSummary) {
+                    ingredientsSummary = resolvedIng.trim();
+                  }
+                  if (Array.isArray(offProd.additives_tags)) productAdditivesTags.push(...offProd.additives_tags);
+                  if (Array.isArray(offProd.allergens_tags)) detectedAllergenIds.push(...offProd.allergens_tags);
+                  saveCatalogProduct(code, {
+                    name: productName,
+                    brand: brandName,
+                    ingredients: ingredientsSummary,
+                    allergens: detectedAllergenIds,
+                    additives: productAdditivesTags
+                  });
+                }
+              } catch (_) {}
+            }
+
             // Tertiary Tier: GS1 Manufacturer Prefix Intelligence
             // If barcode is not yet indexed in public crowdsourced APIs, identify the brand from its GS1 manufacturer prefix
             if (!brandName || brandName === "Grocery Brand") {
-              const GS1_DIRECTORY = {
-                '732153': 'Epic Provisions / General Mills',
-                '073215': 'Epic Provisions (General Mills)',
-                '071537': 'Polar Beverages',
-                '71537': 'Polar Beverages',
-                '072250': 'Flowers Foods (Wonder Bread)',
-                '72250': 'Flowers Foods (Wonder Bread)',
-                '888109': 'Hostess Brands',
-                '088810': 'Hostess Brands',
-                '051000': "Campbell's Soup Co.",
-                '051500': 'J.M. Smucker Co.',
-                '037600': 'Hormel Foods / Skippy',
-                '044000': 'Nabisco / Mondelēz',
-                '028000': 'Nestlé / Ferrero',
-                '034000': "Hershey's",
-                '040000': 'Mars Wrigley',
-                '028400': 'Frito-Lay',
-                '049000': 'Coca-Cola',
-                '012000': 'PepsiCo',
-                '016000': 'General Mills',
-                '038000': "Kellogg's",
-                '013000': 'Kraft Heinz',
-                '021000': 'Kraft Foods',
-                '886926': 'Meijer Brand (Midwest)',
-                '011110': 'Kroger Brand',
-                '078742': 'Great Value (Walmart)',
-                '085239': 'Good & Gather (Target)',
-                '096619': 'Kirkland Signature (Costco)',
-                '099482': '365 Whole Foods Market',
-                '041220': 'H-E-B Brand (Texas/Southwest)',
-                '041415': 'Publix Brand (Southeast)',
-                '021130': 'Signature SELECT / Safeway / Albertsons (West/National)',
-                '077890': 'Wegmans Brand (Northeast)',
-                '030034': 'Giant Eagle Brand (Midwest/PA)',
-                '406936': "Mama Cozzi's Pizza Kitchen (Aldi)",
-                '406145': "Clancy's / Aldi",
-                '406': "Mama Cozzi's / Clancy's (Aldi)",
-                '409910': "Bake Shop / Simply Nature (Aldi)",
-                '4099': "Bake Shop / Simply Nature (Aldi)",
-                '041498': "Aldi Brand (Mama Cozzi's / Clancy's / Millville)",
-                '41498': "Aldi Brand (Mama Cozzi's / Clancy's / Millville)",
-                '49000': 'Coca-Cola',
-                '024300': 'Little Debbie / McKee Foods',
-                '014100': 'Pepperidge Farm',
-                '024100': 'Cheez-It / Keebler',
-                '041500': "French's / McCormick",
-                '048001': "Hellmann's / Unilever",
-                '071100': 'Hidden Valley Ranch',
-                '076808': 'Barilla Pasta',
-                '052000': 'Gatorade / PepsiCo',
-                '036800': 'TopCare / Food Club'
-              };
-              for (const [prefix, mappedBrand] of Object.entries(GS1_DIRECTORY)) {
+      const GS1_DIRECTORY = {
+        // Aldi Private Labels
+        '406936': "Mama Cozzi's Pizza Kitchen (Aldi)",
+        '406145': "Clancy's / Simply Nature (Aldi)",
+        '406146': "Specially Selected / Aldi",
+        '406200': "Aldi Private Label",
+        '406': "Aldi Brand (Mama Cozzi's / Clancy's)",
+        '408860': "Aldi Brand (Millville / Friendly Farms)",
+        '409910': "Bake Shop / Simply Nature / Millville (Aldi)",
+        '409920': "Park Street Deli / Kirkwood (Aldi)",
+        '4099': "Aldi Brand (Simply Nature / Millville)",
+        '041498': "Aldi Brand (Friendly Farms / Happy Farms / L'oven Fresh)",
+        '41498': "Aldi Brand (Friendly Farms / Happy Farms / L'oven Fresh)",
+        // Major US Supermarket Private Labels
+        '078742': 'Great Value (Walmart)',
+        '78742': 'Great Value (Walmart)',
+        '681131': 'Marketside / Sam\'s Choice (Walmart)',
+        '068113': 'Marketside / Sam\'s Choice (Walmart)',
+        '193968': "Member's Mark (Sam's Club)",
+        '085239': 'Good & Gather / Favorite Day (Target)',
+        '85239': 'Good & Gather / Favorite Day (Target)',
+        '049200': 'Market Pantry (Target)',
+        '011110': 'Kroger / Simple Truth / Private Selection',
+        '11110': 'Kroger / Simple Truth / Private Selection',
+        '096619': 'Kirkland Signature (Costco)',
+        '96619': 'Kirkland Signature (Costco)',
+        '099482': '365 Whole Foods Market',
+        '99482': '365 Whole Foods Market',
+        '009948': '365 Whole Foods Market',
+        '0000': "Trader Joe's",
+        '886926': 'Meijer Brand',
+        '708820': 'Meijer Brand',
+        '713733': 'Meijer / True Goodness',
+        '719283': "Meijer / Frederik's",
+        '041220': 'H-E-B / Central Market',
+        '41220': 'H-E-B / Central Market',
+        '041415': 'Publix / GreenWise',
+        '41415': 'Publix / GreenWise',
+        '021130': 'Signature SELECT / O Organics / Lucerne (Safeway / Albertsons)',
+        '21130': 'Signature SELECT / O Organics (Safeway / Albertsons)',
+        '077890': 'Wegmans Brand',
+        '77890': 'Wegmans Brand',
+        '030034': "Giant Eagle / Nature's Basket",
+        '30034': "Giant Eagle / Nature's Basket",
+        '075450': 'Hy-Vee Brand',
+        '75450': 'Hy-Vee Brand',
+        '035826': "Food Lion / Nature's Promise",
+        '688267': "Stop & Shop / Giant / Nature's Promise",
+        '041190': 'ShopRite / Bowl & Basket / Wholesome Pantry',
+        '874875': 'Sprouts Farmers Market',
+        '646670': 'Sprouts Farmers Market',
+        '070038': 'WinCo Foods',
+        '020735': 'Save A Lot / Coburn Farms',
+        '036800': 'Food Club / Full Circle (Topco)',
+        '072036': 'Clover Valley (Dollar General)',
+        '041735': 'Price Chopper / Market 32',
+        '041380': 'Schnucks Brand',
+        '070253': 'Our Family / SpartanNash',
+        // Beverages, Sparkling Water & Energy
+        '049000': 'Coca-Cola',
+        '49000': 'Coca-Cola',
+        '012000': 'PepsiCo',
+        '12000': 'PepsiCo',
+        '052000': 'Gatorade (PepsiCo)',
+        '078000': 'Keurig Dr Pepper / 7UP / Canada Dry',
+        '071537': 'Polar Beverages',
+        '71537': 'Polar Beverages',
+        '073360': 'LaCroix Sparkling Water',
+        '819215': 'Waterloo Sparkling Water',
+        '081921': 'Waterloo Sparkling Water',
+        '856416': 'Spindrift Sparkling Water',
+        '810003': 'Liquid Death',
+        '889392': 'Celsius Energy',
+        '810169': 'GHOST Lifestyle / Energy',
+        '070847': 'Monster Energy',
+        '611269': 'Red Bull',
+        '025000': 'Minute Maid / Simply Beverages',
+        '048500': 'Tropicana',
+        '031200': 'Ocean Spray',
+        '041800': "Welch's",
+        // Dairy, Plant Milks & Eggs
+        '818290': 'Chobani',
+        '036632': 'Danone / Dannon / Oikos / Silk',
+        '025293': 'Silk / So Delicious (Danone)',
+        '070470': 'Yoplait (General Mills)',
+        '190646': 'Oatly',
+        '852980': 'Califia Farms',
+        '041570': 'Blue Diamond / Almond Breeze',
+        '811620': 'Fairlife',
+        '742365': 'Horizon Organic',
+        '041383': 'Lactaid',
+        '046100': 'Sargento Cheese',
+        '072830': 'Tillamook Dairy',
+        '078354': 'Cabot Creamery',
+        '034500': "Land O'Lakes",
+        '767707': 'Kerrygold',
+        '073420': 'Daisy Brand',
+        '858899': 'Vital Farms Pasture-Raised',
+        '715141': "Eggland's Best",
+        // Cereals, Grains, Snacks & Bakery
+        '016000': 'General Mills',
+        '16000': 'General Mills',
+        '732153': 'Epic Provisions (General Mills)',
+        '073215': 'Epic Provisions (General Mills)',
+        '038000': "Kellogg's / WK Kellogg",
+        '38000': "Kellogg's / WK Kellogg",
+        '884912': 'Post Consumer Brands',
+        '030000': 'Quaker Oats',
+        '028400': 'Frito-Lay',
+        '28400': 'Frito-Lay',
+        '044000': 'Nabisco / Mondelēz',
+        '44000': 'Nabisco / Mondelēz',
+        '024100': 'Cheez-It / Keebler / Kellanova',
+        '014100': 'Pepperidge Farm / Goldfish',
+        '072250': "Flowers Foods (Nature's Own / Wonder / Dave's Killer Bread)",
+        '72250': "Flowers Foods (Nature's Own / Wonder)",
+        '013764': "Dave's Killer Bread",
+        '048121': "Thomas' / Arnold / Oroweat / Entenmann's (Bimbo Bakeries)",
+        '072945': 'Sara Lee / Bimbo Bakeries',
+        '853608': 'Canyon Bakehouse Gluten-Free',
+        '888109': 'Hostess Brands',
+        '088810': 'Hostess Brands',
+        '024300': 'Little Debbie (McKee Foods)',
+        '039978': "Bob's Red Mill",
+        '071012': 'King Arthur Baking Co.',
+        '018000': 'Pillsbury / General Mills',
+        '852697': 'KIND Snacks',
+        '722252': 'Clif Bar',
+        '857777': 'RXBAR',
+        // Pantry, Pasta, Sauces, Soups & Condiments
+        '051000': "Campbell's / Prego / Pace",
+        '013000': 'Kraft Heinz',
+        '021000': 'Kraft Foods',
+        '076808': 'Barilla Pasta & Sauces',
+        '747479': "Rao's Homemade",
+        '024094': 'De Cecco Pasta',
+        '036200': 'Ragu / Bertolli',
+        '051500': "J.M. Smucker / Jif",
+        '037600': 'Hormel Foods / Skippy / Planters',
+        '052100': 'McCormick & Co.',
+        '041500': "French's / Frank's RedHot (McCormick)",
+        '048001': "Hellmann's / Best Foods / Knorr (Unilever)",
+        '071100': 'Hidden Valley Ranch',
+        '041335': "Ken's Steak House",
+        '020662': "Newman's Own",
+        '039400': "Bush's Best Beans",
+        '041331': 'Goya Foods',
+        '046000': 'Old El Paso',
+        '073731': 'Mission Foods',
+        '027000': "Conagra Brands (Hunt's / Healthy Choice / Marie Callender's / Bird's Eye)",
+        '028000': "Nestlé / Stouffer's / DiGiorno",
+        '034000': "Hershey's",
+        '040000': 'Mars Wrigley / Ben\'s Original',
+        '013562': "Annie's Homegrown",
+        '042272': "Amy's Kitchen",
+        // Meat, Deli, Produce & Infant Nutrition
+        '023700': 'Tyson Foods / Jimmy Dean / Hillshire Farm',
+        '044500': 'Hillshire Farm / Ball Park',
+        '044700': 'Oscar Mayer',
+        '070247': 'Smithfield Foods',
+        '072745': 'Perdue Farms',
+        '042421': "Boar's Head Provisions",
+        '025317': 'Applegate Naturals',
+        '042222': 'Butterball',
+        '071430': 'Dole Fresh Vegetables & Salads',
+        '071279': 'Fresh Express Salads',
+        '032601': 'Earthbound Farm Organic',
+        '732913': 'Taylor Farms',
+        '078783': 'Grimmway Farms / Cal-Organic',
+        '033383': 'Produce Marketing Association (Standard Fresh Produce)',
+        '40822': 'Sabra Dipping Co.',
+        '040822': 'Sabra Dipping Co.',
+        '080000': 'StarKist Seafood',
+        '086600': 'Bumble Bee Seafoods',
+        '048000': 'Chicken of the Sea',
+        '015000': 'Gerber Baby & Toddler Nutrition',
+        '052200': 'Beech-Nut Baby Nutrition',
+        '852697': 'Happy Baby Organics',
+        '070074': 'Similac (Abbott Nutrition)',
+        '30087': 'Enfamil (Reckitt / Mead Johnson)',
+        '030087': 'Enfamil (Reckitt / Mead Johnson)'
+      };
+              for (const [prefix, mappedBrand] of Object.entries(GS1_DIRECTORY).sort((a, b) => b[0].length - a[0].length)) {
                 if (code.startsWith(prefix) || ('0' + code).startsWith(prefix)) {
                   brandName = mappedBrand;
                   if (productName.startsWith('Retail Grocery Item')) {
@@ -20872,7 +21045,7 @@
                     <span class="font-mono text-white">${data.lotCode}</span>
                   </div>
                   <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${data.lotAudit && data.lotAudit.isMatch === true ? 'bg-rose-500 text-white' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
-                    ${data.lotAudit ? (data.lotAudit.isMatch === true ? 'Recalled Batch' : 'Safe Batch') : 'Visual Stamp'}
+                    ${data.lotAudit ? (data.lotAudit.isMatch === true ? 'Recalled Batch' : 'Outside Recall Window') : 'Visual Stamp'}
                   </span>
                 </div>
               ` : ''}
@@ -20973,7 +21146,7 @@
               <strong class="text-teal-300">Official Status:</strong> ${data.terminatedNotice.reason || 'Past voluntary recall officially resolved.'}
             </p>
             <div class="mt-2 p-2 rounded-lg bg-teal-950/40 border border-teal-800/40 text-[11px] text-teal-200">
-              ${UI_ICONS.check} <strong>Store Verification:</strong> The historical lot batch associated with this notice was officially closed out. Current grocery store inventory is cleared and safe to purchase.
+              ${UI_ICONS.check} <strong>Store Verification:</strong> The historical lot batch associated with this notice was officially closed out by the FDA and falls outside active recall windows.
             </div>
           </div>
         `;
@@ -21022,7 +21195,7 @@
       let allergenBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
       let allergenBadgeText = 'Cleared';
       let allergenSubtextClass = 'text-emerald-300';
-      let allergenSummaryText = `0 Conflicts • Safe for All Profiles (${familyProfiles.length} Screened)`;
+      let allergenSummaryText = `0 Listed Conflicts • No Profile Matches (${familyProfiles.length} Screened)`;
       let allergenDrawerContent = '';
 
       if (isPlusActive && hasFamilyMatches) {
@@ -21034,7 +21207,7 @@
         allergenBadgeText = `${data.familyMatches.length} Alert${data.familyMatches.length > 1 ? 's' : ''}`;
         allergenSubtextClass = 'text-amber-200';
         const conflictNames = data.familyMatches.map(m => m.name).join(', ');
-        allergenSummaryText = `Unsafe for: ${conflictNames}`;
+        allergenSummaryText = `Allergen Match: ${conflictNames}`;
 
         allergenDrawerContent = `
           <div class="space-y-3 bg-slate-950/80 rounded-xl p-3 border border-amber-500/30 text-xs">
@@ -21170,7 +21343,7 @@
       let additiveIconBgClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
       let additiveIcon = UI_ICONS.checkCircle;
       let additiveBadgeClass = 'px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-      let additiveBadgeText = 'Clean';
+      let additiveBadgeText = '0 Flagged';
       let additiveSubtextClass = 'text-emerald-300';
       let additiveSummaryText = 'Zero Flagged Synthetic Dyes or Scrutinized Additives';
       let additiveDrawerContent = '';
@@ -23446,7 +23619,7 @@ function renderHistory() {
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-300 border border-teal-500/30">Cleared Inventory</span>
                   </div>
                   <p class="text-xs text-teal-200/90 leading-relaxed font-medium">${(item.terminatedNotice && item.terminatedNotice.reason) || (item.recallRecord && item.recallRecord.terminatedNotice && item.recallRecord.terminatedNotice.reason) || (cardDirectRec && cardDirectRec.terminatedNotice && cardDirectRec.terminatedNotice.reason) || 'Past voluntary recall officially closed and terminated by the FDA. Current store inventory is unaffected and cleared.'}</p>
-                  <p class="text-[10px] text-slate-400 pt-1 border-t border-teal-900/40">Verified: Official FDA records confirm this recall is closed out. Current inventory is safe.</p>
+                  <p class="text-[10px] text-slate-400 pt-1 border-t border-teal-900/40">Verified: Official FDA records confirm this historical notice is closed out and outside active enforcement windows.</p>
                 </div>
               ` : ''}
 
@@ -23507,7 +23680,7 @@ function renderHistory() {
                   </div>
                 ` : `
                   <div class="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs">
-                    ✓ Clean formulation. Zero synthetic petroleum dyes, Titanium Dioxide, or nitrites detected.
+                    ✓ 0 Flagged Additives: Zero synthetic petroleum dyes, Titanium Dioxide, or nitrites listed.
                   </div>
                 `) : (item.detectedAdditives && item.detectedAdditives.length > 0 ? `
                   <div class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/40 space-y-2">
@@ -23527,7 +23700,7 @@ function renderHistory() {
                   </div>
                 ` : `
                   <div class="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-xs">
-                    ✓ Clean formulation. Zero synthetic petroleum dyes, Titanium Dioxide, or nitrites detected.
+                    ✓ 0 Flagged Additives: Zero synthetic petroleum dyes, Titanium Dioxide, or nitrites listed.
                   </div>
                 `)}
               </div>
@@ -25759,7 +25932,7 @@ function renderHistory() {
       }
 
       if (batchImportBtnText) {
-        batchImportBtnText.textContent = `Add ${latestAuditedReceiptItems.filter(i => i.status !== 'recalled').length} Safe Items to 60-Day Pantry Shield`;
+        batchImportBtnText.textContent = `Add ${latestAuditedReceiptItems.filter(i => i.status !== 'recalled').length} Cleared Items to 60-Day Pantry Shield`;
       }
     }
 

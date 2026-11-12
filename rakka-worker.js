@@ -51,6 +51,57 @@ const RATE_LIMIT_CONFIG = {
   'contribute-ocr': 10   // 10 req/min per IP for community ingredient OCR
 };
 
+
+function expandUpcEToUpcAWorker(rawUpcE) {
+  const digits = String(rawUpcE || '').replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  const ns = digits[0];
+  if (ns !== '0' && ns !== '1') return null;
+  const d1 = digits[1], d2 = digits[2], d3 = digits[3], d4 = digits[4], d5 = digits[5], d6 = digits[6], check = digits[7];
+  let mfg = '', item = '';
+  if (d6 === '0' || d6 === '1' || d6 === '2') {
+    mfg = d1 + d2 + d6 + '00';
+    item = '00' + d3 + d4 + d5;
+  } else if (d6 === '3') {
+    mfg = d1 + d2 + d3 + '00';
+    item = '000' + d4 + d5;
+  } else if (d6 === '4') {
+    mfg = d1 + d2 + d3 + d4 + '0';
+    item = '0000' + d5;
+  } else {
+    mfg = d1 + d2 + d3 + d4 + d5;
+    item = '0000' + d6;
+  }
+  return ns + mfg + item + check;
+}
+
+function getNormalizedBarcodeVariants(cleanUpc) {
+  const codes = new Set([cleanUpc]);
+  const stripped = cleanUpc.replace(/^0+/, '');
+  if (stripped.length >= 6) codes.add(stripped);
+  if (cleanUpc.length === 8) {
+    const expanded = expandUpcEToUpcAWorker(cleanUpc);
+    if (expanded) {
+      codes.add(expanded);
+      codes.add('0' + expanded);
+    }
+  }
+  if (cleanUpc.length <= 12) {
+    const p12 = cleanUpc.padStart(12, '0');
+    const p13 = cleanUpc.padStart(13, '0');
+    codes.add(p12);
+    codes.add(p13);
+  }
+  if (cleanUpc.length === 13 && cleanUpc.startsWith('0')) {
+    codes.add(cleanUpc.substring(1));
+  }
+  if (cleanUpc.length === 14 && cleanUpc.startsWith('00')) {
+    codes.add(cleanUpc.substring(2));
+    codes.add(cleanUpc.substring(1));
+  }
+  return [...codes];
+}
+
 function getClientIp(request) {
   return (
     request.headers.get('CF-Connecting-IP') ||
@@ -470,11 +521,16 @@ export default {
         return new Response(JSON.stringify({ error: 'Valid barcode digits required' }), { status: 400, headers: corsHeaders });
       }
 
-      // Tier 1: Check Cloudflare KV Community Cache (0ms)
+      const uniqueCodes = getNormalizedBarcodeVariants(cleanUpc);
+
+      // Tier 1: Check Cloudflare KV Community Cache across all normalized barcode variants (~15ms)
       if (env && env.RAKKA_COMMUNITY_DB) {
         try {
-          const cached = await env.RAKKA_COMMUNITY_DB.get(`upc:${cleanUpc}`, { type: 'json' });
-          if (cached && cached.name && !cached.name.startsWith('Retail Grocery Item')) {
+          const kvResults = await Promise.all(
+            uniqueCodes.map(codeVar => env.RAKKA_COMMUNITY_DB.get(`upc:${codeVar}`, { type: 'json' }).catch(() => null))
+          );
+          const cached = kvResults.find(item => item && item.name && !item.name.startsWith('Retail Grocery Item'));
+          if (cached) {
             return new Response(JSON.stringify({
               found: true,
               source: 'community_cache',
@@ -486,14 +542,7 @@ export default {
         }
       }
 
-      // Tier 2: Multi-Cluster Open Food Facts Query
-      const queryCodes = [cleanUpc];
-      if (cleanUpc.length === 11) queryCodes.push('0' + cleanUpc, '00' + cleanUpc);
-      if (cleanUpc.length === 12) queryCodes.push('0' + cleanUpc);
-      if (cleanUpc.length === 13 && cleanUpc.startsWith('0')) queryCodes.push(cleanUpc.substring(1));
-      if (cleanUpc.length === 8) queryCodes.push(cleanUpc.padStart(12, '0'), cleanUpc.padStart(13, '0'));
-
-      const uniqueCodes = [...new Set(queryCodes)];
+      // Tier 2: Multi-Cluster Open Food Facts Query (World + US Mirror)
       let offProduct = null;
 
       try {
@@ -525,9 +574,13 @@ export default {
             allergens: offProduct.allergens_tags || []
           };
 
-          // Save to KV Community DB if ingredients exist
-          if (env && env.RAKKA_COMMUNITY_DB && ingredients) {
-            ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(`upc:${cleanUpc}`, JSON.stringify(resolved)));
+          // Dual-index in KV Community DB whenever a verified product name is resolved
+          if (env && env.RAKKA_COMMUNITY_DB && !name.startsWith('Retail Grocery Item')) {
+            const base12 = cleanUpc.length === 13 && cleanUpc.startsWith('0') ? cleanUpc.substring(1) : cleanUpc.padStart(12, '0');
+            ctx.waitUntil(Promise.all([
+              env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved)),
+              env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved))
+            ]));
           }
 
           return new Response(JSON.stringify({
@@ -538,30 +591,37 @@ export default {
         }
       }
 
-      // Tier 3: USDA FoodData Central Query
+      // Tier 3: USDA FoodData Central Multi-Variant Query
       try {
         const usdaKey = (env && env.USDA_API_KEY) || 'DEMO_KEY';
-        const usdaRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(cleanUpc)}&dataType=Branded&pageSize=5&api_key=${usdaKey}`);
+        const usdaQueryStr = uniqueCodes.slice(0, 3).join(' ');
+        const usdaRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(usdaQueryStr)}&dataType=Branded&pageSize=8&api_key=${usdaKey}`);
         if (usdaRes.ok) {
           const usdaData = await usdaRes.json();
           if (usdaData && Array.isArray(usdaData.foods)) {
             const match = usdaData.foods.find(f => {
               const gtin = String(f.gtinUpc || '').replace(/\D/g, '');
-              return gtin === cleanUpc || gtin.padStart(12, '0') === cleanUpc.padStart(12, '0') || gtin.padStart(13, '0') === cleanUpc.padStart(13, '0');
+              return uniqueCodes.includes(gtin) || gtin.padStart(12, '0') === cleanUpc.padStart(12, '0') || gtin.padStart(13, '0') === cleanUpc.padStart(13, '0');
             });
 
             if (match && match.description) {
+              const rawBrand = match.brandName || match.brandOwner || 'Grocery Brand';
+              const cleanBrand = rawBrand.replace(/,?\s*(Inc\.?|LLC|Corporation|Corp\.?|Co\.?|Ltd\.?)\b/gi, '').trim();
               const resolved = {
                 upc: cleanUpc,
                 name: match.description,
-                brand: match.brandOwner || match.brandName || 'Grocery Brand',
+                brand: cleanBrand || 'Grocery Brand',
                 ingredients: match.ingredients || '',
                 additives: [],
                 allergens: []
               };
 
-              if (env && env.RAKKA_COMMUNITY_DB && match.ingredients) {
-                ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(`upc:${cleanUpc}`, JSON.stringify(resolved)));
+              if (env && env.RAKKA_COMMUNITY_DB) {
+                const base12 = cleanUpc.length === 13 && cleanUpc.startsWith('0') ? cleanUpc.substring(1) : cleanUpc.padStart(12, '0');
+                ctx.waitUntil(Promise.all([
+                  env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved)),
+                  env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved))
+                ]));
               }
 
               return new Response(JSON.stringify({
@@ -576,51 +636,189 @@ export default {
 
       // Tier 4: GS1 Manufacturer Prefix Directory
       const GS1_DIRECTORY = {
+        // Aldi Private Labels
         '406936': "Mama Cozzi's Pizza Kitchen (Aldi)",
-        '406145': "Clancy's / Aldi",
-        '406': "Mama Cozzi's / Clancy's (Aldi)",
-        '409910': "Bake Shop / Simply Nature (Aldi)",
-        '4099': "Bake Shop / Simply Nature (Aldi)",
-        '041498': "Aldi Brand (Mama Cozzi's / Clancy's / Millville)",
-        '41498': "Aldi Brand (Mama Cozzi's / Clancy's / Millville)",
+        '406145': "Clancy's / Simply Nature (Aldi)",
+        '406146': "Specially Selected / Aldi",
+        '406200': "Aldi Private Label",
+        '406': "Aldi Brand (Mama Cozzi's / Clancy's)",
+        '408860': "Aldi Brand (Millville / Friendly Farms)",
+        '409910': "Bake Shop / Simply Nature / Millville (Aldi)",
+        '409920': "Park Street Deli / Kirkwood (Aldi)",
+        '4099': "Aldi Brand (Simply Nature / Millville)",
+        '041498': "Aldi Brand (Friendly Farms / Happy Farms / L'oven Fresh)",
+        '41498': "Aldi Brand (Friendly Farms / Happy Farms / L'oven Fresh)",
+        // Major US Supermarket Private Labels
+        '078742': 'Great Value (Walmart)',
+        '78742': 'Great Value (Walmart)',
+        '681131': 'Marketside / Sam\'s Choice (Walmart)',
+        '068113': 'Marketside / Sam\'s Choice (Walmart)',
+        '193968': "Member's Mark (Sam's Club)",
+        '085239': 'Good & Gather / Favorite Day (Target)',
+        '85239': 'Good & Gather / Favorite Day (Target)',
+        '049200': 'Market Pantry (Target)',
+        '011110': 'Kroger / Simple Truth / Private Selection',
+        '11110': 'Kroger / Simple Truth / Private Selection',
+        '096619': 'Kirkland Signature (Costco)',
+        '96619': 'Kirkland Signature (Costco)',
+        '099482': '365 Whole Foods Market',
+        '99482': '365 Whole Foods Market',
+        '009948': '365 Whole Foods Market',
+        '0000': "Trader Joe's",
+        '886926': 'Meijer Brand',
+        '708820': 'Meijer Brand',
+        '713733': 'Meijer / True Goodness',
+        '719283': "Meijer / Frederik's",
+        '041220': 'H-E-B / Central Market',
+        '41220': 'H-E-B / Central Market',
+        '041415': 'Publix / GreenWise',
+        '41415': 'Publix / GreenWise',
+        '021130': 'Signature SELECT / O Organics / Lucerne (Safeway / Albertsons)',
+        '21130': 'Signature SELECT / O Organics (Safeway / Albertsons)',
+        '077890': 'Wegmans Brand',
+        '77890': 'Wegmans Brand',
+        '030034': "Giant Eagle / Nature's Basket",
+        '30034': "Giant Eagle / Nature's Basket",
+        '075450': 'Hy-Vee Brand',
+        '75450': 'Hy-Vee Brand',
+        '035826': "Food Lion / Nature's Promise",
+        '688267': "Stop & Shop / Giant / Nature's Promise",
+        '041190': 'ShopRite / Bowl & Basket / Wholesome Pantry',
+        '874875': 'Sprouts Farmers Market',
+        '646670': 'Sprouts Farmers Market',
+        '070038': 'WinCo Foods',
+        '020735': 'Save A Lot / Coburn Farms',
+        '036800': 'Food Club / Full Circle (Topco)',
+        '072036': 'Clover Valley (Dollar General)',
+        '041735': 'Price Chopper / Market 32',
+        '041380': 'Schnucks Brand',
+        '070253': 'Our Family / SpartanNash',
+        // Beverages, Sparkling Water & Energy
         '049000': 'Coca-Cola',
         '49000': 'Coca-Cola',
-        '072250': 'Flowers Foods (Wonder Bread)',
-        '72250': 'Flowers Foods (Wonder Bread)',
+        '012000': 'PepsiCo',
+        '12000': 'PepsiCo',
+        '052000': 'Gatorade (PepsiCo)',
+        '078000': 'Keurig Dr Pepper / 7UP / Canada Dry',
+        '071537': 'Polar Beverages',
+        '71537': 'Polar Beverages',
+        '073360': 'LaCroix Sparkling Water',
+        '819215': 'Waterloo Sparkling Water',
+        '081921': 'Waterloo Sparkling Water',
+        '856416': 'Spindrift Sparkling Water',
+        '810003': 'Liquid Death',
+        '889392': 'Celsius Energy',
+        '810169': 'GHOST Lifestyle / Energy',
+        '070847': 'Monster Energy',
+        '611269': 'Red Bull',
+        '025000': 'Minute Maid / Simply Beverages',
+        '048500': 'Tropicana',
+        '031200': 'Ocean Spray',
+        '041800': "Welch's",
+        // Dairy, Plant Milks & Eggs
+        '818290': 'Chobani',
+        '036632': 'Danone / Dannon / Oikos / Silk',
+        '025293': 'Silk / So Delicious (Danone)',
+        '070470': 'Yoplait (General Mills)',
+        '190646': 'Oatly',
+        '852980': 'Califia Farms',
+        '041570': 'Blue Diamond / Almond Breeze',
+        '811620': 'Fairlife',
+        '742365': 'Horizon Organic',
+        '041383': 'Lactaid',
+        '046100': 'Sargento Cheese',
+        '072830': 'Tillamook Dairy',
+        '078354': 'Cabot Creamery',
+        '034500': "Land O'Lakes",
+        '767707': 'Kerrygold',
+        '073420': 'Daisy Brand',
+        '858899': 'Vital Farms Pasture-Raised',
+        '715141': "Eggland's Best",
+        // Cereals, Grains, Snacks & Bakery
+        '016000': 'General Mills',
+        '16000': 'General Mills',
+        '732153': 'Epic Provisions (General Mills)',
+        '073215': 'Epic Provisions (General Mills)',
+        '038000': "Kellogg's / WK Kellogg",
+        '38000': "Kellogg's / WK Kellogg",
+        '884912': 'Post Consumer Brands',
+        '030000': 'Quaker Oats',
+        '028400': 'Frito-Lay',
+        '28400': 'Frito-Lay',
+        '044000': 'Nabisco / Mondelēz',
+        '44000': 'Nabisco / Mondelēz',
+        '024100': 'Cheez-It / Keebler / Kellanova',
+        '014100': 'Pepperidge Farm / Goldfish',
+        '072250': "Flowers Foods (Nature's Own / Wonder / Dave's Killer Bread)",
+        '72250': "Flowers Foods (Nature's Own / Wonder)",
+        '013764': "Dave's Killer Bread",
+        '048121': "Thomas' / Arnold / Oroweat / Entenmann's (Bimbo Bakeries)",
+        '072945': 'Sara Lee / Bimbo Bakeries',
+        '853608': 'Canyon Bakehouse Gluten-Free',
         '888109': 'Hostess Brands',
         '088810': 'Hostess Brands',
-        '051000': "Campbell's Soup Co.",
-        '051500': 'J.M. Smucker Co.',
-        '037600': 'Hormel Foods / Skippy',
-        '044000': 'Nabisco / Mondelēz',
-        '028000': 'Nestlé / Ferrero',
-        '034000': "Hershey's",
-        '040000': 'Mars Wrigley',
-        '028400': 'Frito-Lay',
-        '012000': 'PepsiCo',
-        '016000': 'General Mills',
-        '038000': "Kellogg's",
-        '078742': 'Great Value (Walmart)',
-        '085239': 'Good & Gather (Target)',
-        '096619': 'Kirkland Signature (Costco)',
-        '099482': '365 Whole Foods Market',
-        '041220': 'H-E-B Brand (Texas)',
-        '041415': 'Publix Brand',
-        '021130': 'Signature SELECT (Safeway)',
-        '077890': 'Wegmans Brand',
-        '030034': 'Giant Eagle Brand',
-        '024300': 'Little Debbie / McKee Foods',
-        '014100': 'Pepperidge Farm',
-        '024100': 'Cheez-It / Keebler',
-        '041500': "French's / McCormick",
-        '048001': "Hellmann's / Unilever",
+        '024300': 'Little Debbie (McKee Foods)',
+        '039978': "Bob's Red Mill",
+        '071012': 'King Arthur Baking Co.',
+        '018000': 'Pillsbury / General Mills',
+        '852697': 'KIND Snacks',
+        '722252': 'Clif Bar',
+        '857777': 'RXBAR',
+        // Pantry, Pasta, Sauces, Soups & Condiments
+        '051000': "Campbell's / Prego / Pace",
+        '013000': 'Kraft Heinz',
+        '021000': 'Kraft Foods',
+        '076808': 'Barilla Pasta & Sauces',
+        '747479': "Rao's Homemade",
+        '024094': 'De Cecco Pasta',
+        '036200': 'Ragu / Bertolli',
+        '051500': "J.M. Smucker / Jif",
+        '037600': 'Hormel Foods / Skippy / Planters',
+        '052100': 'McCormick & Co.',
+        '041500': "French's / Frank's RedHot (McCormick)",
+        '048001': "Hellmann's / Best Foods / Knorr (Unilever)",
         '071100': 'Hidden Valley Ranch',
-        '076808': 'Barilla Pasta',
-        '052000': 'Gatorade / PepsiCo',
-        '036800': 'TopCare / Food Club'
+        '041335': "Ken's Steak House",
+        '020662': "Newman's Own",
+        '039400': "Bush's Best Beans",
+        '041331': 'Goya Foods',
+        '046000': 'Old El Paso',
+        '073731': 'Mission Foods',
+        '027000': "Conagra Brands (Hunt's / Healthy Choice / Marie Callender's / Bird's Eye)",
+        '028000': "Nestlé / Stouffer's / DiGiorno",
+        '034000': "Hershey's",
+        '040000': 'Mars Wrigley / Ben\'s Original',
+        '013562': "Annie's Homegrown",
+        '042272': "Amy's Kitchen",
+        // Meat, Deli, Produce & Infant Nutrition
+        '023700': 'Tyson Foods / Jimmy Dean / Hillshire Farm',
+        '044500': 'Hillshire Farm / Ball Park',
+        '044700': 'Oscar Mayer',
+        '070247': 'Smithfield Foods',
+        '072745': 'Perdue Farms',
+        '042421': "Boar's Head Provisions",
+        '025317': 'Applegate Naturals',
+        '042222': 'Butterball',
+        '071430': 'Dole Fresh Vegetables & Salads',
+        '071279': 'Fresh Express Salads',
+        '032601': 'Earthbound Farm Organic',
+        '732913': 'Taylor Farms',
+        '078783': 'Grimmway Farms / Cal-Organic',
+        '033383': 'Produce Marketing Association (Standard Fresh Produce)',
+        '40822': 'Sabra Dipping Co.',
+        '040822': 'Sabra Dipping Co.',
+        '080000': 'StarKist Seafood',
+        '086600': 'Bumble Bee Seafoods',
+        '048000': 'Chicken of the Sea',
+        '015000': 'Gerber Baby & Toddler Nutrition',
+        '052200': 'Beech-Nut Baby Nutrition',
+        '852697': 'Happy Baby Organics',
+        '070074': 'Similac (Abbott Nutrition)',
+        '30087': 'Enfamil (Reckitt / Mead Johnson)',
+        '030087': 'Enfamil (Reckitt / Mead Johnson)'
       };
 
-      for (const [prefix, mappedBrand] of Object.entries(GS1_DIRECTORY)) {
+      for (const [prefix, mappedBrand] of Object.entries(GS1_DIRECTORY).sort((a, b) => b[0].length - a[0].length)) {
         if (cleanUpc.startsWith(prefix) || ('0' + cleanUpc).startsWith(prefix)) {
           return new Response(JSON.stringify({
             found: true,
@@ -774,7 +972,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
   "lotAudit": {
     "hasRecallContext": true, // true if product brand/item has active or notable recall records
     "isMatch": true, // true if stamped date is within recall window, false if safe/outside window, null if date not visible
-    "verdictTitle": "Short bold badge (e.g. 'CONFIRMED RECALL MATCH', 'CLEARED - SAFE BATCH', or 'RECALL ON RECORD - CHECK STAMP')",
+    "verdictTitle": "Short bold badge (e.g. 'CONFIRMED RECALL MATCH', 'CLEARED - OUTSIDE RECALL WINDOW', or 'RECALL ON RECORD - CHECK STAMP')",
     "explanation": "Clear 2-sentence explanation of whether this specific bag/lot is affected based on the stamped date.",
     "action": "Immediate directive for the consumer"
   }
@@ -897,9 +1095,9 @@ CRITICAL RULES FOR RECALL WINDOW & LOT VERIFICATION:
    - Compare the package's stamped date and lot code strictly against this specific product's defined recall parameters: "${expectedLots}".
    - If the recall defines an affected date window (e.g., "between [Start Date] and [End Date]"):
      * If the stamped Best-By date falls ON or BETWEEN the start and end dates (or matches the affected lot code): The package is a direct match and RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
-     * If the stamped Best-By date is strictly AFTER the recall window end date (e.g., produced after the contaminated period ended or facility was sanitized): The package is CLEARED / SAFE (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
+     * If the stamped Best-By date is strictly AFTER the recall window end date (e.g., produced after the contaminated period ended or facility was sanitized): The package is CLEARED / OUTSIDE RECALL WINDOW (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
      * If the recall specifies "on or before [Date]" (or dates prior to a cutoff), any stamped date on or before that cutoff is RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
-   - If the stamped date or lot code directly matches the recalled batch parameters, you MUST mark isMatch: true and severity: "danger". Only clear as safe if the stamped date is verified to be outside/after the contaminated recall window.
+   - If the stamped date or lot code directly matches the recalled batch parameters, you MUST mark isMatch: true and severity: "danger". Only mark as cleared (outside recall window) if the stamped date is verified to be outside/after the contaminated recall window.
 2. STAMP READABILITY:
    - If the stamped date is completely illegible or cut off, set isMatch: null, severity: "warning", verdictTitle: "UNCLEAR STAMP".
 
@@ -909,8 +1107,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
   "isMatch": false, // boolean: true ONLY if within recall dates/lots, false if outside recall window / safe, null if illegible
   "verdictTitle": "CLEARED - OUTSIDE RECALL WINDOW", // or 'CONFIRMED RECALL MATCH' or 'UNCLEAR STAMP'
   "severity": "safe", // 'safe' if cleared/outside window, 'danger' if confirmed match, 'warning' if unclear
-  "explanation": "2-3 clear sentences explaining why this package is safe or recalled based strictly on whether its stamped date falls inside or outside the stated recall window.",
-  "action": "Safe to consume as directed, or discard/return if recalled."
+  "explanation": "2-3 clear sentences explaining whether the stamped date falls inside or outside the stated federal recall window.",
+  "action": "Stamped date falls outside the stated federal recall window (always verify physical packaging), or discard/return immediately if recalled."
 }`;
 
         // Exact 1:1 Implementation Model of the Battle-Tested Receipt Scanner
