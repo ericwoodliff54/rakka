@@ -81,6 +81,10 @@
       width: 100% !important;
       height: 100% !important;
       max-height: 350px !important;
+      transition: filter 0.2s ease;
+    }
+    #reader.is-paused video {
+      filter: blur(8px) brightness(0.45) !important;
     }
     #reader__scan_region {
       border-radius: 0.75rem;
@@ -19451,6 +19455,8 @@
           if (typeof html5QrCode.resume === 'function') {
             html5QrCode.resume();
             isCameraPaused = false;
+            const rc = document.getElementById('reader');
+            if (rc) rc.classList.remove('is-paused');
             cameraBtnText.textContent = "Stop Camera";
             toggleCameraBtn.classList.replace('from-cyan-600', 'from-slate-700');
             toggleCameraBtn.classList.replace('to-cyan-500', 'to-slate-800');
@@ -19706,6 +19712,8 @@
           if (typeof html5QrCode.pause === 'function') {
             html5QrCode.pause(true); // pause decoding & freeze/pause video stream to save CPU & battery
             isCameraPaused = true;
+            const rc = document.getElementById('reader');
+            if (rc) rc.classList.add('is-paused');
             if (cameraBtnText) cameraBtnText.textContent = "Resume Scanner";
             if (toggleCameraBtn) {
               toggleCameraBtn.classList.replace('from-slate-700', 'from-cyan-600');
@@ -19746,6 +19754,7 @@
       // Clean out DOM elements in reader container and reset instance so next start is fresh
       const readerElem = document.getElementById('reader');
       if (readerElem) {
+        readerElem.classList.remove('is-paused');
         readerElem.innerHTML = '';
       }
       html5QrCode = null;
@@ -20008,6 +20017,8 @@
           if (typeof html5QrCode.resume === 'function') {
             html5QrCode.resume();
             isCameraPaused = false;
+            const rc = document.getElementById('reader');
+            if (rc) rc.classList.remove('is-paused');
             if (cameraBtnText) cameraBtnText.textContent = "Stop Camera";
             if (toggleCameraBtn) {
               toggleCameraBtn.classList.replace('from-cyan-600', 'from-slate-700');
@@ -24680,7 +24691,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=92')
+        navigator.serviceWorker.register('./sw.js?v=93')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
