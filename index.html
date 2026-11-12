@@ -96,6 +96,35 @@
     #reader__dashboard {
       display: none !important;
     }
+    #reader__status_span,
+    #reader > div:not(#reader__scan_region):not(#reader__dashboard) {
+      background: rgba(2, 6, 23, 0.85) !important;
+      color: #f8fafc !important;
+      padding: 4px 12px !important;
+      border-radius: 9999px !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(56, 189, 248, 0.35) !important;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .watchlist-filter-chip {
+      background: rgba(15, 23, 42, 0.85);
+      color: #cbd5e1;
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      transition: all 0.15s ease;
+    }
+    .watchlist-filter-chip.active {
+      background: linear-gradient(135deg, #0891b2, #14b8a6);
+      color: #ffffff;
+      border-color: rgba(45, 212, 191, 0.7);
+      box-shadow: 0 2px 10px rgba(20, 184, 166, 0.25);
+    }
+    html.theme-light .watchlist-filter-chip:not(.active) {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
 
     button, label, input, select {
       touch-action: manipulation;
@@ -3485,9 +3514,13 @@
           <button id="clearWatchlistSearchBtn" type="button" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-sm font-bold w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-slate-800 transition active:scale-95" title="Clear search">✕</button>
         </div>
 
-        <!-- Search Match Count Sub-bar (Filter chips removed per user request) -->
-        <div class="flex items-center justify-between text-xs px-1">
-          <span class="text-[11px] text-slate-400">All receipts & monitored grocery items</span>
+        <!-- Quick Filter Chips & Match Count -->
+        <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
+          <div class="flex items-center gap-1.5" role="group" aria-label="Filter watchlist items">
+            <button type="button" class="watchlist-filter-chip active px-3 py-1.5 min-h-[36px] rounded-full text-xs font-bold" data-filter="all">All</button>
+            <button type="button" class="watchlist-filter-chip px-3 py-1.5 min-h-[36px] rounded-full text-xs font-bold" data-filter="recalls">Recalls</button>
+            <button type="button" class="watchlist-filter-chip px-3 py-1.5 min-h-[36px] rounded-full text-xs font-bold" data-filter="allergens">Allergens</button>
+          </div>
           <span id="watchlistMatchCount" class="hidden text-[11px] text-cyan-400 font-mono font-semibold"></span>
         </div>
       </div>
@@ -18609,6 +18642,12 @@
     const clearWatchlistSearchBtn = document.getElementById('clearWatchlistSearchBtn');
 
     if (watchlistSearchInput) {
+      watchlistSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          watchlistSearchInput.blur();
+        }
+      });
       watchlistSearchInput.addEventListener('input', (e) => {
         watchlistSearchQuery = e.target.value;
         if (clearWatchlistSearchBtn) {
@@ -19909,6 +19948,11 @@
       // Process product and allergen analysis
       try {
         await processUPC(code, 'scanner');
+        setTimeout(() => {
+          if (scannerResultContainer && !scannerResultContainer.classList.contains('hidden')) {
+            scannerResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 120);
       } catch (err) {
         console.error("Barcode processing error:", err);
       } finally {
@@ -19987,6 +20031,12 @@
     });
 
     if (recallSearchInput) {
+      recallSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          recallSearchInput.blur();
+        }
+      });
       recallSearchInput.addEventListener('input', () => {
         const q = recallSearchInput.value.trim();
         if (clearRecallSearchBtn) clearRecallSearchBtn.classList.toggle('hidden', q === '');
@@ -24559,16 +24609,29 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=89')
+        navigator.serviceWorker.register('./sw.js?v=90')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
           })
           .catch(err => console.log('SW registration error:', err));
       });
+      let swRefreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        // Automatically activate new layout when service worker activates
-        console.log('Rakka SW updated, refreshing view');
+        if (swRefreshing) return;
+        console.log('Rakka SW updated');
+        if (!document.getElementById('rakkaUpdateToast')) {
+          const toast = document.createElement('button');
+          toast.id = 'rakkaUpdateToast';
+          toast.type = 'button';
+          toast.textContent = 'New update ready — Tap to refresh';
+          toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 min-h-[44px] rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 text-white text-xs font-bold shadow-xl border border-cyan-300/40 active:scale-95 transition';
+          toast.onclick = () => {
+            swRefreshing = true;
+            window.location.reload();
+          };
+          document.body.appendChild(toast);
+        }
       });
     }
   
