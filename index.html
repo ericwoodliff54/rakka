@@ -2432,6 +2432,7 @@
       <button
         type="button"
         id="tabScanner"
+        onclick="if (typeof setNavTab === 'function') setNavTab('barcodes')"
         class="nav-tab active-tab py-2.5 px-0.5 sm:px-2 min-h-[74px] sm:min-h-[80px] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black flex flex-col items-center justify-center gap-1 transition bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white shadow-lg shadow-cyan-950/60 ring-2 ring-amber-400/60 active:scale-95 relative"
         title="Barcodes - Camera UPC Scanner, Manual Entry & Search"
       >
@@ -2447,6 +2448,7 @@
       <button
         type="button"
         id="tabReceipts"
+        onclick="if (typeof setNavTab === 'function') setNavTab('receipts')"
         data-alias="tabManual"
         class="nav-tab py-2.5 px-0.5 sm:px-2 min-h-[74px] sm:min-h-[80px] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white flex flex-col items-center justify-center gap-1 transition hover:bg-slate-800/50 active:scale-95 relative"
         title="Receipts - Multi-Item Batch Grocery Receipt Auditor"
@@ -2462,6 +2464,7 @@
       <button
         type="button"
         id="tabAllergens"
+        onclick="if (typeof setNavTab === 'function') setNavTab('allergens')"
         class="nav-tab py-2.5 px-0.5 sm:px-2 min-h-[74px] sm:min-h-[80px] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white flex flex-col items-center justify-center gap-1 transition hover:bg-slate-800/50 active:scale-95 relative"
       >
         <div class="h-7 sm:h-8 flex items-center justify-center shrink-0">
@@ -2475,6 +2478,7 @@
       <button
         type="button"
         id="tabWatchlist"
+        onclick="if (typeof setNavTab === 'function') setNavTab('watchlist')"
         class="nav-tab py-2.5 px-0.5 sm:px-2 min-h-[74px] sm:min-h-[80px] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white flex flex-col items-center justify-center gap-1 transition hover:bg-slate-800/50 active:scale-95 relative"
       >
         <span id="watchlistNavRecallBadge" class="hidden absolute -top-1 right-2 min-w-[20px] h-[20px] px-1 rounded-full bg-rose-500 text-white font-black text-xs leading-none shadow-md border border-slate-900 z-10 flex items-center justify-center">0</span>
@@ -2489,6 +2493,7 @@
       <button
         type="button"
         id="tabBulletins"
+        onclick="if (typeof setNavTab === 'function') setNavTab('bulletins')"
         class="nav-tab py-2.5 px-0.5 sm:px-2 min-h-[74px] sm:min-h-[80px] rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white flex flex-col items-center justify-center gap-1 transition hover:bg-slate-800/50 active:scale-95 relative"
       >
         <div class="h-7 sm:h-8 flex items-center justify-center shrink-0">
@@ -19400,12 +19405,9 @@
     const tabBulletinsBtn = document.getElementById('tabBulletins');
     const headerSettingsBtnEl = document.getElementById('headerSettingsBtn');
 
-    if (tabScannerBtn) tabScannerBtn.addEventListener('click', () => setNavTab('barcodes'));
-    if (tabReceiptsBtn) tabReceiptsBtn.addEventListener('click', () => setNavTab('receipts'));
-    if (tabManualBtn) tabManualBtn.addEventListener('click', () => setNavTab('receipts'));
-    if (tabAllergensBtn) tabAllergensBtn.addEventListener('click', () => setNavTab('allergens'));
-    if (tabWatchlistBtn) tabWatchlistBtn.addEventListener('click', () => setNavTab('watchlist'));
-    if (tabBulletinsBtn) tabBulletinsBtn.addEventListener('click', () => setNavTab('bulletins'));
+    window.setNavTab = setNavTab;
+    // Nav tabs use direct onclick="setNavTab(...)" handlers; keep manual alias & settings gear wired
+    if (tabManualBtn && tabManualBtn !== tabReceiptsBtn) tabManualBtn.addEventListener('click', () => setNavTab('receipts'));
     if (headerSettingsBtnEl) headerSettingsBtnEl.addEventListener('click', () => setNavTab('customize'));
 
     // Camera Handlers
