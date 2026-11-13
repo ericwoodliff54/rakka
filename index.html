@@ -4123,6 +4123,36 @@
   <!-- Global Floating Toast Notification (Visible on all tabs) -->
   <div id="customizeToast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[90%] text-center text-xs font-semibold px-4 py-3 rounded-2xl border-2 border-amber-400 bg-slate-900/95 text-sky-100 shadow-2xl backdrop-blur-md"></div>
 
+  
+  <!-- DESKTOP WEBCAM CAPTURE MODAL (Used on Windows/Desktop Chrome & PWA where input[capture] opens File Explorer) -->
+  <div id="desktopWebcamModal" class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 max-w-lg w-full rounded-3xl p-5 shadow-2xl space-y-4 relative">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+          </div>
+          <h3 id="desktopWebcamTitle" class="font-display text-base font-bold text-white">Camera Capture</h3>
+        </div>
+        <button type="button" id="closeDesktopWebcamBtn" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition active:scale-95 cursor-pointer" aria-label="Close camera">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
+        <video id="desktopWebcamVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2.5">
+        <button type="button" id="captureDesktopWebcamBtn" class="flex-1 min-h-[48px] py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-base shadow-lg transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+          <span>Capture Photo</span>
+        </button>
+        <button type="button" id="fallbackDesktopUploadBtn" class="min-h-[48px] py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition active:scale-[0.98] cursor-pointer">
+          Upload File Instead
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Audio Feedback Synthesizer
     // Sleek Acoustic Sound Engine (Warm, Filtered Harmonics — Zero Harsh 8-Bit Buzzers)
@@ -25038,6 +25068,128 @@ function renderHistory() {
     // ==========================================
     // AI LOT & BEST-BY DATE AUDITOR PIPELINE
     // ==========================================
+    
+    // Desktop Webcam Capture Helper (prevents <input capture> from opening File Explorer on Windows/Chrome Desktop)
+    let activeWebcamStream = null;
+    let webcamCaptureHandler = null;
+    let webcamFallbackInput = null;
+
+    function isMobileCameraDevice() {
+      const ua = navigator.userAgent || '';
+      const isIPadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) || isIPadOS;
+    }
+
+    function dispatchCapturedFileToInput(inputEl, file) {
+      if (!inputEl || !file) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      inputEl.files = dt.files;
+      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function stopDesktopWebcam() {
+      if (activeWebcamStream) {
+        try {
+          activeWebcamStream.getTracks().forEach(t => t.stop());
+        } catch (_) {}
+        activeWebcamStream = null;
+      }
+      const vid = document.getElementById('desktopWebcamVideo');
+      if (vid) vid.srcObject = null;
+      const modal = document.getElementById('desktopWebcamModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function openCameraOrFallback(title, onCaptureFile, fallbackInputEl) {
+      if (isMobileCameraDevice() || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        if (fallbackInputEl) {
+          fallbackInputEl.value = '';
+          fallbackInputEl.click();
+        }
+        return;
+      }
+
+      const modal = document.getElementById('desktopWebcamModal');
+      const vid = document.getElementById('desktopWebcamVideo');
+      const titleEl = document.getElementById('desktopWebcamTitle');
+      if (!modal || !vid) {
+        if (fallbackInputEl) { fallbackInputEl.value = ''; fallbackInputEl.click(); }
+        return;
+      }
+
+      stopDesktopWebcam();
+      webcamCaptureHandler = onCaptureFile;
+      webcamFallbackInput = fallbackInputEl;
+      if (titleEl) titleEl.textContent = title || 'Camera Capture';
+
+      try {
+        activeWebcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        vid.srcObject = activeWebcamStream;
+        modal.classList.remove('hidden');
+      } catch (err) {
+        console.warn('Desktop webcam unavailable, falling back to file picker:', err);
+        stopDesktopWebcam();
+        if (typeof showCustomizeToast === 'function') {
+          showCustomizeToast('Camera unavailable — opening file picker.');
+        }
+        if (fallbackInputEl) {
+          fallbackInputEl.value = '';
+          fallbackInputEl.click();
+        }
+      }
+    }
+
+    (function initDesktopWebcamModal() {
+      const closeBtn = document.getElementById('closeDesktopWebcamBtn');
+      const captureBtn = document.getElementById('captureDesktopWebcamBtn');
+      const fallbackBtn = document.getElementById('fallbackDesktopUploadBtn');
+      const modal = document.getElementById('desktopWebcamModal');
+      if (closeBtn) closeBtn.addEventListener('click', stopDesktopWebcam);
+      if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) stopDesktopWebcam(); });
+      if (fallbackBtn) {
+        fallbackBtn.addEventListener('click', () => {
+          const inp = webcamFallbackInput;
+          stopDesktopWebcam();
+          if (inp) { inp.value = ''; inp.click(); }
+        });
+      }
+      if (captureBtn) {
+        captureBtn.addEventListener('click', () => {
+          const vid = document.getElementById('desktopWebcamVideo');
+          const handler = webcamCaptureHandler;
+          if (!vid || !vid.videoWidth || !vid.videoHeight) return;
+          const canvas = document.createElement('canvas');
+          canvas.width = vid.videoWidth;
+          canvas.height = vid.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(async (blob) => {
+            stopDesktopWebcam();
+            if (blob && typeof handler === 'function') {
+              const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+              await handler(file);
+            }
+          }, 'image/jpeg', 0.92);
+        });
+      }
+
+      // Intercept Lot Code label click on desktop so it opens webcam instead of File Explorer
+      const lotLabel = document.querySelector('label[for="lotCodeCameraInput"]');
+      if (lotLabel) {
+        lotLabel.addEventListener('click', (e) => {
+          if (!isMobileCameraDevice() && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+            e.preventDefault();
+            const lotInput = document.getElementById('lotCodeCameraInput');
+            openCameraOrFallback('Snap Package Date Stamp', (file) => dispatchCapturedFileToInput(lotInput, file), lotInput);
+          }
+        });
+      }
+    })();
+
     const lotAuditorModal = document.getElementById('lotAuditorModal');
     const closeLotAuditorModalBtn = document.getElementById('closeLotAuditorModalBtn');
     const lotCodeCameraInput = document.getElementById('lotCodeCameraInput');
@@ -25111,17 +25263,15 @@ function renderHistory() {
       // Directly trigger camera / file dialog so user can snap photo immediately
       const camInput = document.getElementById('lotCodeCameraInput');
       if (camInput) {
-        try {
-          camInput.click();
-        } catch (err) {
-          console.warn("Direct camera trigger error:", err);
-        }
+        openCameraOrFallback('Snap Package Date Stamp', (file) => dispatchCapturedFileToInput(camInput, file), camInput);
       }
     }
     
     if (retakeLotCodePhotoBtn) {
       retakeLotCodePhotoBtn.addEventListener('click', () => {
-        if (lotCodeCameraInput) lotCodeCameraInput.click();
+        if (lotCodeCameraInput) {
+          openCameraOrFallback('Snap Package Date Stamp', (file) => dispatchCapturedFileToInput(lotCodeCameraInput, file), lotCodeCameraInput);
+        }
       });
     }
     function openLotAuditorForWatchlistItem(cardKey) {
@@ -25930,13 +26080,9 @@ function renderHistory() {
       openReceiptCameraBtn.addEventListener('click', (e) => {
         e.preventDefault();
         triggerHaptic([20]);
-        receiptCameraInput.value = '';
-        try {
-          receiptCameraInput.click();
-        } catch (camErr) {
-          console.warn("Camera input click failed, trying fallback:", camErr);
-          if (receiptUploadInput) receiptUploadInput.click();
-        }
+        openCameraOrFallback('Snap Receipt with Camera', async (file) => {
+          await processReceiptFile(file);
+        }, receiptCameraInput);
       });
     }
 
