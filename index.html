@@ -19974,16 +19974,26 @@
 
     async function getCatalogProductAsync(rawCode) {
       const syncHit = getCatalogProduct(rawCode);
-      if (syncHit) return syncHit;
+      if (syncHit && syncHit.ingredients && String(syncHit.ingredients).trim().length > 0) {
+        return syncHit;
+      }
       const clean = String(rawCode || '').replace(/\D/g, '');
-      if (!clean) return null;
+      if (!clean) return syncHit || null;
       const keys = [...new Set([clean.padStart(12, '0'), clean, clean.padStart(13, '0'), clean.replace(/^0+/, '')])].filter(Boolean);
       const idbHit = await RakkaIDB.getProduct(keys);
       if (idbHit && (idbHit.ingredients || (idbHit.name && !idbHit.name.startsWith('Retail Grocery Item')))) {
-        keys.forEach(k => GLOBAL_PRODUCT_CACHE.set(k, idbHit));
-        return idbHit;
+        const merged = syncHit ? {
+          ...syncHit,
+          name: (syncHit.name && !syncHit.name.startsWith('Retail Grocery Item')) ? syncHit.name : idbHit.name,
+          brand: (syncHit.brand && syncHit.brand !== 'Grocery Brand') ? syncHit.brand : idbHit.brand,
+          ingredients: idbHit.ingredients || syncHit.ingredients || '',
+          allergens: (Array.isArray(idbHit.allergens) && idbHit.allergens.length) ? idbHit.allergens : (syncHit.allergens || []),
+          additives: (Array.isArray(idbHit.additives) && idbHit.additives.length) ? idbHit.additives : (syncHit.additives || [])
+        } : idbHit;
+        keys.forEach(k => GLOBAL_PRODUCT_CACHE.set(k, merged));
+        return merged;
       }
-      return null;
+      return syncHit || null;
     }
 
     async function syncCommunityCatalogToIDB() {
@@ -20017,10 +20027,10 @@
         const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
         if (!items || items.length === 0) return;
 
-        const BATCH_SIZE = 1000;
+        const BATCH_SIZE = 2500;
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
           await RakkaIDB.putBatch(items.slice(i, i + BATCH_SIZE));
-          await new Promise(r => setTimeout(r, 15)); // Yield to keep UI smooth
+          await new Promise(r => setTimeout(r, 5)); // Yield briefly to keep UI smooth
         }
         await RakkaIDB.setMeta('catalog_version', payload.version || targetVersion);
         console.log(`[Rakka IDB] Synced ${items.length} offline products.`);
@@ -20030,7 +20040,7 @@
     }
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('load', () => setTimeout(syncCommunityCatalogToIDB, 5000));
+      window.addEventListener('load', () => setTimeout(syncCommunityCatalogToIDB, 500));
     }
 
     function getCatalogProduct(rawCode) {
@@ -24884,7 +24894,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=96')
+        navigator.serviceWorker.register('./sw.js?v=97')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
