@@ -17,12 +17,14 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=17">
   <link rel="manifest" href="./manifest.json">
 
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://fastly.jsdelivr.net/npm/barcode-detector@3/dist/iife/polyfill.min.js" async></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://fastly.jsdelivr.net/npm/barcode-detector@3/dist/iife/polyfill.min.js" async></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <style>
     .hidden, [hidden] {
@@ -20044,7 +20046,7 @@
         // Try gzipped snapshot first using native browser DecompressionStream
         if (typeof DecompressionStream !== 'undefined') {
           try {
-            const gzRes = await fetch('./community_catalog.json.gz', { cache: 'no-cache' });
+            const gzRes = await fetch('./community_catalog.json.gz', { cache: 'default' });
             if (gzRes.ok && gzRes.body) {
               const ds = new DecompressionStream('gzip');
               const text = await new Response(gzRes.body.pipeThrough(ds)).text();
@@ -20056,7 +20058,7 @@
         // Fallback to plain JSON snapshot if .json.gz is unavailable
         if (!payload) {
           try {
-            const jsonRes = await fetch('./community_catalog.json', { cache: 'no-cache' });
+            const jsonRes = await fetch('./community_catalog.json', { cache: 'default' });
             if (jsonRes.ok) payload = await jsonRes.json();
           } catch (_) {}
         }
@@ -20064,10 +20066,10 @@
         const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
         if (!items || items.length === 0) return;
 
-        const BATCH_SIZE = 2500;
+        const BATCH_SIZE = 1000;
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
           await RakkaIDB.putBatch(items.slice(i, i + BATCH_SIZE));
-          await new Promise(r => setTimeout(r, 5)); // Yield briefly to keep UI smooth
+          await new Promise(r => setTimeout(r, 25)); // Yield to keep iOS WebKit responsive
         }
         await RakkaIDB.setMeta('catalog_version', payload.version || targetVersion);
         console.log(`[Rakka IDB] Synced ${items.length} offline products.`);
@@ -20077,7 +20079,7 @@
     }
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('load', () => setTimeout(syncCommunityCatalogToIDB, 500));
+      window.addEventListener('load', () => setTimeout(syncCommunityCatalogToIDB, 4000));
     }
 
     function getCatalogProduct(rawCode) {
