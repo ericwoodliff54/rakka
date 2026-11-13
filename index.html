@@ -2413,7 +2413,7 @@
     <div class="flex items-center justify-between pb-1 px-1">
       <div class="flex items-center gap-2">
         <span class="font-display font-black text-xl bg-gradient-to-r from-cyan-300 to-teal-400 bg-clip-text text-transparent tracking-wider">RAKKA</span>
-        <button type="button" id="headerTopTierBadge" onclick="openPaywall()" class="text-xs font-bold uppercase tracking-widest min-h-[44px] px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1" title="Free Mode - Tap to Upgrade to Plus">
+        <button type="button" id="headerTopTierBadge" onclick="openPaywall()" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1" title="Free Mode - Tap to Upgrade to Plus">
           <span>Free Mode - Upgrade to Plus</span>
         </button>
       </div>
@@ -3316,6 +3316,9 @@
         <div id="activeProfileNotice" class="w-full"></div>
       </div>
 
+      <!-- Allergen Tick Box Grid (FDA Big 9 + Gluten, Corn, Sulfites & Yeast) -->
+      <div class="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
+
       <!-- Clarifying Notice: FDA Big 9 vs. Deep Ingredient Parsing (Corn, Sulfites & Yeast) -->
       <div id="allergenDetectionNotice" class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs flex items-start gap-2.5 shadow-sm">
         <div class="w-5 h-5 rounded-lg bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 shrink-0 mt-0.5">
@@ -3327,9 +3330,6 @@
         </div>
       </div>
 
-      <!-- Allergen Tick Box Grid (FDA Big 9 + Gluten, Corn, Sulfites & Yeast) -->
-      <div class="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
-
             <!-- Automatic Food Additives & Chemical Screener (Sleek 2-Tier Mobile Layout) -->
       <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-2.5 shadow-sm">
         <!-- Tier 1: Clean Header Row -->
@@ -3338,7 +3338,7 @@
             <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-300 shrink-0">
               <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
-            <h3 class="font-bold text-sm sm:text-base text-white leading-snug truncate">Continuous Chemical & Additive Shield</h3>
+            <h3 class="font-bold text-sm sm:text-base text-white leading-snug truncate">Additives</h3>
           </div>
           <span id="additiveProStatusBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-bold tracking-wider shrink-0 pointer-events-none select-none">
             PLUS
@@ -3346,7 +3346,7 @@
         </div>
 
         <!-- Tier 2: Full-Width Subheader (Spans complete card width without awkward breaks) -->
-        <p class="text-xs text-slate-400 font-medium leading-relaxed">
+        <p class="text-sm text-slate-300 font-medium leading-relaxed">
           Every scan is automatically screened for 37 scrutinized dyes, industrial emulsifiers & banned additives.
         </p>
 
@@ -19065,12 +19065,12 @@
       if (topBadge) {
         if (isPlusActive) {
           topBadge.innerHTML = `<span>Plus Mode</span>`;
-          topBadge.className = "text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm cursor-default select-none pointer-events-none";
+          topBadge.className = "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm cursor-default select-none pointer-events-none";
           topBadge.onclick = null;
           topBadge.title = "RAKKA Plus Mode";
         } else {
           topBadge.innerHTML = `<span>Free Mode - Upgrade to Plus</span>`;
-          topBadge.className = "text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1";
+          topBadge.className = "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1";
           topBadge.onclick = openPaywall;
           topBadge.title = "Free Mode - Tap to Upgrade to Plus";
         }
@@ -22163,7 +22163,7 @@
                     ${userAllergens.length === 0 ? 'No Restrictions' : `${userAllergens.length} Alert${userAllergens.length > 1 ? 's' : ''}`}
                   </span>
                 </div>
-                <span class="text-xs text-slate-400 block truncate">Position ${activeIdx + 1} of ${familyProfiles.length} • Hold & drag pill to reorder</span>
+                <span class="text-xs text-slate-400 block truncate">Position ${activeIdx + 1} • Hold & drag pill to reorder</span>
               </div>
             </div>
             
@@ -22370,12 +22370,12 @@
 
         return `
           <div 
-            class="allergen-toggle-btn min-h-[56px] p-2.5 rounded-2xl border text-left flex items-center justify-between transition ${activeBg} gap-2 shadow-xs select-none cursor-pointer"
+            class="allergen-toggle-btn min-h-[56px] px-2 py-2.5 sm:p-2.5 rounded-2xl border text-left flex items-center justify-between transition ${activeBg} gap-1.5 sm:gap-2 shadow-xs select-none cursor-pointer"
             data-id="${opt.id}"
           >
             <!-- Left Area: Icon + Allergen Name (Ample breathing room without colliding badges) -->
             <div 
-              class="allergen-info-trigger flex items-center gap-2.5 min-w-0 flex-1 select-none"
+              class="allergen-info-trigger flex items-center gap-2 min-w-0 flex-1 select-none"
               data-id="${opt.id}"
               title="View screened ingredients for ${opt.name}"
             >
@@ -22383,14 +22383,14 @@
                 ${getAllergenIcon(opt.id, "w-4.5 h-4.5")}
               </div>
               <div class="min-w-0 flex-1">
-                <span class="font-bold text-xs sm:text-sm text-white leading-tight block truncate">${opt.name}</span>
+                <span class="font-bold text-xs sm:text-sm text-white leading-tight block">${opt.name}</span>
               </div>
             </div>
 
             <!-- Right Dedicated Checkbox / Lock Target -->
             <button 
               type="button"
-              class="allergen-checkbox-target group min-w-[44px] min-h-[44px] w-11 h-11 p-2 -mr-1 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition cursor-pointer shrink-0"
+              class="allergen-checkbox-target group min-w-[44px] min-h-[44px] w-11 h-11 p-2 -mr-2 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition cursor-pointer shrink-0"
               data-id="${opt.id}"
               aria-label="${isChecked ? `Uncheck ${opt.name}` : `Check ${opt.name}`}"
               title="${isPlusActive ? `Tap to toggle ${opt.name}` : `RAKKA Plus required`}"
