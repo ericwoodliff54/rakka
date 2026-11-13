@@ -23839,7 +23839,17 @@ function renderHistory() {
 
         if (isItemRecalled) {
           cardBorder = 'border border-rose-500/50 bg-slate-900/90 hover:border-rose-400';
-          statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Recall</span>`;
+          let lotPill = '';
+          if (item.lotAudit) {
+            if (item.lotAudit.isMatch === false) {
+              lotPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Lot: Outside Recall Window</span>`;
+            } else if (item.lotAudit.isMatch === true) {
+              lotPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-600 text-white border border-rose-400/60">Lot: Confirmed Match</span>`;
+            } else {
+              lotPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Lot: Review Needed</span>`;
+            }
+          }
+          statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Recall</span>${lotPill}`;
         } else if (isItemTerminated) {
           cardBorder = 'border border-teal-500/40 bg-slate-900/90 hover:border-teal-400';
           statusPill = `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center gap-1"><span>✓</span><span>Terminated Recall</span></span>`;
@@ -23856,6 +23866,20 @@ function renderHistory() {
         const recallReason = item.activeRecallHazard || (item.recallRecord && item.recallRecord.hazard) || 'FDA/USDA Public Health Recall on record.';
         const recallAgency = item.recallAgency || (item.recallRecord && item.recallRecord.agency) || 'FDA';
         const recallSeverity = item.recallSeverity || (item.recallRecord && item.recallRecord.severity) || 'Class I High Risk';
+        const expectedLotsText = (item.recallRecord && (item.recallRecord.expectedLots || item.recallRecord.lotCodes || item.recallRecord.dates))
+          || (cardDirectRec && (cardDirectRec.expectedLots || cardDirectRec.lotCodes || cardDirectRec.dates))
+          || item.expectedLots
+          || '';
+        const hasAllLotsOnly = /\ball\s+lots\b|\bno\s+specific\s+lot\b/i.test(`${expectedLotsText} ${recallReason}`) && !/\b(best|exp|use\s*by|lot\s*#?|code)\b/i.test(expectedLotsText);
+        const lotAuditBoxHtml = item.lotAudit ? `
+          <div class="p-2.5 rounded-lg border ${item.lotAudit.isMatch === false ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200' : (item.lotAudit.isMatch === true ? 'bg-rose-950/70 border-rose-500/60 text-rose-200' : 'bg-amber-950/50 border-amber-500/40 text-amber-200')} space-y-1 text-[11px]">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold">${item.lotAudit.isMatch === false ? 'Outside Recall Window' : (item.lotAudit.isMatch === true ? 'Confirmed Recall Match' : (item.lotAudit.verdictTitle || 'Review Needed'))}</span>
+              <span class="font-mono text-[10px] opacity-85">${item.lotAudit.extractedCode || 'Not detected'}</span>
+            </div>
+            ${item.lotAudit.explanation ? `<p class="text-[10px] leading-relaxed opacity-90">${item.lotAudit.explanation}</p>` : ''}
+          </div>
+        ` : '';
 
         return `
           <div id="watchlist-card-${cardKey}" class="watchlist-item-card ${isItemRecalled ? "is-recalled" : (isAlert ? "is-allergen" : "")} rounded-xl border ${cardBorder} text-xs transition-all duration-200 overflow-hidden shadow-sm">
@@ -23905,12 +23929,26 @@ function renderHistory() {
 
               <!-- Recall Section (Clean, non-flashing) -->
               ${isItemRecalled ? `
-                <div class="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-1.5 text-xs">
+                <div class="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-2 text-xs">
                   <div class="flex items-center justify-between">
                     <span class="font-bold text-rose-300 text-xs">${recallAgency} Public Health Recall</span>
                     <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">${recallSeverity}</span>
                   </div>
                   <p class="text-xs text-rose-200/90 leading-relaxed font-medium">${recallReason}</p>
+                  ${lotAuditBoxHtml}
+                  ${hasAllLotsOnly ? `
+                    <p class="text-[10px] text-amber-300/90 font-medium pt-1 border-t border-rose-900/30">No lot restriction listed — check full recall details above.</p>
+                  ` : `
+                    <button
+                      type="button"
+                      onclick="event.stopPropagation(); openLotAuditorForWatchlistItem('${cardKey}')"
+                      class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                      title="Verify if your package lot code or Best-By date matches this recall"
+                    >
+                      <svg class="w-4 h-4 text-amber-200 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                      <span>${item.lotAudit ? 'Re-check Lot / Date Code' : 'Audit Lot / Date Code'}</span>
+                    </button>
+                  `}
                   <p class="text-[10px] text-slate-400 pt-1 border-t border-rose-900/30">Action: Do not consume. Discard or return to store for full refund.</p>
                 </div>
               ` : ''}
@@ -24122,6 +24160,12 @@ function renderHistory() {
       });
 
       historyList.innerHTML = finalHtml;
+      if (activeExpandedCardKey) {
+        const expandedDrawer = document.getElementById(`watchlist-drawer-${activeExpandedCardKey}`);
+        const expandedChevron = document.getElementById(`watchlist-chevron-${activeExpandedCardKey}`);
+        if (expandedDrawer) expandedDrawer.classList.remove('hidden');
+        if (expandedChevron) expandedChevron.textContent = '▲';
+      }
     }
 
 
@@ -25011,16 +25055,18 @@ function renderHistory() {
       title: '',
       hazard: '',
       brand: '',
-      expectedLots: ''
+      expectedLots: '',
+      watchlistCardKey: null
     };
 
-    function openLotAuditor(productTitle, hazard, brand, expectedLots) {
+    function openLotAuditor(productTitle, hazard, brand, expectedLots, watchlistCardKey = null) {
       triggerHaptic([30]);
       currentAuditorRecall = {
-        title: unescape(productTitle || ''),
-        hazard: unescape(hazard || ''),
-        brand: unescape(brand || ''),
-        expectedLots: unescape(expectedLots || '')
+        title: String(productTitle || ''),
+        hazard: String(hazard || ''),
+        brand: String(brand || ''),
+        expectedLots: String(expectedLots || ''),
+        watchlistCardKey: watchlistCardKey || null
       };
 
       const titleEl = document.getElementById('lotRecallTitle');
@@ -25077,6 +25123,30 @@ function renderHistory() {
         if (lotCodeCameraInput) lotCodeCameraInput.click();
       });
     }
+    function openLotAuditorForWatchlistItem(cardKey) {
+      triggerHaptic([30]);
+      const item = (typeof scanHistory !== 'undefined' && Array.isArray(scanHistory))
+        ? scanHistory.find((i) => {
+            const k = i.id || (String(i.upc || 'upc').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + (i.timestamp || '0'));
+            return k === cardKey;
+          })
+        : null;
+      if (!item) return;
+
+      const code = String(item.upc || '').trim();
+      const directRec = (typeof findRecallRecord === 'function') ? findRecallRecord(code) : null;
+      const title = item.productName || item.product || (item.recallRecord && item.recallRecord.product) || 'Recalled Grocery Product';
+      const brand = item.brand || item.receiptStore || (item.recallRecord && item.recallRecord.brand) || 'Grocery Brand';
+      const hazard = item.activeRecallHazard || (item.recallRecord && item.recallRecord.hazard) || (directRec && directRec.hazard) || 'Active FDA/USDA safety notice.';
+      const expectedLots = (item.recallRecord && (item.recallRecord.expectedLots || item.recallRecord.lotCodes || item.recallRecord.dates))
+        || (directRec && (directRec.expectedLots || directRec.lotCodes || directRec.dates))
+        || item.expectedLots
+        || hazard;
+
+      openLotAuditor(title, hazard, brand, expectedLots, cardKey);
+    }
+
+    window.openLotAuditorForWatchlistItem = openLotAuditorForWatchlistItem;
     window.openLotAuditorForCurrentProduct = openLotAuditorForCurrentProduct;
     window.openLotAuditor = openLotAuditor;
     window.closeLotAuditor = closeLotAuditor;
@@ -25271,6 +25341,26 @@ function renderHistory() {
     function renderLotAuditVerdict(audit) {
       if (lotCodeAnalyzingBox) lotCodeAnalyzingBox.classList.add('hidden');
       if (lotCodeCaptureTriggerBox) lotCodeCaptureTriggerBox.classList.add('hidden');
+
+      if (currentAuditorRecall && currentAuditorRecall.watchlistCardKey && typeof scanHistory !== 'undefined' && Array.isArray(scanHistory)) {
+        const targetItem = scanHistory.find((i) => {
+          const k = i.id || (String(i.upc || 'upc').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + (i.timestamp || '0'));
+          return k === currentAuditorRecall.watchlistCardKey;
+        });
+        if (targetItem) {
+          targetItem.lotAudit = {
+            extractedCode: audit.extractedCode || 'Not detected',
+            isMatch: typeof audit.isMatch === 'boolean' ? audit.isMatch : null,
+            verdictTitle: audit.verdictTitle || '',
+            severity: audit.severity || 'warning',
+            explanation: audit.explanation || '',
+            checkedAt: Date.now()
+          };
+          if (typeof saveHistory === 'function') saveHistory();
+          if (typeof renderHistory === 'function') renderHistory();
+        }
+      }
+
       if (!lotAuditResultBox) return;
       lotAuditResultBox.classList.remove('hidden');
 
