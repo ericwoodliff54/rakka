@@ -5393,8 +5393,12 @@
     let lastSyncTimestamp = null;
     try {
       const savedRecalls = localStorage.getItem('safebite_cached_recalls');
-      if (savedRecalls) cachedFDARecalls = JSON.parse(savedRecalls);
-      if (!cachedFDARecalls.some(r => r.id === 'USDA-PHA-2026-M3177')) {
+      if (savedRecalls) {
+        const parsedRecalls = JSON.parse(savedRecalls);
+        cachedFDARecalls = Array.isArray(parsedRecalls) ? parsedRecalls.filter(r => r && typeof r === 'object') : [];
+      }
+      if (!Array.isArray(cachedFDARecalls)) cachedFDARecalls = [];
+      if (!cachedFDARecalls.some(r => r && r.id === 'USDA-PHA-2026-M3177')) {
         cachedFDARecalls.unshift({
           id: 'USDA-PHA-2026-M3177',
           agency: 'USDA FSIS',
@@ -24263,7 +24267,7 @@ function renderHistory() {
 
     
     // Collapsible Recalls Windows State
-    let isPriorityAlertsOpen = true;
+    let isPriorityAlertsOpen = false;
     let isFdaWireOpen = false;
 
     function togglePriorityAlertsWindow() {
@@ -24281,9 +24285,11 @@ function renderHistory() {
     window.toggleFdaWireWindow = toggleFdaWireWindow;
 
     function renderBulletins() {
-      const selectedState = stateFilterSelect.value;
-      const selectedStore = storeFilterSelect.value;
-      const searchQuery = (typeof recallSearchInput !== 'undefined' && recallSearchInput) ? recallSearchInput.value.trim().toLowerCase() : '';
+      if (!bulletinFeedList || !filteredCountNotice) return;
+      try {
+      const selectedState = (stateFilterSelect && stateFilterSelect.value) ? stateFilterSelect.value : 'ALL';
+      const selectedStore = (storeFilterSelect && storeFilterSelect.value) ? storeFilterSelect.value : 'ALL';
+      const searchQuery = (typeof recallSearchInput !== 'undefined' && recallSearchInput && recallSearchInput.value) ? String(recallSearchInput.value).trim().toLowerCase() : '';
 
       const filtered = NATIONAL_BULLETINS.filter(item => {
         const matchesState = (selectedState === 'ALL') || 
@@ -24312,9 +24318,9 @@ function renderHistory() {
       if (Array.isArray(cachedFDARecalls) && cachedFDARecalls.length > 0) {
         fdaFiltered = cachedFDARecalls.filter(item => {
           if (!item || typeof item !== 'object') return false;
-          const rawLower = (item.raw || '').toLowerCase();
-          const firmLower = (item.firm || item.brand || '').toLowerCase();
-          const prodLower = (item.product || '').toLowerCase();
+          const rawLower = String(item.raw || '').toLowerCase();
+          const firmLower = String(item.firm || item.brand || '').toLowerCase();
+          const prodLower = String(item.product || '').toLowerCase();
           const combined = `${rawLower} ${firmLower} ${prodLower}`;
 
           // Supermarket Chain Matcher
@@ -24332,7 +24338,7 @@ function renderHistory() {
             };
             const aliases = chainAliases[storeLower] || [storeLower];
             const hasStoreMatch = aliases.some(alias => combined.includes(alias)) || 
-                                  (item.stores && item.stores.some(st => aliases.some(alias => st.toLowerCase().includes(alias))));
+                                  (Array.isArray(item.stores) && item.stores.some(st => aliases.some(alias => String(st || "").toLowerCase().includes(alias))));
             if (!hasStoreMatch) return false;
           }
 
@@ -24467,7 +24473,7 @@ function renderHistory() {
                 <div><strong class="text-slate-400">Recalling Firm:</strong> ${f.brand}</div>
                 <div><strong class="text-slate-400">Classification:</strong> ${f.severity || 'Class I Federal Action'}</div>
                 <div><strong class="text-slate-400">FDA Report ID:</strong> <span class="font-mono text-slate-400">${f.id || 'Official Archive'}</span></div>
-                ${f.upcs && f.upcs.length > 0 ? `<div><strong class="text-slate-400">Identified UPC / Lot Codes:</strong> <span class="font-mono text-emerald-300">${f.upcs.join(', ')}</span></div>` : ''}
+                ${Array.isArray(f.upcs) && f.upcs.length > 0 ? `<div><strong class="text-slate-400">Identified UPC / Lot Codes:</strong> <span class="font-mono text-emerald-300">${f.upcs.join(', ')}</span></div>` : ''}
               </div>
             </div>
           </div>
@@ -24555,6 +24561,10 @@ function renderHistory() {
           bulletinFdaVisibleCount = fdaFiltered.length;
           renderBulletins();
         });
+      }
+      } catch (renderErr) {
+        console.error('renderBulletins error:', renderErr);
+        bulletinFeedList.innerHTML = `<div class="p-4 rounded-xl bg-slate-950 border border-rose-500/40 text-xs text-rose-200">Unable to render recall feed: ${renderErr && renderErr.message ? renderErr.message : 'Unknown error'}</div>`;
       }
     }
 
@@ -24721,6 +24731,7 @@ function renderHistory() {
 
             updateSyncUI();
             auditPantryAgainstRecalls();
+            if (typeof renderBulletins === "function") renderBulletins();
 
             if (forceManual) {
               triggerHaptic([50, 40, 50]);
@@ -24909,14 +24920,14 @@ function renderHistory() {
       });
     }
 
-    renderHistory();
+    try { renderHistory(); } catch (e) { console.error('renderHistory startup error:', e); }
     // Built-in Production Cloud Edge Hook
     const DEFAULT_CLOUDFLARE_HOOK = 'https://rakka-edge.ericwoodliff.workers.dev';
 
-    auditPantryAgainstRecalls();
-    renderBulletins();
-    renderAllergensTab();
-    renderCustomizeTab();
+    try { auditPantryAgainstRecalls(); } catch (e) { console.error('auditPantry startup error:', e); }
+    try { renderBulletins(); } catch (e) { console.error('renderBulletins startup error:', e); }
+    try { renderAllergensTab(); } catch (e) { console.error('renderAllergensTab startup error:', e); }
+    try { renderCustomizeTab(); } catch (e) { console.error('renderCustomizeTab startup error:', e); }
     updatePlusUI();
     updateOnlineStatus();
     // checkDisclaimerStatus deferred until splash screen completes
