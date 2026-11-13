@@ -2988,11 +2988,10 @@
     <!-- SECTION 1: SCANNER PANEL WITH CLEAN SINGLE RETICLE (NO LASER, NO DUPLICATE FRAMES) -->
     <section id="scannerPanel" class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
       <div>
-        <h2 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
+        <h2 class="font-display text-lg sm:text-xl font-extrabold text-slate-100 flex items-center gap-2">
           <span>Barcodes</span>
           <span class="w-2 h-2 rounded-full bg-sky-400 pulse-glow"></span>
         </h2>
-        <p class="text-sm text-slate-400 mt-0.5">Live UPC barcode camera, manual barcode entry, and product search</p>
       </div>
 
       <!-- Camera Viewfinder Box (Apple-Style Aperture with Floating Glass Controls & Corner Reticle) -->
@@ -3077,7 +3076,7 @@
       <div id="manualUpcSection" class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
+            <h3 class="font-display text-lg sm:text-xl font-extrabold text-slate-100 flex items-center gap-2">
               <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
               </svg>
@@ -3088,7 +3087,6 @@
 
         <form id="upcForm" class="space-y-3">
           <div>
-            <label for="upcInput" class="block text-sm font-medium text-slate-300 mb-1.5">UPC Barcode Number</label>
             <div class="flex items-center gap-2">
               <div class="relative flex-1">
                 <input 
@@ -19302,6 +19300,7 @@
       }
 
       // Real-time synchronization of red recall badge on Watchlist tab
+      if (isBulletins && typeof renderBulletins === 'function') renderBulletins();
       if (typeof updateWatchlistNavBadge === 'function') {
         updateWatchlistNavBadge();
       }
@@ -24263,7 +24262,7 @@ function renderHistory() {
 
     
     // Collapsible Recalls Windows State
-    let isPriorityAlertsOpen = false;
+    let isPriorityAlertsOpen = true;
     let isFdaWireOpen = false;
 
     function togglePriorityAlertsWindow() {
@@ -24509,9 +24508,9 @@ function renderHistory() {
               <span class="text-xs sm:text-sm font-bold text-slate-100">Priority Retail Alerts</span>
               <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">${filtered.length} Active</span>
             </div>
-            <span id="priorityAlertsChevron" class="text-xs text-slate-400 font-bold transition-transform">${isPriorityAlertsOpen ? '▲' : '▼'}</span>
+            <span id="priorityAlertsChevron" class="text-xs text-slate-400 font-bold transition-transform">${(isPriorityAlertsOpen || !!searchQuery || selectedState !== 'ALL' || selectedStore !== 'ALL') ? '▲' : '▼'}</span>
           </button>
-          <div id="priorityAlertsDrawer" class="${isPriorityAlertsOpen ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
+          <div id="priorityAlertsDrawer" class="${(isPriorityAlertsOpen || !!searchQuery || selectedState !== 'ALL' || selectedStore !== 'ALL') ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
             ${priorityHtml || '<p class="text-xs text-slate-500 italic py-3 text-center">No active priority alerts match your current filter.</p>'}
           </div>
         </div>
@@ -24525,9 +24524,9 @@ function renderHistory() {
               <span class="text-xs sm:text-sm font-bold text-slate-100">FDA Food Safety Wire</span>
               <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">${fdaFiltered.length} Reports</span>
             </div>
-            <span id="fdaWireChevron" class="text-xs text-slate-400 font-bold transition-transform">${isFdaWireOpen ? '▲' : '▼'}</span>
+            <span id="fdaWireChevron" class="text-xs text-slate-400 font-bold transition-transform">${(isFdaWireOpen || !!searchQuery || selectedState !== 'ALL' || selectedStore !== 'ALL') ? '▲' : '▼'}</span>
           </button>
-          <div id="fdaWireDrawer" class="${isFdaWireOpen ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
+          <div id="fdaWireDrawer" class="${(isFdaWireOpen || !!searchQuery || selectedState !== 'ALL' || selectedStore !== 'ALL') ? '' : 'hidden'} p-3 pt-0 space-y-2 border-t border-slate-800/60">
             ${fdaHtml || '<p class="text-xs text-slate-500 italic py-3 text-center">No FDA wire reports match your current filter.</p>'}
             ${paginationHtml}
           </div>
