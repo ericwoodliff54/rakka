@@ -24898,7 +24898,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=98')
+        navigator.serviceWorker.register('./sw.js?v=99')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
@@ -25573,7 +25573,7 @@ function renderHistory() {
       // 3-Slice Parallel Engine: For tall receipt hauls (>= 800px or vertical captures)
       // Slices into Top (0-38%), Middle (31-69%), and Bottom (62-100%) with 7% overlap seams
       // Each slice handles only ~15-18 items, allowing Gemini to finish in ~15-18s concurrently!
-      const fullDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      const fullDataUrl = canvas.toDataURL('image/jpeg', 0.82);
 
       // 3-Slice Parallel Engine: Slices vertical receipt captures (>= 700px vertical) into 3 concurrent passes
       // Slices into Top (0-40%), Middle (30-70%), and Bottom (60-100%) with 10% overlap seams
@@ -25609,9 +25609,9 @@ function renderHistory() {
           sliceCount: 3,
           fullDataUrl: fullDataUrl,
           slices: [
-            { dataUrl: c1.toDataURL('image/jpeg', 0.72), mimeType: 'image/jpeg', label: 'Top Slice' },
-            { dataUrl: c2.toDataURL('image/jpeg', 0.72), mimeType: 'image/jpeg', label: 'Middle Slice' },
-            { dataUrl: c3.toDataURL('image/jpeg', 0.72), mimeType: 'image/jpeg', label: 'Bottom Slice' }
+            { dataUrl: c1.toDataURL('image/jpeg', 0.82), mimeType: 'image/jpeg', label: 'Top Slice' },
+            { dataUrl: c2.toDataURL('image/jpeg', 0.82), mimeType: 'image/jpeg', label: 'Middle Slice' },
+            { dataUrl: c3.toDataURL('image/jpeg', 0.82), mimeType: 'image/jpeg', label: 'Bottom Slice' }
           ]
         };
       }
@@ -25765,16 +25765,21 @@ function renderHistory() {
 
         let receiptData = null;
 
+        let partialSliceCount = 0;
         if (prep.sliceCount === 3) {
-          // 3-Slice Parallel Engine: Dispatches Top, Mid, and Bottom slices concurrently!
-          const [topAudit, midAudit, bottomAudit] = await Promise.all([
+          // 3-Slice Parallel Engine: Dispatches Top, Mid, and Bottom slices concurrently with partial-failure resilience!
+          const settled = await Promise.allSettled([
             fetchReceiptSegment(hookUrl, prep.slices[0].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Top Slice'),
             fetchReceiptSegment(hookUrl, prep.slices[1].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Middle Slice'),
             fetchReceiptSegment(hookUrl, prep.slices[2].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Bottom Slice')
           ]);
-
-          const topMid = stitchReceiptAudits(topAudit, midAudit);
-          receiptData = stitchReceiptAudits(topMid, bottomAudit);
+          const okSlices = settled.filter(s => s.status === 'fulfilled' && s.value).map(s => s.value);
+          if (okSlices.length === 0) {
+            const firstErr = settled.find(s => s.status === 'rejected');
+            throw (firstErr ? firstErr.reason : new Error('Receipt slices failed to process.'));
+          }
+          partialSliceCount = okSlices.length;
+          receiptData = okSlices.reduce((acc, cur) => acc ? stitchReceiptAudits(acc, cur) : cur, null);
         } else {
           receiptData = await fetchReceiptSegment(hookUrl, prep.slices[0].dataUrl, 'image/jpeg', activeAllergens, clientApiKey, 'Receipt');
         }
@@ -25794,8 +25799,20 @@ function renderHistory() {
         }
 
         if (receiptData) {
+          try {
+            const rawItems = Array.isArray(receiptData) ? receiptData : (Array.isArray(receiptData.items) ? receiptData.items : []);
+            if (rawItems.length > 0 && typeof getCatalogProductAsync === 'function') {
+              await Promise.all(rawItems.map(it => {
+                const code = it && (it.upc || it.itemCode || (it.rawLine && (String(it.rawLine).match(/\b\d{8,14}\b/) || [])[0]));
+                return code ? getCatalogProductAsync(code).catch(() => null) : null;
+              }));
+            }
+          } catch (_) {}
           const finalCount = Array.isArray(receiptData) ? receiptData.length : (receiptData.totalFoodItems || receiptData.items?.length || 0);
-          updateProgressUI(100, "Audit Complete!", `Successfully verified ${finalCount} items! Loading into Watchlist...`, 4);
+          const statusNote = (partialSliceCount > 0 && partialSliceCount < 3)
+            ? `Partial receipt (${partialSliceCount}/3 sections): verified ${finalCount} items! Loading into Watchlist...`
+            : `Successfully verified ${finalCount} items! Loading into Watchlist...`;
+          updateProgressUI(100, "Audit Complete!", statusNote, 4);
           recordReceiptScanUsage();
           setTimeout(() => {
             autoImportReceiptDirectlyToWatchlist(receiptData);
