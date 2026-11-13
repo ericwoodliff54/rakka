@@ -19305,7 +19305,6 @@
       }
 
       // Real-time synchronization of red recall badge on Watchlist tab
-      if (isBulletins && typeof renderBulletins === 'function') renderBulletins();
       if (typeof updateWatchlistNavBadge === 'function') {
         updateWatchlistNavBadge();
       }
@@ -24310,8 +24309,9 @@ function renderHistory() {
 
       // Filter live synced openFDA cached enforcement reports across all 50 states and chains
       let fdaFiltered = [];
-      if (cachedFDARecalls && cachedFDARecalls.length > 0) {
+      if (Array.isArray(cachedFDARecalls) && cachedFDARecalls.length > 0) {
         fdaFiltered = cachedFDARecalls.filter(item => {
+          if (!item || typeof item !== 'object') return false;
           const rawLower = (item.raw || '').toLowerCase();
           const firmLower = (item.firm || item.brand || '').toLowerCase();
           const prodLower = (item.product || '').toLowerCase();
@@ -24364,8 +24364,10 @@ function renderHistory() {
         });
       }
 
-      const stateName = stateFilterSelect.options[stateFilterSelect.selectedIndex].text;
-      const storeName = storeFilterSelect.options[storeFilterSelect.selectedIndex].text;
+      const stateOpt = (stateFilterSelect && stateFilterSelect.options && (stateFilterSelect.options[stateFilterSelect.selectedIndex] || stateFilterSelect.options[0])) || { text: 'All States (Nationwide)' };
+      const storeOpt = (storeFilterSelect && storeFilterSelect.options && (storeFilterSelect.options[storeFilterSelect.selectedIndex] || storeFilterSelect.options[0])) || { text: 'All Supermarkets' };
+      const stateName = stateOpt.text || 'All States (Nationwide)';
+      const storeName = storeOpt.text || 'All Supermarkets';
       const totalCount = filtered.length + fdaFiltered.length;
       
       const displayedFda = fdaFiltered.slice(0, bulletinFdaVisibleCount);
