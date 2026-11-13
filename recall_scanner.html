@@ -4945,13 +4945,17 @@
 
     try {
       const savedProfiles = localStorage.getItem('rakka_family_profiles')  || localStorage.getItem('safebite_family_profiles');
-      if (savedProfiles) {
-        familyProfiles = JSON.parse(savedProfiles);
-      } else {
-        const savedLegacy = localStorage.getItem('safebite_allergens') || localStorage.getItem('recall_radar_allergens');
-        if (savedLegacy) {
-          familyProfiles[0].allergens = JSON.parse(savedLegacy);
+      try {
+        if (savedProfiles) {
+          familyProfiles = JSON.parse(savedProfiles);
+        } else {
+          const savedLegacy = localStorage.getItem('safebite_allergens') || localStorage.getItem('recall_radar_allergens');
+          if (savedLegacy) {
+            familyProfiles[0].allergens = JSON.parse(savedLegacy);
+          }
         }
+      } catch (e) {
+        console.warn('Profile parse recovery:', e);
       }
       const savedActive = localStorage.getItem('safebite_active_profile_id');
       if (savedActive && familyProfiles.some(p => p.id === savedActive)) {
@@ -24894,7 +24898,7 @@ function renderHistory() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=97')
+        navigator.serviceWorker.register('./sw.js?v=98')
           .then(reg => {
             console.log('Rakka SW registered:', reg.scope);
             if (typeof reg.update === 'function') reg.update();
@@ -25170,19 +25174,27 @@ function renderHistory() {
 
           // Direct Edge Call: Exactly matching fetchReceiptSegment architecture
           try {
-            const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-rakka-client-version': '1.4.2' },
-              body: JSON.stringify({
-                imageBase64: dataUrl,
-                mimeType: 'image/jpeg',
-                recallTitle: currentAuditorRecall.title,
-                recallReason: currentAuditorRecall.hazard,
-                recallBrand: currentAuditorRecall.brand,
-                expectedLots: currentAuditorRecall.expectedLots,
-                clientApiKey: clientApiKey
-              })
-            });
+            const lotCtrl = new AbortController();
+            const lotTimer = setTimeout(() => lotCtrl.abort(), 25000);
+            let res;
+            try {
+              res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-lot-code`, {
+                method: 'POST',
+                signal: lotCtrl.signal,
+                headers: { 'Content-Type': 'application/json', 'x-rakka-client-version': '1.4.2' },
+                body: JSON.stringify({
+                  imageBase64: dataUrl,
+                  mimeType: 'image/jpeg',
+                  recallTitle: currentAuditorRecall.title,
+                  recallReason: currentAuditorRecall.hazard,
+                  recallBrand: currentAuditorRecall.brand,
+                  expectedLots: currentAuditorRecall.expectedLots,
+                  clientApiKey: clientApiKey
+                })
+              });
+            } finally {
+              clearTimeout(lotTimer);
+            }
 
             if (res.ok) {
               data = await res.json();
@@ -25619,16 +25631,24 @@ function renderHistory() {
 
     // Helper: Single segment fetcher
     async function fetchReceiptSegment(hookUrl, sliceDataUrl, mimeType, activeAllergens, clientApiKey, segmentLabel) {
-      const res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-receipt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-rakka-client-version': '1.4.2' },
-        body: JSON.stringify({
-          imageBase64: sliceDataUrl,
-          mimeType: mimeType,
-          activeAllergens: activeAllergens,
-          clientApiKey: clientApiKey
-        })
-      });
+      const receiptCtrl = new AbortController();
+      const receiptTimer = setTimeout(() => receiptCtrl.abort(), 25000);
+      let res;
+      try {
+        res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-receipt`, {
+          method: 'POST',
+          signal: receiptCtrl.signal,
+          headers: { 'Content-Type': 'application/json', 'x-rakka-client-version': '1.4.2' },
+          body: JSON.stringify({
+            imageBase64: sliceDataUrl,
+            mimeType: mimeType,
+            activeAllergens: activeAllergens,
+            clientApiKey: clientApiKey
+          })
+        });
+      } finally {
+        clearTimeout(receiptTimer);
+      }
 
       if (res.ok) {
         const data = await res.json();
