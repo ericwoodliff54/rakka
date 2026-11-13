@@ -3714,7 +3714,8 @@
         <div class="p-1 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-1 shadow-inner" id="themeSegmentedControl">
           <button 
             type="button" 
-            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95" 
+            onclick="if (typeof applyTheme === 'function') applyTheme('system', true)"
+            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer" 
             data-theme="system"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -3723,7 +3724,8 @@
 
           <button 
             type="button" 
-            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95" 
+            onclick="if (typeof applyTheme === 'function') applyTheme('light', true)"
+            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer" 
             data-theme="light"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
@@ -3732,7 +3734,8 @@
 
           <button 
             type="button" 
-            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95" 
+            onclick="if (typeof applyTheme === 'function') applyTheme('dark', true)"
+            class="theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer" 
             data-theme="dark"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -22692,7 +22695,9 @@
       } catch (e) {}
 
       const root = document.documentElement;
-      const isDarkSys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDarkSys = (typeof window.matchMedia === 'function')
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : true;
 
       let effectiveDark = true;
       if (mode === 'light') {
@@ -22719,12 +22724,19 @@
       renderThemeControls();
 
       if (notify) {
-        sound.playScanBeep();
-        triggerHaptic([30]);
+        if (typeof sound !== 'undefined' && sound && typeof sound.playScanBeep === 'function') {
+          try { sound.playScanBeep(); } catch (_) {}
+        }
+        if (typeof triggerHaptic === 'function') {
+          try { triggerHaptic([30]); } catch (_) {}
+        }
         const labels = { system: 'System Auto', light: 'Light Theme', dark: 'Dark Theme' };
-        showCustomizeToast(`Appearance: ${labels[mode]}`);
+        if (typeof showCustomizeToast === 'function') {
+          showCustomizeToast(`Appearance: ${labels[mode] || mode}`);
+        }
       }
     }
+    window.applyTheme = applyTheme;
 
     function renderThemeControls() {
       const container = document.getElementById('themeSegmentedControl');
@@ -22734,9 +22746,9 @@
         const t = btn.getAttribute('data-theme');
         const isActive = (t === currentThemeMode);
         if (isActive) {
-          btn.className = "theme-toggle-btn flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 bg-amber-500 text-slate-950 shadow-md shadow-amber-950/30";
+          btn.className = "theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer bg-amber-500 text-slate-950 shadow-md shadow-amber-950/30";
         } else {
-          btn.className = "theme-toggle-btn flex-1 py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200";
+          btn.className = "theme-toggle-btn flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer text-slate-400 hover:text-slate-200";
         }
       });
     }
@@ -24880,12 +24892,7 @@ function renderHistory() {
     initTheme();
     setNavTab('barcodes');
 
-    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const selected = btn.getAttribute('data-theme');
-        if (selected) applyTheme(selected, true);
-      });
-    });
+// Theme toggle buttons use direct onclick="applyTheme(...)" handlers.
 
 
     // If page was just opened via VIP link, display celebratory confirmation toast
@@ -24899,13 +24906,7 @@ function renderHistory() {
 
 
     // Service Worker Registration for PWA Installability and Offline Support
-    if ('serviceWorker' in navigator) {
-      
     function initEdgeSettingsInputs() {}
-    if (keyInput) {
-        keyInput.value = localStorage.getItem('rakka_gemini_key') || '';
-      }
-    }
     
       const toggleRecallNotifBtn = document.getElementById('toggleRecallNotifBtn');
       if (toggleRecallNotifBtn) {
