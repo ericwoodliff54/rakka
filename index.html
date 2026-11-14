@@ -2952,6 +2952,10 @@
             <p class="text-xs text-slate-300 leading-normal uppercase mt-1">
               IF, NOTWITHSTANDING THE FOREGOING, THE COMPANY IS FOUND TO BE LIABLE TO YOU FOR ANY REASON, THE TOTAL AGGREGATE LIABILITY OF THE COMPANY SHALL NOT EXCEED THE GREATER OF: (A) THE TOTAL AMOUNT PAID BY YOU TO THE COMPANY FOR USE OF THE APP IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM, OR (B) FIFTY UNITED STATES DOLLARS ($50.00).
             </p>
+          
+            <p class="text-xs text-slate-300 leading-normal mt-1.5">
+              <strong class="text-white">Assumption of Risk &amp; Indemnification:</strong> You expressly assume all risk of consuming, serving, or handling any food or beverage product—especially if you or a household member has severe, anaphylactic, or life-threatening allergies. You agree to defend, indemnify, and hold harmless Twin Ravens Digital LLC and its officers, members, and licensors from any third-party claims, damages, or expenses (including reasonable attorneys' fees) arising out of your misuse of the App, violation of these Terms, or failure to independently inspect physical product packaging before consumption.
+            </p>
           </div>
 
           <!-- SECTION 5 -->
@@ -2970,6 +2974,25 @@
           <div class="space-y-1 p-3 rounded-xl bg-slate-900/40 border border-slate-800/60 text-xs">
             <span class="font-bold text-slate-200">Non-Government Affiliation:</span>
             <span class="text-slate-400">RAKKA is an independent consumer reference aid. It is not affiliated with, sponsored by, or an official agency product of the U.S. Food and Drug Administration (FDA) or U.S. Department of Agriculture (USDA).</span>
+          </div>
+
+
+          <!-- SECTION 7 -->
+          <div class="space-y-1.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800/70">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">Section 7</span>
+              <h4 class="font-bold text-white text-xs sm:text-sm">Binding Arbitration, Class-Action Waiver &amp; Governing Law</h4>
+            </div>
+            <p class="text-xs font-mono uppercase tracking-wider text-indigo-400/90 font-bold">DISPUTE RESOLUTION; INDIVIDUAL BASIS ONLY.</p>
+            <p class="text-xs text-slate-300 leading-normal">
+              <strong class="text-white">Mandatory Individual Arbitration:</strong> Except for qualifying individual claims in small claims court, any dispute, claim, or controversy arising out of or relating to the App or these Terms shall be resolved exclusively by final and binding individual arbitration administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules and governed by the Federal Arbitration Act.
+            </p>
+            <p class="text-xs text-slate-300 leading-normal">
+              <strong class="text-white">Class-Action &amp; Jury Waiver:</strong> YOU AND TWIN RAVENS DIGITAL LLC AGREE THAT EACH MAY BRING CLAIMS ONLY IN AN INDIVIDUAL CAPACITY AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, OR REPRESENTATIVE PROCEEDING. BOTH PARTIES WAIVE ANY RIGHT TO A JURY TRIAL.
+            </p>
+            <p class="text-xs text-slate-300 leading-normal">
+              <strong class="text-white">30-Day Opt-Out &amp; Governing Law:</strong> You may opt out of binding arbitration within 30 days of first accepting these Terms by emailing <span class="text-cyan-300 font-mono">legal@twinravensdigital.com</span> with your full name and clear notice of opt-out. These Terms are governed by the laws of the State of Ohio, without regard to conflict-of-law principles, and any non-arbitrable judicial proceeding shall be brought exclusively in state or federal courts located in Summit County, Ohio.
+            </p>
           </div>
 
         </div>
@@ -24842,18 +24865,27 @@ function renderHistory() {
       });
     }
 
-    // Food Safety & Legal Disclaimer Logic (First Launch Agreement & On-Demand Settings Review)
+    // Food Safety & Legal Disclaimer Logic (Versioned Clickwrap Agreement & On-Demand Settings Review)
+    const TERMS_VERSION = '2026-11-13';
+    function getAcceptedTermsRecord() {
+      try {
+        const raw = localStorage.getItem('rakka_terms_acceptance');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     function checkDisclaimerStatus(isManualOpen = false) {
       try {
-        const accepted = localStorage.getItem('rakka_disclaimer_accepted') || 
-                         localStorage.getItem('safebite_disclaimer_accepted') || 
-                         localStorage.getItem('recall_radar_disclaimer_accepted');
+        const record = getAcceptedTermsRecord();
+        const hasCurrentVersion = !!(record && record.accepted === true && record.version === TERMS_VERSION && record.acceptedAt);
         if (isManualOpen) {
           // Opened voluntarily from Settings: show 'X' button so user can dismiss anytime
           if (closeDisclaimerModalBtn) closeDisclaimerModalBtn.classList.remove('hidden');
           safetyDisclaimerModal.classList.remove('hidden');
-        } else if (accepted !== 'true') {
-          // Mandatory Initial Installation Agreement: hide 'X' button so user must actively acknowledge & agree
+        } else if (!hasCurrentVersion) {
+          // Mandatory Initial/Updated Terms Agreement: hide 'X' button so user must actively acknowledge & agree
           if (closeDisclaimerModalBtn) closeDisclaimerModalBtn.classList.add('hidden');
           safetyDisclaimerModal.classList.remove('hidden');
         }
@@ -24866,6 +24898,12 @@ function renderHistory() {
     acceptDisclaimerBtn.addEventListener('click', () => {
       triggerHaptic([40]);
       try {
+        const acceptanceRecord = {
+          accepted: true,
+          version: TERMS_VERSION,
+          acceptedAt: new Date().toISOString()
+        };
+        localStorage.setItem('rakka_terms_acceptance', JSON.stringify(acceptanceRecord));
         localStorage.setItem('rakka_disclaimer_accepted', 'true');
         localStorage.setItem('safebite_disclaimer_accepted', 'true');
       } catch (e) {}
