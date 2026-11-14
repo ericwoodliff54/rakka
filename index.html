@@ -2569,6 +2569,14 @@
               <span class="text-xs text-slate-400">Audit your entire grocery trip in 1 snapshot. Automatically loads 30+ items into your 500-item Watchlist.</span>
             </div>
           </div>
+
+          <div class="flex items-start gap-2.5">
+            <span class="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0"><svg class="w-4 h-4 text-amber-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></span>
+            <div>
+              <span class="font-bold text-white block">2-Person Household Sync</span>
+              <span class="text-xs text-slate-400">Link 2 devices under 1 Plus plan to share Family Profiles & your Pantry Watchlist in real time.</span>
+            </div>
+          </div>
         </div>
 
         <!-- Interactive Pricing Tier Options (Free, Annual ~30% off, Monthly) -->
@@ -3970,6 +3978,81 @@
         </div>
       </div>
 
+      <!-- 2-PERSON HOUSEHOLD SYNC (PLUS TIER) -->
+      <div class="pt-3 border-t border-slate-800/80 space-y-2.5" id="householdSyncSettingsCard">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">2-Person Household Sync</h3>
+            <span class="text-xs text-amber-300 font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/35">Plus</span>
+          </div>
+          <span id="householdSyncBadge" class="text-xs text-slate-400 font-semibold">Not Linked</span>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Link up to 2 devices to share Family Allergen Profiles and your Pantry Watchlist in real time with zero accounts.
+        </p>
+
+        <!-- Invite Code Display (shown after generating) -->
+        <div id="householdInviteBox" class="hidden p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-cyan-300">Partner Invite Code (24h):</span>
+            <button type="button" onclick="copyHouseholdInviteCode()" class="text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 px-2.5 py-1 rounded-lg cursor-pointer">Copy</button>
+          </div>
+          <div id="householdInviteCodeText" class="font-mono text-lg font-extrabold tracking-widest text-white text-center py-1 select-all">RKA-000-000</div>
+        </div>
+
+        <!-- Unlinked Controls -->
+        <div id="householdUnlinkedControls" class="space-y-2">
+          <button
+            type="button"
+            id="createHouseholdInviteBtn"
+            onclick="createHouseholdInvite()"
+            class="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-bold text-xs shadow-sm transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Create 2-Person Invite Code</span>
+          </button>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              id="householdJoinCodeInput"
+              placeholder="Enter partner code (RKA-...)"
+              maxlength="16"
+              class="flex-1 min-w-0 min-h-[44px] px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 text-base sm:text-xs font-mono uppercase focus:outline-none focus:border-cyan-500"
+            />
+            <button
+              type="button"
+              id="joinHouseholdBtn"
+              onclick="joinHouseholdByCode()"
+              class="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition active:scale-95 shrink-0 cursor-pointer"
+            >
+              Join
+            </button>
+          </div>
+        </div>
+
+        <!-- Linked Controls -->
+        <div id="householdLinkedControls" class="hidden space-y-2">
+          <div id="householdSyncMeta" class="text-xs text-emerald-300 bg-emerald-950/30 border border-emerald-500/30 rounded-xl px-3 py-2">
+            Linked • Ready to sync
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onclick="syncHouseholdNow(true)"
+              class="min-h-[44px] py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition active:scale-95 cursor-pointer"
+            >
+              Sync Now
+            </button>
+            <button
+              type="button"
+              onclick="leaveHouseholdSync()"
+              class="min-h-[44px] py-2.5 px-3 rounded-xl bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs transition active:scale-95 cursor-pointer"
+            >
+              Unlink Device
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- DATA & FACTORY RESET (Very Bottom of Functional Settings) -->
       <div class="pt-3 border-t border-slate-800/80 space-y-2">
         <div class="flex items-center justify-between">
@@ -5234,6 +5317,9 @@
         localStorage.setItem('safebite_allergens', activeAllergensJson);
       } catch (e) {}
 
+      if (typeof scheduleHouseholdPush === 'function' && !window._suppressHouseholdPush) {
+        scheduleHouseholdPush();
+      }
       if (typeof auditWatchlistAllergens === 'function') {
         const changed = auditWatchlistAllergens();
         if (changed && typeof saveHistory === 'function') {
@@ -18719,6 +18805,13 @@
         console.warn("Error saving history to localStorage:", e);
       }
     }
+    const _origSaveHistory = saveHistory;
+    saveHistory = function() {
+      _origSaveHistory();
+      if (typeof scheduleHouseholdPush === 'function' && !window._suppressHouseholdPush) {
+        scheduleHouseholdPush();
+      }
+    };
     window.saveHistory = saveHistory;
 
     // ========================================================
@@ -25584,6 +25677,242 @@ function renderHistory() {
     }
     window.shareRecallByKey = shareRecallByKey;
     window.registerRecallSharePayload = registerRecallSharePayload;
+
+    // ========================================================
+    // 2-PERSON HOUSEHOLD SYNC ENGINE (Plus Tier - Cloudflare KV)
+    // ========================================================
+    function getRakkaDeviceId() {
+      let id = localStorage.getItem('rakka_device_id');
+      if (!id) {
+        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36));
+        localStorage.setItem('rakka_device_id', id);
+      }
+      return id;
+    }
+
+    function getWorkerBaseUrl() {
+      return (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim().replace(/\/+$/, '');
+    }
+
+    function updateHouseholdSyncUI(memberCount = null) {
+      const hhId = localStorage.getItem('rakka_household_id');
+      const badge = document.getElementById('householdSyncBadge');
+      const unlinked = document.getElementById('householdUnlinkedControls');
+      const linked = document.getElementById('householdLinkedControls');
+      const meta = document.getElementById('householdSyncMeta');
+      const lastTs = parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10);
+
+      if (hhId) {
+        if (badge) {
+          badge.textContent = memberCount ? `Linked (${memberCount}/2)` : 'Linked';
+          badge.className = 'text-xs text-emerald-400 font-semibold';
+        }
+        if (unlinked) unlinked.classList.add('hidden');
+        if (linked) linked.classList.remove('hidden');
+        if (meta) {
+          const timeLabel = lastTs ? new Date(lastTs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Just now';
+          meta.textContent = `Linked${memberCount ? ` (${memberCount}/2 devices)` : ''} • Last synced: ${timeLabel}`;
+        }
+      } else {
+        if (badge) {
+          badge.textContent = isPlusActive ? 'Ready (Plus)' : 'Plus Required to Host';
+          badge.className = isPlusActive ? 'text-xs text-cyan-400 font-semibold' : 'text-xs text-amber-400 font-semibold';
+        }
+        if (unlinked) unlinked.classList.remove('hidden');
+        if (linked) linked.classList.add('hidden');
+      }
+    }
+
+    function applySyncedHouseholdData(data) {
+      if (!data) return;
+      window._suppressHouseholdPush = true;
+      try {
+        if (Array.isArray(data.familyProfiles) && data.familyProfiles.length > 0) {
+          familyProfiles = data.familyProfiles;
+          if (!familyProfiles.some(p => p.id === activeProfileId)) {
+            activeProfileId = familyProfiles[0].id;
+          }
+          saveFamilyProfiles();
+          if (typeof renderFamilyProfilesBar === 'function') renderFamilyProfilesBar();
+        }
+        if (Array.isArray(data.scanHistory)) {
+          scanHistory = data.scanHistory;
+          saveHistory();
+          if (typeof renderHistory === 'function') renderHistory();
+        }
+        if (data.plusActive) {
+          isPlusActive = true;
+          localStorage.setItem('safebite_plus_active', 'paid');
+          localStorage.setItem('safebite_pro_active', 'paid');
+        }
+        if (data.updatedAt) {
+          localStorage.setItem('rakka_household_updated_at', String(data.updatedAt));
+        }
+      } finally {
+        window._suppressHouseholdPush = false;
+      }
+      updateHouseholdSyncUI(data.memberCount || null);
+    }
+
+    async function createHouseholdInvite() {
+      if (!isPlusActive) {
+        if (typeof openPaywall === 'function') openPaywall();
+        return;
+      }
+      try {
+        const res = await fetch(`${getWorkerBaseUrl()}/household/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: getRakkaDeviceId(),
+            familyProfiles,
+            scanHistory
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Could not create invite code');
+        localStorage.setItem('rakka_household_id', data.householdId);
+        localStorage.setItem('rakka_household_updated_at', String(data.updatedAt || Date.now()));
+        const box = document.getElementById('householdInviteBox');
+        const codeEl = document.getElementById('householdInviteCodeText');
+        if (codeEl) codeEl.textContent = data.inviteCode;
+        if (box) box.classList.remove('hidden');
+        updateHouseholdSyncUI(data.memberCount || 1);
+        if (typeof showCustomizeToast === 'function') showCustomizeToast(`Invite code ready: ${data.inviteCode}`);
+      } catch (err) {
+        if (typeof showCustomizeToast === 'function') showCustomizeToast(err.message || 'Invite creation failed');
+      }
+    }
+
+    async function copyHouseholdInviteCode() {
+      const codeEl = document.getElementById('householdInviteCodeText');
+      if (!codeEl) return;
+      try {
+        await navigator.clipboard.writeText(codeEl.textContent.trim());
+        if (typeof showCustomizeToast === 'function') showCustomizeToast('Invite code copied!');
+      } catch (_) {}
+    }
+
+    async function joinHouseholdByCode() {
+      const input = document.getElementById('householdJoinCodeInput');
+      const code = (input ? input.value : '').trim().toUpperCase();
+      if (!code) {
+        if (typeof showCustomizeToast === 'function') showCustomizeToast('Enter a partner invite code first.');
+        return;
+      }
+      try {
+        const res = await fetch(`${getWorkerBaseUrl()}/household/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inviteCode: code,
+            deviceId: getRakkaDeviceId(),
+            familyProfiles,
+            scanHistory
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Could not join household');
+        localStorage.setItem('rakka_household_id', data.householdId);
+        applySyncedHouseholdData(data);
+        if (input) input.value = '';
+        if (typeof showCustomizeToast === 'function') showCustomizeToast('Household linked & synced!');
+      } catch (err) {
+        if (typeof showCustomizeToast === 'function') showCustomizeToast(err.message || 'Failed to join household');
+      }
+    }
+
+    async function syncHouseholdNow(showToast = false) {
+      const householdId = localStorage.getItem('rakka_household_id');
+      if (!householdId) return;
+      try {
+        const res = await fetch(`${getWorkerBaseUrl()}/household/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            householdId,
+            deviceId: getRakkaDeviceId(),
+            action: 'pull'
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (res.status === 403 || res.status === 404) {
+            localStorage.removeItem('rakka_household_id');
+            updateHouseholdSyncUI();
+          }
+          if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast(data.error || 'Sync failed');
+          return;
+        }
+        const localTs = parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10);
+        if ((data.updatedAt || 0) > localTs || showToast) {
+          applySyncedHouseholdData(data);
+        } else {
+          updateHouseholdSyncUI(data.memberCount || null);
+        }
+        if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast('Household synced!');
+      } catch (_) {
+        if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast('Offline - will sync when connected.');
+      }
+    }
+
+    let _householdPushTimer = null;
+    function scheduleHouseholdPush() {
+      const householdId = localStorage.getItem('rakka_household_id');
+      if (!householdId) return;
+      clearTimeout(_householdPushTimer);
+      _householdPushTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`${getWorkerBaseUrl()}/household/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              householdId,
+              deviceId: getRakkaDeviceId(),
+              action: 'push',
+              familyProfiles,
+              scanHistory
+            })
+          });
+          const data = await res.json();
+          if (res.ok && data.success && data.updatedAt) {
+            localStorage.setItem('rakka_household_updated_at', String(data.updatedAt));
+            updateHouseholdSyncUI(data.memberCount || null);
+          }
+        } catch (_) {}
+      }, 1200);
+    }
+
+    async function leaveHouseholdSync() {
+      const householdId = localStorage.getItem('rakka_household_id');
+      try {
+        if (householdId) {
+          await fetch(`${getWorkerBaseUrl()}/household/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ householdId, deviceId: getRakkaDeviceId() })
+          });
+        }
+      } catch (_) {}
+      localStorage.removeItem('rakka_household_id');
+      localStorage.removeItem('rakka_household_updated_at');
+      const box = document.getElementById('householdInviteBox');
+      if (box) box.classList.add('hidden');
+      updateHouseholdSyncUI();
+      if (typeof showCustomizeToast === 'function') showCustomizeToast('Device unlinked from household.');
+    }
+
+    window.createHouseholdInvite = createHouseholdInvite;
+    window.copyHouseholdInviteCode = copyHouseholdInviteCode;
+    window.joinHouseholdByCode = joinHouseholdByCode;
+    window.syncHouseholdNow = syncHouseholdNow;
+    window.leaveHouseholdSync = leaveHouseholdSync;
+    window.scheduleHouseholdPush = scheduleHouseholdPush;
+
+    setTimeout(() => {
+      updateHouseholdSyncUI();
+      syncHouseholdNow(false);
+    }, 800);
     window.closeLotAuditor = closeLotAuditor;
 
     function closeLotAuditor(fromBackGesture = false) {

@@ -48,7 +48,8 @@ const RATE_LIMIT_CONFIG = {
   'audit-receipt': 18,   // 18 req/min per IP (supports up to 6 full 3-slice tall receipts/min)
   'audit-lot-code': 12,  // 12 req/min per IP for package stamp verification
   'detect-package': 12,  // 12 req/min per IP for whole-package vision
-  'contribute-ocr': 10   // 10 req/min per IP for community ingredient OCR
+  'contribute-ocr': 10,  // 10 req/min per IP for community ingredient OCR
+  'household': 30        // 30 req/min per IP for 2-person household sync
 };
 
 
@@ -1540,6 +1541,181 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
       } catch (err) {
         console.error("Audit receipt exception:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
+      }
+    }
+
+    // 8. 2-PERSON HOUSEHOLD SYNC (Plus Tier - Max 2 Devices - Zero PII)
+    if (request.method === 'POST' && url.pathname.startsWith('/household/')) {
+      const rlHh = checkEdgeRateLimit(request, 'household');
+      if (!rlHh.allowed) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Sync rate limit reached. Please wait ${rlHh.retryAfterSec}s.`
+        }), { status: 429, headers: { ...corsHeaders, ...rlHh.headers, 'Cache-Control': 'no-store' } });
+      }
+      if (!env || !env.RAKKA_COMMUNITY_DB) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Cloudflare KV (RAKKA_COMMUNITY_DB) is not bound to this Worker.'
+        }), { status: 503, headers: { ...corsHeaders, 'Cache-Control': 'no-store' } });
+      }
+
+      const noCacheHeaders = { ...corsHeaders, 'Cache-Control': 'no-store' };
+      const generateInviteCode = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const bytes = new Uint8Array(6);
+        crypto.getRandomValues(bytes);
+        let code = '';
+        for (let i = 0; i < 6; i++) code += chars[bytes[i] % chars.length];
+        return `RKA-${code.slice(0, 3)}-${code.slice(3)}`;
+      };
+
+      const mergeProfiles = (a = [], b = []) => {
+        const map = new Map();
+        [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach(p => {
+          if (!p || !p.id) return;
+          const prev = map.get(p.id);
+          if (!prev) {
+            map.set(p.id, { ...p, allergens: Array.isArray(p.allergens) ? [...new Set(p.allergens)] : [] });
+          } else {
+            const mergedAllergens = [...new Set([...(prev.allergens || []), ...(p.allergens || [])])];
+            map.set(p.id, { ...prev, ...p, allergens: mergedAllergens });
+          }
+        });
+        return [...map.values()].slice(0, 8);
+      };
+
+      const mergeHistory = (a = [], b = []) => {
+        const map = new Map();
+        [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach(item => {
+          if (!item) return;
+          const k = item.id || `${item.upc || item.title || 'item'}|${item.receiptGroup || ''}`;
+          const prev = map.get(k);
+          if (!prev || (item.scannedDate || 0) >= (prev.scannedDate || 0)) {
+            map.set(k, item);
+          }
+        });
+        return [...map.values()].slice(0, 500);
+      };
+
+      try {
+        const body = await request.json();
+        const deviceId = String(body.deviceId || '').trim().slice(0, 80);
+        if (!deviceId) {
+          return new Response(JSON.stringify({ success: false, error: 'deviceId required' }), { status: 400, headers: noCacheHeaders });
+        }
+
+        // POST /household/create
+        if (url.pathname === '/household/create') {
+          const householdId = crypto.randomUUID();
+          const inviteCode = generateInviteCode();
+          const now = Date.now();
+          const hhRecord = {
+            householdId,
+            members: [deviceId],
+            plusActive: true,
+            updatedAt: now,
+            familyProfiles: Array.isArray(body.familyProfiles) ? body.familyProfiles.slice(0, 8) : [],
+            scanHistory: Array.isArray(body.scanHistory) ? body.scanHistory.slice(0, 500) : []
+          };
+          await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hhRecord));
+          await env.RAKKA_COMMUNITY_DB.put(`hhcode:${inviteCode}`, JSON.stringify({ householdId, createdBy: deviceId }), { expirationTtl: 86400 });
+          return new Response(JSON.stringify({
+            success: true,
+            householdId,
+            inviteCode,
+            memberCount: 1,
+            maxMembers: 2,
+            updatedAt: now
+          }), { headers: noCacheHeaders });
+        }
+
+        // POST /household/join
+        if (url.pathname === '/household/join') {
+          const rawCode = String(body.inviteCode || '').trim().toUpperCase();
+          if (!rawCode) {
+            return new Response(JSON.stringify({ success: false, error: 'Invite code required' }), { status: 400, headers: noCacheHeaders });
+          }
+          const codeData = await env.RAKKA_COMMUNITY_DB.get(`hhcode:${rawCode}`, { type: 'json' });
+          if (!codeData || !codeData.householdId) {
+            return new Response(JSON.stringify({ success: false, error: 'Invalid or expired invite code.' }), { status: 404, headers: noCacheHeaders });
+          }
+          const hh = await env.RAKKA_COMMUNITY_DB.get(`hh:${codeData.householdId}`, { type: 'json' });
+          if (!hh) {
+            return new Response(JSON.stringify({ success: false, error: 'Household record not found.' }), { status: 404, headers: noCacheHeaders });
+          }
+          const members = Array.isArray(hh.members) ? hh.members : [];
+          if (!members.includes(deviceId) && members.length >= 2) {
+            return new Response(JSON.stringify({ success: false, error: 'This household already has 2 linked devices.' }), { status: 403, headers: noCacheHeaders });
+          }
+          if (!members.includes(deviceId)) members.push(deviceId);
+          hh.members = members;
+          hh.familyProfiles = mergeProfiles(hh.familyProfiles, body.familyProfiles);
+          hh.scanHistory = mergeHistory(hh.scanHistory, body.scanHistory);
+          hh.updatedAt = Date.now();
+          await env.RAKKA_COMMUNITY_DB.put(`hh:${hh.householdId}`, JSON.stringify(hh));
+          await env.RAKKA_COMMUNITY_DB.delete(`hhcode:${rawCode}`);
+
+          return new Response(JSON.stringify({
+            success: true,
+            householdId: hh.householdId,
+            plusActive: Boolean(hh.plusActive),
+            memberCount: hh.members.length,
+            updatedAt: hh.updatedAt,
+            familyProfiles: hh.familyProfiles,
+            scanHistory: hh.scanHistory
+          }), { headers: noCacheHeaders });
+        }
+
+        // POST /household/sync
+        if (url.pathname === '/household/sync') {
+          const householdId = String(body.householdId || '').trim();
+          if (!householdId) {
+            return new Response(JSON.stringify({ success: false, error: 'householdId required' }), { status: 400, headers: noCacheHeaders });
+          }
+          const hh = await env.RAKKA_COMMUNITY_DB.get(`hh:${householdId}`, { type: 'json' });
+          if (!hh) {
+            return new Response(JSON.stringify({ success: false, error: 'Household not found or unlinked.' }), { status: 404, headers: noCacheHeaders });
+          }
+          const members = Array.isArray(hh.members) ? hh.members : [];
+          if (!members.includes(deviceId)) {
+            return new Response(JSON.stringify({ success: false, error: 'Device is not linked to this household.' }), { status: 403, headers: noCacheHeaders });
+          }
+
+          const action = body.action === 'push' ? 'push' : 'pull';
+          if (action === 'push') {
+            if (Array.isArray(body.familyProfiles)) hh.familyProfiles = body.familyProfiles.slice(0, 8);
+            if (Array.isArray(body.scanHistory)) hh.scanHistory = body.scanHistory.slice(0, 500);
+            hh.updatedAt = Date.now();
+            await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            householdId: hh.householdId,
+            plusActive: Boolean(hh.plusActive),
+            memberCount: members.length,
+            updatedAt: hh.updatedAt || Date.now(),
+            familyProfiles: hh.familyProfiles || [],
+            scanHistory: hh.scanHistory || []
+          }), { headers: noCacheHeaders });
+        }
+
+        // POST /household/leave
+        if (url.pathname === '/household/leave') {
+          const householdId = String(body.householdId || '').trim();
+          if (householdId) {
+            const hh = await env.RAKKA_COMMUNITY_DB.get(`hh:${householdId}`, { type: 'json' });
+            if (hh && Array.isArray(hh.members)) {
+              hh.members = hh.members.filter(m => m !== deviceId);
+              hh.updatedAt = Date.now();
+              await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+            }
+          }
+          return new Response(JSON.stringify({ success: true }), { headers: noCacheHeaders });
+        }
+      } catch (hhErr) {
+        return new Response(JSON.stringify({ success: false, error: hhErr.message }), { status: 400, headers: noCacheHeaders });
       }
     }
 
