@@ -21478,6 +21478,14 @@
               <svg class="w-4 h-4 text-amber-200 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
               <span>Audit My Bag: Check Stamped Date</span>
             </button>
+            <button
+              type="button"
+              onclick="registerRecallSharePayload('scan-current', { title: (window._currentScanResult && window._currentScanResult.title) || '', brand: (window._currentScanResult && window._currentScanResult.brand) || '', reason: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.hazard) || '', agency: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.agency) || 'FDA/USDA', lots: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.codeInfo) || '' }); shareRecallByKey('scan-current');"
+              class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs shadow-sm transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1.5"
+            >
+              <svg class="w-4 h-4 text-cyan-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              <span>Share Recall Alert Card</span>
+            </button>
             <div class="pt-2 border-t border-rose-900/60 text-xs text-rose-300/80 italic">
               Verification based on active federal databases as of scan time. Always verify printed lot codes on packaging directly.
             </div>
@@ -24014,6 +24022,14 @@ function renderHistory() {
                       <span>${item.lotAudit ? 'Re-check Lot / Date Code' : 'Audit Lot / Date Code'}</span>
                     </button>
                   `}
+                  <button
+                    type="button"
+                    onclick="event.stopPropagation(); registerRecallSharePayload('wl-' + '${cardKey}', { title: '${(item.title || '').replace(/'/g, "\'")}', brand: '${(item.brand || '').replace(/'/g, "\'")}', reason: '${(recallReason || '').replace(/'/g, "\'")}', severity: '${(recallSeverity || '').replace(/'/g, "\'")}', agency: '${(recallSeverity || '').includes('USDA') ? 'USDA' : 'FDA'}' }); shareRecallByKey('wl-' + '${cardKey}');"
+                    class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs shadow-sm transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <svg class="w-4 h-4 text-cyan-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                    <span>Share Recall Alert Card</span>
+                  </button>
                   <p class="text-xs text-slate-400 pt-1 border-t border-rose-900/30">Action: Do not consume. Discard or return to store for full refund.</p>
                 </div>
               ` : ''}
@@ -24428,6 +24444,16 @@ function renderHistory() {
         const storeTags = b.stores ? b.stores.map(s => `<span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-xs">${s}</span>`).join(' ') : '';
         const regionText = b.states.includes('ALL') ? 'Nationwide Distribution' : `Affected: ${b.states.join(', ')}`;
         const detailsId = `priority-bulletin-details-${idx}`;
+        const shareKey = `priority-${idx}`;
+        registerRecallSharePayload(shareKey, {
+          title: b.title,
+          brand: b.brand,
+          reason: b.reason,
+          agency: b.agency,
+          severity: b.severity,
+          date: b.date,
+          region: regionText
+        });
 
         return `
           <div class="p-3.5 rounded-xl border border-rose-900/40 bg-slate-950/80 hover:border-slate-700 transition space-y-1.5 shadow-sm cursor-pointer select-none" onclick="toggleBulletinDetails('${detailsId}')">
@@ -24456,6 +24482,10 @@ function renderHistory() {
                 <div><strong class="text-slate-400">Geographic Distribution:</strong> ${regionText}</div>
                 ${b.stores && b.stores.length > 0 ? `<div><strong class="text-slate-400">Participating Retailers:</strong> ${b.stores.join(', ')}</div>` : ''}
               </div>
+              <button type="button" onclick="event.stopPropagation(); shareRecallByKey('${shareKey}')" class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-2">
+                <svg class="w-4 h-4 text-cyan-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                <span>Share Recall Alert Card</span>
+              </button>
             </div>
 
             ${storeTags ? `<div class="pt-1 flex flex-wrap gap-1 items-center"><span class="text-xs text-slate-500">Retailers:</span> ${storeTags}</div>` : ''}
@@ -24465,6 +24495,16 @@ function renderHistory() {
 
       const fdaHtml = displayedFda.map((f, idx) => {
         const detailsId = `fda-live-details-${idx}`;
+        const shareKey = `fda-${idx}`;
+        registerRecallSharePayload(shareKey, {
+          title: f.product,
+          brand: f.brand,
+          reason: f.reason,
+          agency: (f.severity || '').includes('USDA') ? 'USDA' : 'FDA',
+          severity: f.severity || 'Class I',
+          date: f.date,
+          lots: Array.isArray(f.upcs) && f.upcs.length > 0 ? f.upcs.join(', ') : ''
+        });
         return `
           <div class="p-3 rounded-xl border border-slate-800/80 bg-slate-950/60 hover:border-slate-700 transition space-y-1 cursor-pointer select-none" onclick="toggleBulletinDetails('${detailsId}')">
             <div class="flex items-center justify-between">
@@ -24492,6 +24532,10 @@ function renderHistory() {
                 <div><strong class="text-slate-400">FDA Report ID:</strong> <span class="font-mono text-slate-400">${f.id || 'Official Archive'}</span></div>
                 ${Array.isArray(f.upcs) && f.upcs.length > 0 ? `<div><strong class="text-slate-400">Identified UPC / Lot Codes:</strong> <span class="font-mono text-emerald-300">${f.upcs.join(', ')}</span></div>` : ''}
               </div>
+              <button type="button" onclick="event.stopPropagation(); shareRecallByKey('${shareKey}')" class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-2">
+                <svg class="w-4 h-4 text-cyan-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                <span>Share Recall Alert Card</span>
+              </button>
             </div>
           </div>
         `;
@@ -25348,6 +25392,198 @@ function renderHistory() {
     window.openLotAuditorForWatchlistItem = openLotAuditorForWatchlistItem;
     window.openLotAuditorForCurrentProduct = openLotAuditorForCurrentProduct;
     window.openLotAuditor = openLotAuditor;
+
+    window._rakkaSharePayloads = window._rakkaSharePayloads || {};
+
+    function registerRecallSharePayload(key, payload) {
+      window._rakkaSharePayloads[key] = payload || {};
+    }
+
+    function renderRecallCardPngBlob(payload) {
+      return new Promise((resolve) => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1080;
+          canvas.height = 640;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(null);
+
+          // Background gradient
+          const bg = ctx.createLinearGradient(0, 0, 1080, 640);
+          bg.addColorStop(0, '#0f172a');
+          bg.addColorStop(1, '#020617');
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, 1080, 640);
+
+          // Top rose/amber accent bar
+          const bar = ctx.createLinearGradient(0, 0, 1080, 0);
+          bar.addColorStop(0, '#e11d48');
+          bar.addColorStop(1, '#f59e0b');
+          ctx.fillStyle = bar;
+          ctx.fillRect(0, 0, 1080, 14);
+
+          // Card border
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(24, 34, 1032, 582);
+
+          // Alert badge
+          ctx.fillStyle = 'rgba(225, 29, 72, 0.22)';
+          ctx.fillRect(56, 66, 330, 44);
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(56, 66, 330, 44);
+          ctx.fillStyle = '#fda4af';
+          ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+          ctx.fillText('RAKKA FOOD RECALL ALERT', 74, 95);
+
+          // Agency / Date pill on right
+          const metaText = [payload.agency || 'FDA/USDA', payload.date || 'Active'].filter(Boolean).join(' • ');
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(metaText, 1024, 95);
+          ctx.textAlign = 'left';
+
+          // Helper for word-wrapping text
+          function drawWrapped(text, x, y, maxWidth, lineHeight, maxLines, color, font) {
+            ctx.fillStyle = color;
+            ctx.font = font;
+            const words = String(text || '').split(/\s+/).filter(Boolean);
+            let line = '';
+            let lines = 0;
+            for (let i = 0; i < words.length; i++) {
+              const test = line ? line + ' ' + words[i] : words[i];
+              if (ctx.measureText(test).width > maxWidth && line) {
+                lines++;
+                if (lines >= maxLines) {
+                  ctx.fillText(line.slice(0, Math.max(0, line.length - 3)) + '...', x, y);
+                  return y + lineHeight;
+                }
+                ctx.fillText(line, x, y);
+                line = words[i];
+                y += lineHeight;
+              } else {
+                line = test;
+              }
+            }
+            if (line) {
+              ctx.fillText(line, x, y);
+              y += lineHeight;
+            }
+            return y;
+          }
+
+          let curY = 160;
+          curY = drawWrapped(payload.title || 'Recalled Food Product', 56, curY, 968, 44, 2, '#f8fafc', 'bold 34px system-ui, -apple-system, sans-serif');
+          curY += 6;
+          if (payload.brand) {
+            curY = drawWrapped('Brand / Firm: ' + payload.brand, 56, curY, 968, 32, 1, '#38bdf8', '600 24px system-ui, -apple-system, sans-serif');
+          }
+          curY += 16;
+
+          // Hazard box
+          ctx.fillStyle = 'rgba(136, 19, 55, 0.28)';
+          ctx.fillRect(56, curY, 968, 175);
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)';
+          ctx.strokeRect(56, curY, 968, 175);
+          ctx.fillStyle = '#fda4af';
+          ctx.font = 'bold 19px system-ui, -apple-system, sans-serif';
+          ctx.fillText('REASON / HAZARD', 76, curY + 34);
+          drawWrapped(payload.reason || 'Active federal food safety recall.', 76, curY + 70, 928, 30, 3, '#e2e8f0', '500 22px system-ui, -apple-system, sans-serif');
+
+          // Lot / Regions line
+          const extraParts = [];
+          if (payload.lots) extraParts.push('Lot/UPC: ' + payload.lots);
+          if (payload.region) extraParts.push(payload.region);
+          if (extraParts.length > 0) {
+            drawWrapped(extraParts.join('  •  '), 56, 520, 968, 28, 1, '#fcd34d', '600 20px system-ui, -apple-system, sans-serif');
+          }
+
+          // Footer
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+          ctx.beginPath();
+          ctx.moveTo(56, 548);
+          ctx.lineTo(1024, 548);
+          ctx.stroke();
+
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '500 19px system-ui, -apple-system, sans-serif';
+          ctx.fillText('Do not consume. Verify printed lot codes on packaging.', 56, 584);
+
+          ctx.fillStyle = '#2dd4bf';
+          ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('Checked with RAKKA', 1024, 584);
+          ctx.textAlign = 'left';
+
+          canvas.toBlob((blob) => resolve(blob), 'image/png');
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+
+    async function shareRecallByKey(key) {
+      if (typeof triggerHaptic === 'function') triggerHaptic([20]);
+      const payload = (window._rakkaSharePayloads && window._rakkaSharePayloads[key]) || null;
+      if (!payload) return;
+
+      const isUsda = (payload.agency || '').toUpperCase().includes('USDA') || (payload.severity || '').toUpperCase().includes('USDA');
+      const officialUrl = isUsda
+        ? 'https://www.fsis.usda.gov/recalls'
+        : 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts';
+
+      const lines = [
+        `⚠️ FOOD RECALL ALERT: ${payload.title || 'Recalled Product'}`,
+        payload.brand ? `Brand/Firm: ${payload.brand}` : '',
+        payload.reason ? `Reason: ${payload.reason}` : '',
+        payload.lots ? `Lot/UPC: ${payload.lots}` : '',
+        payload.region ? `Area: ${payload.region}` : '',
+        payload.date ? `Date: ${payload.date}` : '',
+        `Official Info: ${officialUrl}`,
+        '— Checked with RAKKA'
+      ].filter(Boolean);
+      const shareText = lines.join('\n');
+
+      try {
+        const pngBlob = await renderRecallCardPngBlob(payload);
+        if (pngBlob && navigator.canShare) {
+          const file = new File([pngBlob], 'rakka-recall-alert.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: `Recall Alert: ${payload.title || 'Food Product'}`,
+              text: shareText,
+              files: [file]
+            });
+            return;
+          }
+        }
+        if (navigator.share) {
+          await navigator.share({
+            title: `Recall Alert: ${payload.title || 'Food Product'}`,
+            text: shareText,
+            url: officialUrl
+          });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(shareText);
+        if (typeof showCustomizeToast === 'function') {
+          showCustomizeToast('Recall alert copied to clipboard!');
+        }
+      } catch (e) {
+        if (typeof showCustomizeToast === 'function') {
+          showCustomizeToast('Unable to copy recall alert on this device.');
+        }
+      }
+    }
+    window.shareRecallByKey = shareRecallByKey;
+    window.registerRecallSharePayload = registerRecallSharePayload;
     window.closeLotAuditor = closeLotAuditor;
 
     function closeLotAuditor(fromBackGesture = false) {
