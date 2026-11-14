@@ -22163,11 +22163,11 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Active Guard:</span>
                   <span class="text-base sm:text-lg font-bold text-white leading-tight truncate">${currentProfile.name}</span>
-                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${userAllergens.length > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
-                    ${userAllergens.length === 0 ? 'No Restrictions' : `${userAllergens.length} Alert${userAllergens.length > 1 ? 's' : ''}`}
+                  <span class="text-xs font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${userAllergens.length > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
+                    ${userAllergens.length === 0 ? '0 Alerts' : `${userAllergens.length} Alert${userAllergens.length > 1 ? 's' : ''}`}
                   </span>
                 </div>
-                <span class="text-xs text-slate-400 block truncate">Position ${activeIdx + 1} • Hold & drag pill to reorder</span>
+                <span class="text-xs text-slate-400 block leading-snug">Position ${activeIdx + 1}</span>
               </div>
             </div>
             
@@ -22233,7 +22233,7 @@
               <div class="flex flex-col min-w-0 pr-1 justify-center">
                 <span class="text-sm sm:text-base font-bold leading-tight truncate max-w-[120px] sm:max-w-[150px] profile-name ${isActive ? 'text-white' : 'text-slate-200'}">${p.name}</span>
                 <span class="text-xs font-semibold mt-0.5 profile-subtext ${isActive ? 'text-cyan-300' : 'text-slate-400'}">
-                  ${count === 0 ? 'No Restrictions' : `${count} alert${count > 1 ? 's' : ''}`}
+                  ${count === 0 ? '0 alerts' : `${count} alert${count > 1 ? 's' : ''}`}
                 </span>
               </div>
             </div>
