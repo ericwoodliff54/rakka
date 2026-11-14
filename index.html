@@ -2086,8 +2086,14 @@
       border-color: #cbd5e1 !important;
       color: #0f172a !important;
     }
-    html.theme-light button[onclick*="shareRecallByKey"]:hover {
+    html.theme-light button[onclick*="shareRecallByKey"]:hover,
+    html.theme-light #retakeLotCodePhotoBtn:hover {
       background-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+    html.theme-light #retakeLotCodePhotoBtn {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
       color: #0f172a !important;
     }
 
@@ -4201,6 +4207,7 @@
             <div>
               <span id="lotVerdictTitle" class="font-bold text-sm block"></span>
               <span id="lotExtractedCodeText" class="text-xs font-mono block opacity-90 mt-0.5"></span>
+              <span id="lotVerdictPhysicalNote" class="hidden text-xs font-semibold block mt-1 opacity-90">Always Verify Physical Packaging</span>
             </div>
           </div>
           <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
@@ -26146,20 +26153,24 @@ function renderHistory() {
         lotVerdictActionBox.textContent = audit.action;
       }
 
+      const lotPhysicalNote = document.getElementById('lotVerdictPhysicalNote');
       if (audit.severity === 'danger' || audit.isMatch === true) {
         triggerHaptic([100, 60, 100]);
         sound.playScanBeep();
         lotVerdictBanner.className = "p-3.5 rounded-2xl border-2 border-rose-500 bg-rose-950/80 text-rose-200 flex items-start gap-2.5 shadow-lg shadow-rose-950/50";
         lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.alertTriangle + `</span>`;
+        if (lotPhysicalNote) lotPhysicalNote.classList.add('hidden');
         if (lotVerdictActionBox) lotVerdictActionBox.className = "p-2 rounded-xl text-xs font-bold bg-rose-950 border border-rose-800 text-rose-300";
       } else if (audit.severity === 'safe' || audit.isMatch === false) {
         triggerHaptic([30, 40]);
         sound.playClearChime();
         lotVerdictBanner.className = "p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-200 flex items-start gap-2.5 shadow-lg shadow-emerald-950/50";
         lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.checkCircle + `</span>`;
-        if (lotVerdictActionBox) lotVerdictActionBox.className = "p-2 rounded-xl text-xs font-bold bg-emerald-950 border border-emerald-800 text-emerald-300";
+        if (lotPhysicalNote) lotPhysicalNote.classList.remove('hidden');
+        if (lotVerdictActionBox) lotVerdictActionBox.className = "hidden";
       } else {
         triggerHaptic([40]);
+        if (lotPhysicalNote) lotPhysicalNote.classList.add('hidden');
         lotVerdictBanner.className = "p-3.5 rounded-2xl border border-amber-500 bg-amber-950/80 text-amber-200 flex items-start gap-2.5";
         lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.info + `</span>`;
         if (lotVerdictActionBox) lotVerdictActionBox.className = "p-2 rounded-xl text-xs font-bold bg-amber-950 border border-amber-800 text-amber-300";
