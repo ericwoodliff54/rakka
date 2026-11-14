@@ -1674,7 +1674,6 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           hh.scanHistory = mergeHistory(hh.scanHistory, body.scanHistory);
           hh.updatedAt = Date.now();
           await env.RAKKA_COMMUNITY_DB.put(`hh:${hh.householdId}`, JSON.stringify(hh));
-          await env.RAKKA_COMMUNITY_DB.delete(`hhcode:${rawCode}`);
 
           return new Response(JSON.stringify({
             success: true,
