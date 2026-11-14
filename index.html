@@ -24,6 +24,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://fastly.jsdelivr.net/npm/barcode-detector@3/dist/iife/polyfill.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <style>
@@ -3992,12 +3993,14 @@
         </p>
 
         <!-- Invite Code Display (shown after generating) -->
-        <div id="householdInviteBox" class="hidden p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-2">
+        <div id="householdInviteBox" class="hidden p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-cyan-300">Partner Invite Code (24h):</span>
+            <span class="text-xs font-bold text-cyan-300">Scan QR or Share Code (24h):</span>
             <button type="button" onclick="copyHouseholdInviteCode()" class="text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 px-2.5 py-1 rounded-lg cursor-pointer">Copy</button>
           </div>
-          <div id="householdInviteCodeText" class="font-mono text-lg font-extrabold tracking-widest text-white text-center py-1 select-all">RKA-000-000</div>
+          <div id="householdInviteQr" class="mx-auto bg-white p-2.5 rounded-xl w-fit shadow-md"></div>
+          <p class="text-[11px] text-slate-300 text-center">Have your partner scan this QR with their phone camera to link &amp; sync automatically.</p>
+          <div id="householdInviteCodeText" class="font-mono text-base font-extrabold tracking-widest text-white text-center py-0.5 select-all">RKA-000-000</div>
         </div>
 
         <!-- Unlinked Controls -->
@@ -25776,6 +25779,16 @@ function renderHistory() {
         const box = document.getElementById('householdInviteBox');
         const codeEl = document.getElementById('householdInviteCodeText');
         if (codeEl) codeEl.textContent = data.inviteCode;
+        const qrEl = document.getElementById('householdInviteQr');
+        if (qrEl) {
+          qrEl.innerHTML = '';
+          const joinUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(data.inviteCode)}`;
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(qrEl, { text: joinUrl, width: 168, height: 168, colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+          } else {
+            qrEl.innerHTML = '<span class="text-xs text-slate-800 font-semibold px-2">QR unavailable offline — use code below</span>';
+          }
+        }
         if (box) box.classList.remove('hidden');
         updateHouseholdSyncUI(data.memberCount || 1);
         if (typeof showCustomizeToast === 'function') showCustomizeToast(`Invite code ready: ${data.inviteCode}`);
@@ -25793,9 +25806,9 @@ function renderHistory() {
       } catch (_) {}
     }
 
-    async function joinHouseholdByCode() {
+    async function joinHouseholdByCode(overrideCode = null) {
       const input = document.getElementById('householdJoinCodeInput');
-      const code = (input ? input.value : '').trim().toUpperCase();
+      const code = (overrideCode || (input ? input.value : '')).trim().toUpperCase();
       if (!code) {
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Enter a partner invite code first.');
         return;
@@ -25911,7 +25924,15 @@ function renderHistory() {
 
     setTimeout(() => {
       updateHouseholdSyncUI();
-      syncHouseholdNow(false);
+      const params = new URLSearchParams(window.location.search);
+      const joinCodeParam = params.get('join');
+      if (joinCodeParam && joinCodeParam.trim().toUpperCase().startsWith('RKA-')) {
+        const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+        try { window.history.replaceState({}, document.title, cleanUrl); } catch (_) {}
+        joinHouseholdByCode(joinCodeParam.trim().toUpperCase());
+      } else {
+        syncHouseholdNow(false);
+      }
     }, 800);
     window.closeLotAuditor = closeLotAuditor;
 
