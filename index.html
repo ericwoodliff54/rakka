@@ -25732,6 +25732,8 @@ function renderHistory() {
         }
         if (Array.isArray(data.scanHistory)) {
           scanHistory = data.scanHistory;
+          if (typeof auditWatchlistAllergens === 'function') auditWatchlistAllergens();
+          if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls();
           saveHistory();
           if (typeof renderHistory === 'function') renderHistory();
         }
@@ -25760,6 +25762,7 @@ function renderHistory() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             deviceId: getRakkaDeviceId(),
+            householdId: localStorage.getItem('rakka_household_id') || '',
             familyProfiles,
             scanHistory
           })
@@ -25875,14 +25878,14 @@ function renderHistory() {
               householdId,
               deviceId: getRakkaDeviceId(),
               action: 'push',
+              baseUpdatedAt: parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10),
               familyProfiles,
               scanHistory
             })
           });
           const data = await res.json();
           if (res.ok && data.success && data.updatedAt) {
-            localStorage.setItem('rakka_household_updated_at', String(data.updatedAt));
-            updateHouseholdSyncUI(data.memberCount || null);
+            applySyncedHouseholdData(data);
           }
         } catch (_) {}
       }, 1200);

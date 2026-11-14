@@ -1607,9 +1607,29 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
         // POST /household/create
         if (url.pathname === '/household/create') {
-          const householdId = crypto.randomUUID();
+          const existingId = String(body.householdId || '').trim();
           const inviteCode = generateInviteCode();
           const now = Date.now();
+
+          if (existingId) {
+            const existingHh = await env.RAKKA_COMMUNITY_DB.get(`hh:${existingId}`, { type: 'json' });
+            if (existingHh && Array.isArray(existingHh.members) && existingHh.members.includes(deviceId)) {
+              if (existingHh.members.length >= 2) {
+                return new Response(JSON.stringify({ success: false, error: 'This household already has 2 linked devices.' }), { status: 403, headers: noCacheHeaders });
+              }
+              await env.RAKKA_COMMUNITY_DB.put(`hhcode:${inviteCode}`, JSON.stringify({ householdId: existingId, createdBy: deviceId }), { expirationTtl: 86400 });
+              return new Response(JSON.stringify({
+                success: true,
+                householdId: existingId,
+                inviteCode,
+                memberCount: existingHh.members.length,
+                maxMembers: 2,
+                updatedAt: existingHh.updatedAt || now
+              }), { headers: noCacheHeaders });
+            }
+          }
+
+          const householdId = crypto.randomUUID();
           const hhRecord = {
             householdId,
             members: [deviceId],
@@ -1684,8 +1704,18 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
           const action = body.action === 'push' ? 'push' : 'pull';
           if (action === 'push') {
-            if (Array.isArray(body.familyProfiles)) hh.familyProfiles = body.familyProfiles.slice(0, 8);
-            if (Array.isArray(body.scanHistory)) hh.scanHistory = body.scanHistory.slice(0, 500);
+            const baseTs = Number(body.baseUpdatedAt || 0);
+            const isStale = baseTs > 0 && (hh.updatedAt || 0) > baseTs;
+            if (Array.isArray(body.familyProfiles)) {
+              hh.familyProfiles = isStale
+                ? mergeProfiles(hh.familyProfiles, body.familyProfiles)
+                : body.familyProfiles.slice(0, 8);
+            }
+            if (Array.isArray(body.scanHistory)) {
+              hh.scanHistory = isStale
+                ? mergeHistory(hh.scanHistory, body.scanHistory)
+                : body.scanHistory.slice(0, 500);
+            }
             hh.updatedAt = Date.now();
             await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
           }
@@ -1708,8 +1738,12 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             const hh = await env.RAKKA_COMMUNITY_DB.get(`hh:${householdId}`, { type: 'json' });
             if (hh && Array.isArray(hh.members)) {
               hh.members = hh.members.filter(m => m !== deviceId);
-              hh.updatedAt = Date.now();
-              await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+              if (hh.members.length === 0) {
+                await env.RAKKA_COMMUNITY_DB.delete(`hh:${householdId}`);
+              } else {
+                hh.updatedAt = Date.now();
+                await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+              }
             }
           }
           return new Response(JSON.stringify({ success: true }), { headers: noCacheHeaders });
