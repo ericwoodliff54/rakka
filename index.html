@@ -5136,20 +5136,22 @@
       // 2. Text heuristics from product name, clean name, brand, ingredients, raw line
       const text = `${item.productName || item.product || ''} ${item.cleanName || ''} ${item.rawLine || ''} ${item.brand || item.receiptStore || ''} ${item.ingredients || ''}`.toLowerCase();
 
-      // Gluten & Wheat (strictly exclude "gluten-free", "wheat-free", and word-boundary tartrate false positives)
+      // Gluten & Wheat (strictly exclude "gluten-free", "wheat-free", non-wheat flours, and tartrate false positives)
       const glutenClean = text
-        .replace(/\b(?:gluten|wheat|grain)[-_\s]*free\b/gi, '')
+        .replace(/\b(?:gluten|wheat|grain)[-_\s]*free\b(?:\s+(?:bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|waffle|pancake|cracker|pretzel|cereal|beer|crust|pies?|pastr(?:y|ies)|muffins?|flour))?/gi, '')
         .replace(/\bnon[-_\s]*(?:gluten|wheat)\b/gi, '')
-        .replace(/\bwithout\s+(?:gluten|wheat)\b/gi, '');
+        .replace(/\bwithout\s+(?:gluten|wheat)\b/gi, '')
+        .replace(/\b(?:almond|coconut|oat|rice|brown\s+rice|white\s+rice|tapioca|cassava|chickpea|garbanzo|sorghum|millet|buckwheat|quinoa|amaranth|teff|potato|corn|soy|lupin|tiger\s*nut|plantain|cauliflower|arrowroot)[-_\s]*flour\b/gi, '');
       if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pies?|pastr(?:y|ies)|turnovers?|tarts?|strudels?|croissants?|biscuits?|muffins?|scones?|danish|cobblers?|crisps?)\b/i.test(glutenClean)) {
         detected.add('gluten');
       }
 
-      // Dairy & Milk (exclude cocoa/shea/peanut butter, and plant milks)
+      // Dairy & Milk (exclude cocoa/shea/peanut butter, cream of tartar, plant milks/creams/yogurts, and dairy-free items)
       const dairyClean = text
-        .replace(/\b(?:cocoa|cacao|shea|apple|peanut|cookie|almond|cashew)\s*butters?\b/gi, '')
-        .replace(/\b(?:almond|oat|soy|coconut|cashew|rice|hemp|flax|macadamia|plant[-_\s]*based)\s*milks?\b/gi, '')
-        .replace(/\bdairy[-_\s]*free\b/gi, '');
+        .replace(/\bcream\s+of\s+tartar\b/gi, '')
+        .replace(/\b(?:cocoa|cacao|shea|apple|peanut|cookie|almond|cashew|sunflower\s*seed)\s*butters?\b/gi, '')
+        .replace(/\b(?:almond|oat|soy|coconut|cashew|rice|hemp|flax|macadamia|pea|plant[-_\s]*based|vegan)\s*(?:milks?|creams?|creamers?|yogurts?|cheeses?|ice\s*creams?)\b/gi, '')
+        .replace(/\b(?:dairy|milk|lactose)[-_\s]*free\b/gi, '');
       if (/\b(?:milk|dairy|lactose|cheese|cheddar|mozzarella|parmesan|gouda|swiss|provolone|brie|feta|curd|curds|butter|buttermilk|butterfat|ghee|cream|creamer|yogurt|sour\s*cream|whey|casein|caseinate|alfredo|custard|half\s*(?:and|&)\s*half|dairyproduct|ice\s*cream)\b/i.test(dairyClean)) {
         detected.add('dairy');
       }
@@ -5159,13 +5161,15 @@
         detected.add('peanuts');
       }
 
-      // Tree Nuts
-      if (/\b(?:almond|cashew|walnut|pecan|pistachio|hazelnut|filbert|macadamia|pine\s*nut|pignoli|chestnut|brazil\s*nut|praline|tree\s*nuts?)\b/i.test(text)) {
+      // Tree Nuts (exclude water chestnuts)
+      const treeNutClean = text.replace(/\bwater\s*chestnuts?\b/gi, '');
+      if (/\b(?:almond|cashew|walnut|pecan|pistachio|hazelnut|filbert|macadamia|pine\s*nut|pignoli|chestnut|brazil\s*nut|praline|tree\s*nuts?)\b/i.test(treeNutClean)) {
         detected.add('treenuts');
       }
 
-      // Soy
-      if (/\b(?:soy|soya|soybean|soybeans|tofu|edamame|lecithin|tempeh|miso|tamari|shoyu|tvp)\b/i.test(text)) {
+      // Soy (exclude sunflower, rapeseed, and canola lecithin)
+      const soyClean = text.replace(/\b(?:sunflower|rapeseed|canola)\s*lecithin\b/gi, '');
+      if (/\b(?:soy|soya|soybean|soybeans|tofu|edamame|lecithin|tempeh|miso|tamari|shoyu|tvp)\b/i.test(soyClean)) {
         detected.add('soy');
       }
 
@@ -5181,7 +5185,7 @@
       }
 
       // Fish
-      if (/\b(?:fish|finfish|salmon|tuna|cod|tilapia|halibut|pollock|anchov|trout|haddock|sardine|mackerel|snapper|fish\s*sauce)\b/i.test(text)) {
+      if (/\b(?:fish|finfish|salmon|tuna|cod|tilapia|halibut|pollock|anchov(?:y|ies)|trout|haddock|sardine|mackerel|snapper|fish\s*sauce)\b/i.test(text)) {
         detected.add('fish');
       }
 
@@ -18497,17 +18501,17 @@
           const keyClean = key.replace(/\D/g, '');
           if (keyClean.length >= 10) {
             const keyStem = keyClean.replace(/^0+/, '').slice(0, keyClean.length >= 12 ? 11 : keyClean.length - 1);
-            if (cleanStem === keyStem || (cleanStem.length >= 8 && (cleanStem.startsWith(keyStem) || keyStem.startsWith(cleanStem)))) {
+            if (cleanStem === keyStem || (cleanStem.length >= 10 && keyStem.length >= 10 && (cleanStem.startsWith(keyStem) || keyStem.startsWith(cleanStem)))) {
               return val;
             }
           }
         }
       }
 
-      // 6. Intelligent Substring Stem Matching (matches 8+ digit core identifiers)
+      // 6. Intelligent Substring Stem Matching (requires 10+ digit core identifiers to avoid manufacturer prefix false flags)
       for (const [key, val] of Object.entries(RECALL_DATABASE)) {
         const cleanKey = key.replace(/^0+/, '');
-        if (cleanKey.length >= 8) {
+        if (cleanKey.length >= 10 && strippedZero.length >= 10) {
           if (strippedZero.includes(cleanKey) || cleanKey.includes(strippedZero)) {
             return val;
           }
