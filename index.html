@@ -26159,14 +26159,20 @@ function renderHistory() {
         sound.playScanBeep();
         lotVerdictBanner.className = "p-3.5 rounded-2xl border-2 border-rose-500 bg-rose-950/80 text-rose-200 flex items-start gap-2.5 shadow-lg shadow-rose-950/50";
         lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.alertTriangle + `</span>`;
-        if (lotPhysicalNote) lotPhysicalNote.classList.add('hidden');
-        if (lotVerdictActionBox) lotVerdictActionBox.className = "p-2 rounded-xl text-xs font-bold bg-rose-950 border border-rose-800 text-rose-300";
+        if (lotPhysicalNote) {
+          lotPhysicalNote.textContent = 'Do Not Consume This Product';
+          lotPhysicalNote.classList.remove('hidden');
+        }
+        if (lotVerdictActionBox) lotVerdictActionBox.className = "hidden";
       } else if (audit.severity === 'safe' || audit.isMatch === false) {
         triggerHaptic([30, 40]);
         sound.playClearChime();
         lotVerdictBanner.className = "p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-200 flex items-start gap-2.5 shadow-lg shadow-emerald-950/50";
         lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.checkCircle + `</span>`;
-        if (lotPhysicalNote) lotPhysicalNote.classList.remove('hidden');
+        if (lotPhysicalNote) {
+          lotPhysicalNote.textContent = 'Always Verify Physical Packaging';
+          lotPhysicalNote.classList.remove('hidden');
+        }
         if (lotVerdictActionBox) lotVerdictActionBox.className = "hidden";
       } else {
         triggerHaptic([40]);
