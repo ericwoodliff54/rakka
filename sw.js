@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v150';
+const CACHE_NAME = 'rakka-v151';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -42,7 +42,7 @@ self.addEventListener('fetch', event => {
   // 1. Navigation requests (HTML pages): NETWORK-FIRST with offline cache fallback!
   if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/rakka/') || url.pathname.endsWith('/rakka')) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-cache' })
         .then(response => {
           if (response && response.status === 200) {
             const clone = response.clone();
