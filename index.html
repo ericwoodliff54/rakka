@@ -25698,6 +25698,14 @@ function renderHistory() {
       const lastTs = parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10);
 
       if (hhId) {
+        if (memberCount && memberCount >= 2) {
+          const box = document.getElementById('householdInviteBox');
+          if (box) box.classList.add('hidden');
+          if (window._hhInvitePollTimer) {
+            clearInterval(window._hhInvitePollTimer);
+            window._hhInvitePollTimer = null;
+          }
+        }
         if (badge) {
           badge.textContent = memberCount ? `Linked (${memberCount}/2)` : 'Linked';
           badge.className = 'text-xs text-emerald-400 font-semibold';
@@ -25786,6 +25794,24 @@ function renderHistory() {
         }
         if (box) box.classList.remove('hidden');
         updateHouseholdSyncUI(data.memberCount || 1);
+        if (window._hhInvitePollTimer) clearInterval(window._hhInvitePollTimer);
+        if ((data.memberCount || 1) < 2) {
+          let pollCount = 0;
+          window._hhInvitePollTimer = setInterval(async () => {
+            pollCount++;
+            if (pollCount > 60 || !localStorage.getItem('rakka_household_id')) {
+              clearInterval(window._hhInvitePollTimer);
+              window._hhInvitePollTimer = null;
+              return;
+            }
+            const linkedNow = await syncHouseholdNow(false);
+            if (linkedNow && linkedNow.memberCount >= 2) {
+              clearInterval(window._hhInvitePollTimer);
+              window._hhInvitePollTimer = null;
+              if (typeof showCustomizeToast === 'function') showCustomizeToast('Partner linked! Household synced (2/2).');
+            }
+          }, 5000);
+        }
         if (typeof showCustomizeToast === 'function') showCustomizeToast(`Invite code ready: ${data.inviteCode}`);
       } catch (err) {
         if (typeof showCustomizeToast === 'function') showCustomizeToast(err.message || 'Invite creation failed');
@@ -25859,6 +25885,7 @@ function renderHistory() {
           updateHouseholdSyncUI(data.memberCount || null);
         }
         if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast('Household synced!');
+        return data;
       } catch (_) {
         if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast('Offline - will sync when connected.');
       }
@@ -25892,6 +25919,10 @@ function renderHistory() {
     }
 
     async function leaveHouseholdSync() {
+      if (window._hhInvitePollTimer) {
+        clearInterval(window._hhInvitePollTimer);
+        window._hhInvitePollTimer = null;
+      }
       const householdId = localStorage.getItem('rakka_household_id');
       try {
         if (householdId) {
