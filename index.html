@@ -3322,17 +3322,6 @@
       <!-- Allergen Tick Box Grid (FDA Big 9 + Gluten, Corn, Sulfites & Yeast) -->
       <div class="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1" id="allergenCheckboxesContainer"></div>
 
-      <!-- Clarifying Notice: FDA Big 9 vs. Deep Ingredient Parsing (Corn, Sulfites & Yeast) -->
-      <div id="allergenDetectionNotice" class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs flex items-start gap-2.5 shadow-sm">
-        <div class="w-5 h-5 rounded-lg bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 shrink-0 mt-0.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
-        </div>
-        <div class="text-xs leading-relaxed">
-          <span class="font-bold text-slate-200 block mb-0.5">Federal Big 9 & Custom Ingredient Screening</span>
-          <span class="text-slate-400">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened directly from FDA-mandated bold allergen disclosures. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</span>
-        </div>
-      </div>
-
             <!-- Automatic Food Additives & Chemical Screener (Sleek 2-Tier Mobile Layout) -->
       <div class="p-4 rounded-3xl bg-slate-950/80 border border-white/[0.06] space-y-2.5 shadow-sm">
         <!-- Tier 1: Clean Header Row -->
@@ -3462,6 +3451,17 @@
               <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">Undisclosed Proprietary "Natural Flavors"</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Clarifying Notice: FDA Big 9 vs. Deep Ingredient Parsing (Corn, Sulfites & Yeast) -->
+      <div id="allergenDetectionNotice" class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs flex items-start gap-2.5 shadow-sm">
+        <div class="w-5 h-5 rounded-lg bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 shrink-0 mt-0.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+        </div>
+        <div class="text-xs leading-relaxed">
+          <span class="font-bold text-slate-200 block mb-0.5">Federal Big 9 & Custom Ingredient Screening</span>
+          <span class="text-slate-400">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened directly from FDA-mandated bold allergen disclosures. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</span>
         </div>
       </div>
 
