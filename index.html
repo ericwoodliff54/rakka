@@ -21561,10 +21561,6 @@
               <span class="font-bold text-rose-400 block mb-0.5">Health Hazard / Contaminant:</span>
               <p class="text-slate-200 leading-relaxed">${data.recallRecord.hazard}</p>
             </div>
-            <div class="pt-2 p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/60">
-              <span class="font-bold text-rose-300 block mb-0.5">Consumer Action:</span>
-              <p class="text-slate-200">${data.recallRecord.action || 'Do not consume. Discard or return to store.'}</p>
-            </div>
             <button 
               type="button" 
               onclick="openLotAuditorForCurrentProduct()" class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1"
@@ -24123,7 +24119,6 @@ function renderHistory() {
                     <svg class="w-4 h-4 text-cyan-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
                     <span>Share Recall Alert Card</span>
                   </button>
-                  <p class="text-xs text-slate-400 pt-1 border-t border-rose-900/30">Action: Do not consume. Discard or return to store for full refund.</p>
                 </div>
               ` : ''}
 
