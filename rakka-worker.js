@@ -5,38 +5,38 @@
  */
 
 // Master Embedded Key (Optional: Paste Gemini API key here in Cloudflare Quick Edit to bypass dashboard variables)
-const EMBEDDED_GEMINI_KEY = "";
-
-function resolveGeminiApiKey(env, body) {
-  if (typeof EMBEDDED_GEMINI_KEY === 'string' && EMBEDDED_GEMINI_KEY.trim().length > 0) {
-    return { key: EMBEDDED_GEMINI_KEY.trim().replace(/^[\"\']|[\"\']$/g, ''), source: 'embedded_code' };
-  }
-  const bodyKey = body && (body.clientApiKey || body.apiKey || body.geminiApiKey);
-  if (typeof bodyKey === 'string' && bodyKey.trim().length > 0) {
-    return { key: bodyKey.trim().replace(/^[\"\']|[\"\']$/g, ''), source: 'client_payload' };
-  }
-  const envAliases = [
-    'GEMINI_API_KEY', 'gemini_api_key', 'GEMINI_KEY', 'gemini_key',
-    'GOOGLE_API_KEY', 'google_api_key', 'API_KEY', 'api_key',
-    'GEMINI_TOKEN', 'gemini_token', 'GOOGLE_KEY', 'google_key',
-    'AI_VISION_KEY', 'ai_vision_key', 'GEMINI', 'gemini'
-  ];
+// Gemini key comes ONLY from Cloudflare secrets (Settings > Variables and Secrets).
+// Never paste a key into this file: the repo is public. Client-supplied keys are not accepted.
+function resolveGeminiApiKey(env /*, body (ignored) */) {
+  const aliases = ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_KEY'];
   if (env && typeof env === 'object') {
-    for (const alias of envAliases) {
+    for (const alias of aliases) {
       if (typeof env[alias] === 'string' && env[alias].trim().length > 0) {
-        return { key: env[alias].trim().replace(/^[\"\']|[\"\']$/g, ''), source: `cloudflare_env (${alias})` };
-      }
-    }
-  }
-  if (typeof globalThis !== 'undefined') {
-    for (const alias of envAliases) {
-      if (typeof globalThis[alias] === 'string' && globalThis[alias].trim().length > 0) {
-        return { key: globalThis[alias].trim().replace(/^[\"\']|[\"\']$/g, ''), source: `globalThis (${alias})` };
+        return { key: env[alias].trim().replace(/^["\']|["\']$/g, ''), source: `cloudflare_env (${alias})` };
       }
     }
   }
   return { key: '', source: 'none' };
 }
+
+// Origins allowed to call this API from a browser. Add more with the ALLOWED_ORIGINS
+// variable (comma-separated) instead of editing code.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://ericwoodliff54.github.io',
+  'https://twinravensdigital.com',
+  'https://privacy.twinravensdigital.com',
+  'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5500'
+];
+function getAllowedOrigins(env, request) {
+  const extra = (env && env.ALLOWED_ORIGINS) ? String(env.ALLOWED_ORIGINS).split(',').map(x => x.trim()).filter(Boolean) : [];
+  let self = [];
+  try { self = [new URL(request.url).origin]; } catch (e) {}
+  return [...DEFAULT_ALLOWED_ORIGINS, ...extra, ...self];
+}
+function cleanText(v, max) {
+  return String(v == null ? '' : v).replace(/[\u0000-\u001F\u007F<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+const HH_TTL_SECONDS = 60 * 60 * 24 * 90; // household records expire after 90 days without a sync
 
 // ============================================================================
 // EDGE PER-IP SLIDING WINDOW RATE LIMITER (Zero-KV Cost Isolate Memory Protection)
@@ -49,7 +49,9 @@ const RATE_LIMIT_CONFIG = {
   'audit-lot-code': 12,  // 12 req/min per IP for package stamp verification
   'detect-package': 12,  // 12 req/min per IP for whole-package vision
   'contribute-ocr': 10,  // 10 req/min per IP for community ingredient OCR
-  'household': 30        // 30 req/min per IP for 2-person household sync
+  'household': 30,       // 30 req/min per IP for 2-person household sync
+  'household-join': 8,   // brute-force guard for invite codes
+  'contribute': 10       // community catalog submissions
 };
 
 
@@ -434,13 +436,19 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
 export default {
   async fetch(request, env, ctx) {
     // 1. Hardened CORS Preflight (Explicit 204 No Content + Custom Client & Auth Headers)
+    const reqOrigin = request.headers.get('Origin');
+    const allowedOrigins = getAllowedOrigins(env, request);
+    const originOk = !reqOrigin || allowedOrigins.includes(reqOrigin);
+    const allowOriginHeader = (reqOrigin && originOk) ? reqOrigin : allowedOrigins[0];
     if (request.method === 'OPTIONS') {
+      if (!originOk) return new Response(null, { status: 403 });
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Vary': 'Origin',
+          'Access-Control-Allow-Origin': allowOriginHeader,
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version, x-goog-api-key',
+          'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version',
           'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
           'Access-Control-Max-Age': '86400',
         },
@@ -449,18 +457,26 @@ export default {
 
     const url = new URL(request.url);
     const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
+      'Vary': 'Origin',
+      'Access-Control-Allow-Origin': allowOriginHeader,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version, x-goog-api-key',
+      'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, x-rakka-client-version',
       'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=86400',
     };
 
+    if (request.method === 'POST' && !originOk) {
+      return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
     // 2. Health check / status
         // Diagnostic: Query Google ModelService.ListModels to see exactly which models this API key is allowed to use
     if (url.pathname === '/models' || url.pathname === '/api/models') {
-      const apiKey = resolveGeminiApiKey(env).key || url.searchParams.get('key');
+      if (!env || !env.ADMIN_TOKEN || request.headers.get('x-admin-token') !== env.ADMIN_TOKEN) {
+        return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: corsHeaders });
+      }
+      const apiKey = resolveGeminiApiKey(env).key;
       if (!apiKey) {
         return new Response(JSON.stringify({ error: 'No API key provided. Pass ?key= or configure GEMINI_API_KEY.' }), { status: 400, headers: corsHeaders });
       }
@@ -849,12 +865,19 @@ export default {
       try {
         const body = await request.json();
         const cleanUpc = String(body.upc || '').replace(/\D/g, '');
-        const productName = String(body.name || '').trim();
-        const brandName = String(body.brand || '').trim();
-        let ingredients = String(body.ingredients || '').trim();
+        const productName = cleanText(body.name, 120);
+        const brandName = cleanText(body.brand, 80);
+        let ingredients = cleanText(body.ingredients, 3000);
+        const rlContribAll = checkEdgeRateLimit(request, 'contribute');
+        if (!rlContribAll.allowed) {
+          return new Response(JSON.stringify({ error: 'Too many submissions. Please wait.', retryAfterSeconds: rlContribAll.retryAfterSec }), { status: 429, headers: { ...corsHeaders, ...rlContribAll.headers, 'Cache-Control': 'no-store' } });
+        }
+        const apiKey = resolveGeminiApiKey(env).key; // fixes ReferenceError that silently disabled OCR here
+        const okMime = ['image/jpeg', 'image/png', 'image/webp'];
+        const imgMime = okMime.includes(body.mimeType) ? body.mimeType : 'image/jpeg';
 
         // Optional: If an image was submitted, enforce per-IP OCR rate limit before calling Gemini 1.5 Flash
-        if (body.imageBase64 && env && env.GEMINI_API_KEY && !ingredients) {
+        if (body.imageBase64 && apiKey && String(body.imageBase64).length <= 6000000 && !ingredients) {
           const rlContribute = checkEdgeRateLimit(request, 'contribute-ocr');
           if (!rlContribute.allowed) {
             return new Response(JSON.stringify({
@@ -863,17 +886,17 @@ export default {
             }), { status: 429, headers: { ...corsHeaders, ...rlContribute.headers, 'Cache-Control': 'no-store' } });
           }
           try {
-            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey || (env && env.GEMINI_API_KEY) || "")}`, {
+            const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
               method: 'POST',
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json',
-                'x-goog-api-key': env.GEMINI_API_KEY
+                'x-goog-api-key': apiKey
               },
               body: JSON.stringify({
                 contents: [{
                   parts: [
                     { text: 'Extract ONLY the raw printed ingredient list from this grocery packaging label. Return the exact comma-separated ingredients text without any intro or commentary.' },
-                    { inline_data: { mime_type: body.mimeType || 'image/jpeg', data: body.imageBase64.replace(/^data:image\/\w+;base64,/, '') } }
+                    { inline_data: { mime_type: imgMime, data: String(body.imageBase64).replace(/^data:image\/\w+;base64,/, '') } }
                   ]
                 }]
               })
@@ -882,7 +905,7 @@ export default {
               const geminiData = await geminiRes.json();
               const extracted = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
               if (extracted && extracted.length > 5) {
-                ingredients = extracted.trim();
+                ingredients = cleanText(extracted, 3000);
               }
             }
           } catch (gErr) {
@@ -904,7 +927,25 @@ export default {
           return new Response(JSON.stringify({ error: 'Ingredients must contain valid food components' }), { status: 400, headers: corsHeaders });
         }
 
+        if (cleanUpc.length > 14) {
+          return new Response(JSON.stringify({ error: 'Valid barcode required' }), { status: 400, headers: corsHeaders });
+        }
+        // Never overwrite an existing product (prevents catalog poisoning). Only fill in records that have no ingredients yet.
+        if (env && env.RAKKA_COMMUNITY_DB) {
+          const trimmed = cleanUpc.replace(/^0+/, '');
+          const variants = [...new Set([cleanUpc, trimmed, trimmed.padStart(12, '0'), trimmed.padStart(13, '0')])];
+          for (const v of variants) {
+            let ex = null;
+            try { ex = await env.RAKKA_COMMUNITY_DB.get(`upc:${v}`, { type: 'json' }); } catch (e) {}
+            if (ex && ex.ingredients) {
+              return new Response(JSON.stringify({ error: 'This barcode already has an entry. Report corrections through support.' }), { status: 409, headers: corsHeaders });
+            }
+          }
+        }
         const record = {
+          communitySubmitted: true,
+          unverified: true,
+          source: 'community',
           upc: cleanUpc,
           name: productName,
           brand: brandName || 'Grocery Brand',
@@ -1638,7 +1679,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             familyProfiles: Array.isArray(body.familyProfiles) ? body.familyProfiles.slice(0, 8) : [],
             scanHistory: Array.isArray(body.scanHistory) ? body.scanHistory.slice(0, 500) : []
           };
-          await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hhRecord));
+          await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hhRecord), { expirationTtl: HH_TTL_SECONDS });
           await env.RAKKA_COMMUNITY_DB.put(`hhcode:${inviteCode}`, JSON.stringify({ householdId, createdBy: deviceId }), { expirationTtl: 86400 });
           return new Response(JSON.stringify({
             success: true,
@@ -1653,6 +1694,13 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         // POST /household/join
         if (url.pathname === '/household/join') {
           const rawCode = String(body.inviteCode || '').trim().toUpperCase();
+          const rlJoin = checkEdgeRateLimit(request, 'household-join');
+          if (!rlJoin.allowed) {
+            return new Response(JSON.stringify({ success: false, error: 'Too many attempts. Please wait a minute.' }), { status: 429, headers: { ...noCacheHeaders, ...rlJoin.headers } });
+          }
+          if (!/^RKA-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(rawCode)) {
+            return new Response(JSON.stringify({ success: false, error: 'Invalid or expired invite code.' }), { status: 404, headers: noCacheHeaders });
+          }
           if (!rawCode) {
             return new Response(JSON.stringify({ success: false, error: 'Invite code required' }), { status: 400, headers: noCacheHeaders });
           }
@@ -1673,7 +1721,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           hh.familyProfiles = mergeProfiles(hh.familyProfiles, body.familyProfiles);
           hh.scanHistory = mergeHistory(hh.scanHistory, body.scanHistory);
           hh.updatedAt = Date.now();
-          await env.RAKKA_COMMUNITY_DB.put(`hh:${hh.householdId}`, JSON.stringify(hh));
+          await env.RAKKA_COMMUNITY_DB.put(`hh:${hh.householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
 
           return new Response(JSON.stringify({
             success: true,
@@ -1716,7 +1764,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 : body.scanHistory.slice(0, 500);
             }
             hh.updatedAt = Date.now();
-            await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+            await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
           }
 
           return new Response(JSON.stringify({
@@ -1741,7 +1789,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 await env.RAKKA_COMMUNITY_DB.delete(`hh:${householdId}`);
               } else {
                 hh.updatedAt = Date.now();
-                await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh));
+                await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
               }
             }
           }
