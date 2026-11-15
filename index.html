@@ -3194,6 +3194,7 @@
             <h2 class="font-display text-base font-extrabold text-white">Receipts</h2>
           </div>
         </div>
+        <span id="receiptQuotaBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">3 of 3 Free Left</span>
       </div>
 
       <!-- Hero Capture / Upload Action Box (Expanded for High Readability) -->
@@ -19258,6 +19259,7 @@
         }
       }
       updateSelectedPlanUI();
+      if (typeof updateReceiptQuotaUI === 'function') updateReceiptQuotaUI();
     }
 
     // Direct Native PWA Install Prompt & Immediate Fallback Modal
@@ -19484,6 +19486,7 @@
       activeExpandedCardKey = null;
 
       // Execute render routines strictly for the active tab
+      if (isReceipts && typeof updateReceiptQuotaUI === 'function') { updateReceiptQuotaUI(); }
       if (isWatchlist && typeof renderHistory === 'function') {
         try {
           renderHistory();
@@ -26260,6 +26263,53 @@ function renderHistory() {
       return { currentMonthKey, todayKey, freeCount, proDailyCount };
     }
 
+    const FREE_MONTHLY_RECEIPT_LIMIT = 3;
+    const PLUS_DAILY_RECEIPT_LIMIT = 15;
+
+    function canScanReceipt() {
+      const { freeCount, proDailyCount } = getReceiptUsageData();
+      if (isPlusActive) {
+        const remaining = Math.max(0, PLUS_DAILY_RECEIPT_LIMIT - proDailyCount);
+        return {
+          allowed: proDailyCount < PLUS_DAILY_RECEIPT_LIMIT,
+          remaining,
+          limit: PLUS_DAILY_RECEIPT_LIMIT,
+          reason: `Daily fair-use limit reached (${PLUS_DAILY_RECEIPT_LIMIT}/${PLUS_DAILY_RECEIPT_LIMIT} receipt scans today). Resets at midnight.`
+        };
+      }
+      const remaining = Math.max(0, FREE_MONTHLY_RECEIPT_LIMIT - freeCount);
+      return {
+        allowed: freeCount < FREE_MONTHLY_RECEIPT_LIMIT,
+        remaining,
+        limit: FREE_MONTHLY_RECEIPT_LIMIT,
+        reason: `Monthly free limit reached (${FREE_MONTHLY_RECEIPT_LIMIT}/${FREE_MONTHLY_RECEIPT_LIMIT} receipt scans used). Start your 7-day free Plus trial for up to 15 scans/day!`
+      };
+    }
+
+    function updateReceiptQuotaUI() {
+      const badge = document.getElementById('receiptQuotaBadge');
+      if (!badge) return;
+      const q = canScanReceipt();
+      if (isPlusActive) {
+        badge.textContent = `Plus • ${q.remaining}/${q.limit} Today`;
+        badge.onclick = null;
+        badge.title = `${q.remaining} of ${q.limit} daily Plus receipt scans remaining`;
+        badge.className = q.remaining > 0
+          ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0'
+          : 'text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0';
+      } else {
+        badge.textContent = q.remaining > 0 ? `${q.remaining} of ${q.limit} Free Left` : `0 of ${q.limit} Left • Upgrade`;
+        badge.onclick = q.remaining === 0 ? openPaywall : null;
+        badge.title = q.remaining > 0 ? `${q.remaining} free AI receipt scans remaining this month` : 'Tap to start 7-day free Plus trial';
+        badge.className = q.remaining > 1
+          ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0'
+          : (q.remaining === 1
+            ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0'
+            : 'text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0 cursor-pointer');
+      }
+    }
+    window.updateReceiptQuotaUI = updateReceiptQuotaUI;
+
     function recordReceiptScanUsage() {
       const { freeCount, proDailyCount } = getReceiptUsageData();
       if (isPlusActive) {
@@ -26267,6 +26317,7 @@ function renderHistory() {
       } else {
         localStorage.setItem('rakka_receipt_free_count', String(freeCount + 1));
       }
+      updateReceiptQuotaUI();
     }
 
     function openReceiptAuditor() {
@@ -26584,6 +26635,13 @@ function renderHistory() {
 
     async function processReceiptFile(file) {
       if (!file || isReceiptProcessing) return;
+      const quota = canScanReceipt();
+      if (!quota.allowed) {
+        triggerHaptic([40, 40]);
+        showCustomizeToast(quota.reason);
+        if (!isPlusActive && typeof openPaywall === 'function') openPaywall();
+        return;
+      }
       isReceiptProcessing = true;
       triggerHaptic([40]);
 
@@ -26754,6 +26812,13 @@ function renderHistory() {
     if (openReceiptCameraBtn && receiptCameraInput) {
       openReceiptCameraBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        const quota = canScanReceipt();
+        if (!quota.allowed) {
+          triggerHaptic([40, 40]);
+          showCustomizeToast(quota.reason);
+          if (!isPlusActive && typeof openPaywall === 'function') openPaywall();
+          return;
+        }
         triggerHaptic([20]);
         openCameraOrFallback('Snap Receipt with Camera', async (file) => {
           await processReceiptFile(file);
@@ -26765,6 +26830,13 @@ function renderHistory() {
     if (openReceiptUploadBtn && receiptUploadInput) {
       openReceiptUploadBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        const quota = canScanReceipt();
+        if (!quota.allowed) {
+          triggerHaptic([40, 40]);
+          showCustomizeToast(quota.reason);
+          if (!isPlusActive && typeof openPaywall === 'function') openPaywall();
+          return;
+        }
         triggerHaptic([20]);
         receiptUploadInput.value = '';
         try {
