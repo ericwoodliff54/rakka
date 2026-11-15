@@ -1,4 +1,14 @@
-const CACHE_NAME = 'rakka-v169';
+const CACHE_NAME = 'rakka-v170';
+const SAFETY_ASSETS = [
+  './js/rakka-safety.js',
+  './js/core/text.js',
+  './js/core/gtin.js',
+  './js/core/allergens.js',
+  './js/core/recalls.js',
+  './js/core/verdict.js',
+  './js/ui/scanResultCard.js'
+];
+
 const ASSETS = [
   './index.html',
   './vendor/html5-qrcode.min.js',
@@ -22,7 +32,7 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(ASSETS).catch(err => {
         console.warn('Rakka pre-cache notice:', err);
-      });
+      }).then(() => Promise.all(SAFETY_ASSETS.map(a => cache.add(a).catch(err => console.warn('Rakka safety asset not cached:', a, err)))));
     })
   );
 });
