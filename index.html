@@ -23107,7 +23107,7 @@
         status: item.status,
         productName: item.productName || item.upc,
         brand: item.brand || '',
-        time: item.time || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        time: (item.time && !/^\d{1,2}:\d{2}(\s*[AP]M)?$/i.test(String(item.time).split('•')[0].trim())) ? String(item.time).split('•')[0].trim() : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         timestamp: Date.now(),
         isRecalled: Boolean(item.isRecalled),
         recallRecord: item.recallRecord || null,
@@ -23704,11 +23704,16 @@
         // Safe Timestamp Formatter for Watched Items
     function formatWatchedTimestamp(item) {
       if (!item) return 'Recent';
-      if (item.date) return item.date;
-      if (item.time) return item.time;
+      const raw = item.date || item.time || '';
+      if (raw) {
+        const datePart = String(raw).split('•')[0].trim();
+        if (datePart && !/^\d{1,2}:\d{2}(\s*[AP]M)?$/i.test(datePart)) {
+          return datePart;
+        }
+      }
       if (item.timestamp) {
         try {
-          return new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' • ' + new Date(item.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          return new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
         } catch (_) {}
       }
       return 'Recent';
@@ -26814,7 +26819,7 @@ function renderHistory() {
       // Unique receipt batch metadata
       const receiptId = receipt.id || ('rcpt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
       const receiptStore = receipt.storeName || 'Grocery Store';
-      const receiptDate = receipt.purchaseDate || (new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' • ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      const receiptDate = receipt.purchaseDate || new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
       const receiptTimestamp = Date.now();
 
       items.forEach((item, index) => {
@@ -27178,7 +27183,7 @@ function renderHistory() {
           product: itemName,
           brand: item.brand || 'Grocery Item',
           time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' • ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+          date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
           timestamp: Date.now(),
           status: item.status || 'clear',
           source: 'receipt',

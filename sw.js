@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v167';
+const CACHE_NAME = 'rakka-v168';
 const ASSETS = [
   './index.html',
   './vendor/html5-qrcode.min.js',
