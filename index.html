@@ -2378,6 +2378,7 @@
     }
 
   </style>
+  <script type="module" src="./js/rakka-safety.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
     <!-- RAKKA BRAND SPLASH SCREEN (Mascot with responsive mobile layout and guaranteed text visibility) -->
@@ -3069,7 +3070,7 @@
           </div>
           <span class="text-base font-bold text-white tracking-wide">Barcode Captured</span>
           <span id="scannedSuccessCode" class="text-xs font-semibold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-3.5 py-1.5 rounded-full mt-1.5 shadow-sm"></span>
-          <span class="text-xs text-slate-400 mt-2">Safety clearance loaded above</span>
+          <span class="text-xs text-slate-400 mt-2">Result shown above</span>
         </div>
 
         <!-- Minimalist Viewfinder Target (shown when camera is idle) -->
@@ -20603,9 +20604,11 @@
         let recallRecord = findRecallRecord(code);
         let terminatedNotice = null;
         let detectedAllergenIds = [];
+        let declaredAllergenIds = [];
         let ingredientsSummary = "";
         let productAdditivesTags = [];
         let offProductData = null;
+        let productUnverified = false;
 
         // 1. Check local pre-indexed recall database and Store-Ready cached FDA list
         if (recallRecord) {
@@ -20677,6 +20680,7 @@
           if (cachedProduct.additives && cachedProduct.additives.length > 0) productAdditivesTags.push(...cachedProduct.additives);
           if (cachedProduct.allergens && cachedProduct.allergens.length > 0) detectedAllergenIds.push(...cachedProduct.allergens);
           if (cachedProduct.offProductData) offProductData = cachedProduct.offProductData;
+          if (cachedProduct.unverified) productUnverified = true;
         }
 
         // Fast Parallel Multi-Variant Food Catalog Fetcher (Concurrently tests 12-digit UPC & 13-digit EAN)
@@ -20749,6 +20753,7 @@
 
               if (hookData && hookData.found && hookData.product) {
                 const hp = hookData.product;
+                 if (hp.unverified || hp.communitySubmitted || hp.source === 'community') productUnverified = true;
                 if (hp.name && !hp.name.startsWith('Retail Grocery Item')) productName = hp.name;
                 if (hp.brand && hp.brand !== 'Grocery Brand') brandName = hp.brand;
                 if (hp.ingredients) ingredientsSummary = hp.ingredients;
@@ -20989,6 +20994,10 @@
                 }
               }
             }
+
+        // Allergen ids reported by the data sources (recall record, cache, cloud catalog, OpenFoodFacts) BEFORE the
+        // text heuristics below run. The result card re-reads the ingredients itself, so it only needs these.
+        declaredAllergenIds = Array.from(new Set(detectedAllergenIds));
 
         // Comprehensive Allergen Parsing across all retrieved fields (including categories, taxonomy & international culinary names)
         const offCats = `${(offProductData?.categories || '')} ${(offProductData?.categories_tags || []).join(' ')} ${(offProductData?.labels || '')} ${(offProductData?.labels_tags || []).join(' ')}`;
@@ -21313,6 +21322,8 @@
           brand: brandName,
           time: timestamp,
           ingredients: ingredientsSummary,
+          declaredAllergens: declaredAllergenIds,
+          productUnverified: productUnverified,
 
           // 1. Federal Recall Category
           isRecalled: isRecalled,
@@ -21341,7 +21352,8 @@
           brand: brandName,
           ingredients: ingredientsSummary,
           additives: productAdditivesTags,
-          allergens: detectedAllergenIds,
+          allergens: declaredAllergenIds,
+          unverified: productUnverified,
           offProductData: offProductData
         });
 
@@ -21356,7 +21368,8 @@
           brand: brandName,
           ingredients: ingredientsSummary,
           additives: productAdditivesTags,
-          allergens: detectedAllergenIds,
+          allergens: declaredAllergenIds.length ? declaredAllergenIds : detectedAllergenIds,
+          unverified: productUnverified,
           offProductData: offProductData
         });
 
@@ -21367,6 +21380,8 @@
           productName: productName || `Scanned Product (${rawCode})`,
           brand: brandName || 'Retail Grocery Item',
           ingredients: ingredientsSummary || '',
+          declaredAllergens: declaredAllergenIds.length ? declaredAllergenIds : detectedAllergenIds,
+          productUnverified: productUnverified,
           isRecalled: isRecalled,
           recallRecord: recallRecord,
           terminatedNotice: terminatedNotice,
@@ -21451,6 +21466,7 @@
     function displayResult(data, source = 'scanner') {
       currentActiveProductScanData = data;
       const activeSource = data.source || source;
+      const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
       const targetContainer = scannerResultContainer || manualResultContainer;
       if (!targetContainer) return;
       if (manualResultContainer && manualResultContainer !== targetContainer) {
@@ -21500,8 +21516,8 @@
               </button>
             </div>
             <div class="min-w-0">
-              <h3 class="font-display text-base sm:text-lg font-bold text-white leading-snug">${data.productName}</h3>
-              <p class="text-xs text-slate-300 mt-0.5">${data.brand} • <span class="font-mono text-slate-400">UPC: ${data.upc}</span></p>
+              <h3 class="font-display text-base sm:text-lg font-bold text-white leading-snug">${escHtml(data.productName)}</h3>
+              <p class="text-xs text-slate-300 mt-0.5">${escHtml(data.brand)} • <span class="font-mono text-slate-400">UPC: ${escHtml(data.upc)}</span></p>
               <div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 shadow-sm whitespace-nowrap">
                 <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -22000,11 +22016,23 @@
         </div>
       `;
 
+      // New verdict card (js/rakka-safety.js). If it is missing or throws, the legacy windows below are used instead.
+      let verdictCardHtml = '';
+      try {
+        if (window.RakkaSafety && typeof window.RakkaSafety.cardHtmlFor === 'function') {
+          verdictCardHtml = window.RakkaSafety.cardHtmlFor(data, { isPlus: isPlusActive, profiles: familyProfiles, lastSyncTimestamp: lastSyncTimestamp });
+        }
+      } catch (verdictErr) {
+        console.error('RakkaSafety card failed, using legacy windows:', verdictErr);
+        verdictCardHtml = '';
+      }
+
       targetContainer.innerHTML = `
         <div class="space-y-3">
           ${masterHeaderHtml}
-          ${recallWindowHtml}
-          ${allergenWindowHtml}
+          ${verdictCardHtml}
+          ${(verdictCardHtml && !isRecalled && !isTerminated) ? '' : recallWindowHtml}
+          ${verdictCardHtml ? '' : allergenWindowHtml}
           ${additiveWindowHtml}
           ${ingredientsWindowHtml}
           ${actionBtnHtml}
