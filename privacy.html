@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy | Twin Ravens Digital LLC</title>
-  <meta name="description" content="Official Privacy Policy for RAKKA Food Safety & Recall Scanner by Twin Ravens Digital LLC. Zero tracking, offline-first local storage, and complete user privacy.">
+  <meta name="description" content="Official Privacy Policy for RAKKA Food Safety & Recall Scanner by Twin Ravens Digital LLC. No accounts, no tracking, and local-first storage, with optional household sync.">
   <link rel="icon" type="image/png" href="/favicon.png">
   <style>
     :root {
@@ -176,8 +176,8 @@
     </header>
 
     <div class="summary-card">
-      <h2>Executive Summary: Zero Tracking, Offline-First</h2>
-      <p>RAKKA was built on the core principle that personal dietary and health data belongs solely to the user. We do not require accounts, we do not track your location, and we do not sell or monetize personal shopping records. All household profiles, allergen filters, and pantry lists remain stored directly on your physical device.</p>
+      <h2>Summary: No Accounts, No Tracking, Local-First</h2>
+      <p>RAKKA was built on the core principle that personal dietary and health data belongs solely to the user. We do not require accounts, we do not track your location, and we do not sell or monetize personal shopping records. By default, household profiles, allergen filters, and pantry lists are stored on your device. If you turn on Household Sync, they are also stored on our cloud server (see section 2).</p>
     </div>
 
     <section>
@@ -192,12 +192,13 @@
 
     <section>
       <h2>2. On-Device Local Storage</h2>
-      <p>RAKKA operates with an <strong>offline-first local architecture</strong>. The following data is written directly to your device's browser local storage (IndexedDB / LocalStorage) and is never transmitted to our servers:</p>
+      <p>RAKKA operates with an <strong>offline-first local architecture</strong>. The following data is written directly to your device's browser local storage (IndexedDB / LocalStorage) and is stored on your device. It is only sent to our servers if you turn on Household Sync, described below:</p>
       <ul>
         <li><strong>Family Dietary Profiles:</strong> Custom household member names, avatars, and specific allergen alert preferences.</li>
         <li><strong>Allergen & Additive Shields:</strong> Toggles for the 12 essential allergens and 37 scrutinized food chemicals/dyes.</li>
         <li><strong>Pantry & Fridge Watchlist:</strong> Up to 50 items (Free tier) or 500 items (Plus tier) saved for continuous federal recall cross-referencing.</li>
       </ul>
+      <p><strong>Household Sync (optional):</strong> If you create or join a household, your family profiles (including allergen preferences) and up to 500 recent scan records are stored on our Cloudflare servers (Cloudflare KV), linked to a random household ID and invite code rather than an account. Records are deleted automatically 90 days after the last sync. This data is not end-to-end encrypted, and we do not sell or share it. Do not enable sync if you are not comfortable with this.</p>
       <p>You can instantly delete all local records at any time using the <strong>"Factory Reset & Clear All Data"</strong> button in the Settings menu.</p>
     </section>
 
