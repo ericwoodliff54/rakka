@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="./app.css?v=1">
+  <link rel="stylesheet" href="./app.css?v=2">
   <script src="https://fastly.jsdelivr.net/npm/barcode-detector@3/dist/iife/polyfill.min.js" async></script>
   <script src="./vendor/html5-qrcode.min.js" defer onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'"></script>
   <script src="./vendor/qrcode.min.js" defer onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'"></script>
@@ -2426,6 +2426,36 @@
     html.theme-light .rk-plus-quiet #allergensPlusBannerSub { color: #475569 !important; }
     .rk-plus-quiet #unlockAllergensBannerBtn { background: transparent !important; background-image: none !important; border: 1px solid #2bb3bf !important; color: #5ed3dc !important; box-shadow: none !important; }
     html.theme-light .rk-plus-quiet #unlockAllergensBannerBtn { border-color: var(--rk-teal) !important; color: var(--rk-teal) !important; background: #fff !important; }
+    /* Layout refresh: flatter cards, calmer headings, quiet utility buttons */
+    html body #manualUpcSection { background: transparent !important; border: none !important; border-top: 1px solid rgba(148,163,184,.22) !important; box-shadow: none !important; border-radius: 0 !important; padding: 16px 0 0 !important; }
+    html body #receiptHeroActionCard { background: transparent !important; background-image: none !important; border: none !important; box-shadow: none !important; padding: 8px 0 !important; }
+    html.theme-light body #manualUpcSection { border-top-color: #e2e8f0 !important; background: transparent !important; box-shadow: none !important; }
+    html.theme-light body #receiptsPanel #receiptHeroActionCard { background: transparent !important; box-shadow: none !important; border: none !important; padding: 8px 0 !important; }
+    html.theme-light body #receiptsPanel #receiptHeroActionCard { background-image: none !important; }
+    html body #historyList > .rk-empty { background: transparent !important; border: none !important; box-shadow: none !important; }
+    section h2.font-display, section h3.font-display { font-weight: 700 !important; letter-spacing: -0.01em !important; }
+    #cameraPlaceholder [class*="border-amber-400"] { border-color: #2dd4bf !important; }
+    html body #clearHistoryBtn { background: transparent !important; border: 1px solid rgba(148,163,184,.32) !important; color: #94a3b8 !important; font-weight: 600 !important; }
+    html.theme-light body #clearHistoryBtn { border-color: #cbd5e1 !important; color: #64748b !important; background: #fff !important; }
+
+    .rk-install-card { background: rgba(148,163,184,.08) !important; border: 1px solid rgba(148,163,184,.25) !important; box-shadow: none !important; background-image: none !important; }
+    .rk-install-card > div > span:first-child, .rk-install-card > div > span:first-child * { color: #f1f5f9 !important; }
+    .rk-install-card > div > span:last-child { color: #94a3b8 !important; }
+    html.theme-light .rk-install-card { background: #f8fafc !important; border-color: #e2e8f0 !important; }
+    html.theme-light .rk-install-card > div > span:first-child, html.theme-light .rk-install-card > div > span:first-child * { color: #0f172a !important; }
+    html.theme-light .rk-install-card > div > span:last-child { color: #475569 !important; }
+
+    .rk-filter-toggle { background: rgba(148,163,184,.12); color: #cbd5e1; border: 1px solid rgba(148,163,184,.28); }
+    .rk-filter-toggle.rk-filter-on { border-color: #2bb3bf; color: #5ed3dc; }
+    html.theme-light .rk-filter-toggle { background: #fff; color: #475569; border-color: #cbd5e1; }
+    html.theme-light .rk-filter-toggle.rk-filter-on { border-color: var(--rk-teal); color: var(--rk-teal); }
+
+    .rk-empty-icon { background: rgba(14,138,150,.14); color: #3cc0cb; }
+    .rk-empty-title { color: #f1f5f9; }
+    .rk-empty-sub { color: #94a3b8; max-width: 22rem; margin-left: auto; margin-right: auto; }
+    html.theme-light .rk-empty-icon { background: rgba(14,138,150,.10); color: var(--rk-teal); }
+    html.theme-light .rk-empty-title { color: #0f172a; }
+    html.theme-light .rk-empty-sub { color: #475569; }
   </style>
 
   <script type="module" src="./js/rakka-safety.js"></script>
@@ -3160,7 +3190,7 @@
       <div id="manualUpcSection" class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="font-display text-lg sm:text-xl font-extrabold text-slate-100 flex items-center gap-2">
+            <h3 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
               <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
               </svg>
@@ -3364,7 +3394,7 @@
         <div>
           <h2 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
             <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            <span>Allergen Guard: Ingredients & Additives</span>
+            <span>Allergen Guard</span>
           </h2>
           
         </div>
@@ -3568,7 +3598,7 @@
           <div class="flex items-center gap-2">
             <h2 class="font-display text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-              <span>Pantry and Fridge Watchlist</span>
+              <span>Watchlist</span>
             </h2>
           </div>
         </div>
@@ -3622,7 +3652,7 @@
 
       <!-- Dynamic Itemized Watchlist (Expandable accordion drawer for each food) -->
       <div id="historyList" class="space-y-2.5">
-        <p class="text-xs text-slate-500 italic py-6 text-center">No foods monitored yet. Scan barcodes or use the Receipts tab to begin 60-day monitoring.</p>
+        <div class="rk-empty text-center py-10 px-4 space-y-3"><div class="rk-empty-icon mx-auto w-14 h-14 rounded-2xl flex items-center justify-center"><svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><p class="rk-empty-title text-base font-bold">Nothing on your watchlist yet</p><p class="rk-empty-sub text-sm">Scan a barcode or a grocery receipt and RAKKA will keep checking it for recalls for 60 days.</p><button type="button" onclick="if (typeof setNavTab === 'function') setNavTab('barcodes')" class="bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white text-sm font-bold px-5 min-h-[44px] rounded-xl cursor-pointer active:scale-95 transition">Scan a barcode</button></div>
       </div>
     </section>
 
@@ -3660,8 +3690,17 @@
         >&times;</button>
       </div>
 
-      <!-- Regional & Retailer Filter Bar -->
-      <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
+      <!-- Filter summary + toggle -->
+      <div class="flex items-center justify-between gap-2">
+        <span id="filteredCountNotice" class="text-xs text-sky-400 font-medium">Showing all nationwide bulletins</span>
+        <button type="button" id="recallFilterToggle" aria-expanded="false" aria-controls="recallFilterBar" class="rk-filter-toggle min-h-[40px] px-3.5 rounded-full inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M6 12h12M10 20h4"/></svg>
+          <span id="recallFilterToggleText">Filters</span>
+        </button>
+      </div>
+
+      <!-- Regional & Retailer Filter Bar (collapsed by default) -->
+      <div id="recallFilterBar" class="hidden p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
         <span class="text-xs font-bold text-sky-300 flex items-center gap-1.5 uppercase tracking-wider">
           <svg class="w-3.5 h-3.5 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span>Regional & Store Filter</span>
@@ -3777,14 +3816,34 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between pt-1">
-          <span id="filteredCountNotice" class="text-xs text-sky-400 font-medium">Showing all nationwide bulletins</span>
+        <div class="flex items-center justify-end pt-1">
           <button type="button" id="clearRegionalFilterBtn" class="min-h-[44px] px-2.5 inline-flex items-center justify-center text-xs text-slate-400 hover:text-white underline">Reset to All States</button>
         </div>
       </div>
 
       <div id="bulletinFeedList" class="space-y-2.5"></div>
     </section>
+    <script>
+      (function () {
+        var tgl = document.getElementById('recallFilterToggle'), bar = document.getElementById('recallFilterBar');
+        var txt = document.getElementById('recallFilterToggleText');
+        var st = document.getElementById('stateFilterSelect'), sh = document.getElementById('storeFilterSelect');
+        if (!tgl || !bar) return;
+        function label() {
+          var n = ((st && st.value !== 'ALL') ? 1 : 0) + ((sh && sh.value !== 'ALL') ? 1 : 0);
+          if (txt) txt.textContent = n ? 'Filters (' + n + ')' : 'Filters';
+          tgl.classList.toggle('rk-filter-on', n > 0);
+        }
+        tgl.addEventListener('click', function () {
+          var open = bar.classList.toggle('hidden') === false;
+          tgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        [st, sh].forEach(function (el) { if (el) el.addEventListener('change', label); });
+        var rs = document.getElementById('clearRegionalFilterBtn');
+        if (rs) rs.addEventListener('click', function () { setTimeout(label, 0); });
+        label();
+      })();
+    </script>
 
     <!-- SECTION 5: SETTINGS & PREFERENCES -->
     <section id="customizePanel" class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4 hidden">
@@ -3830,7 +3889,7 @@
       </div>
 
       <!-- INSTALL RAKKA APP -->
-      <div class="p-3.5 rounded-2xl bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/40 shadow-md flex items-center justify-between gap-3">
+      <div class="rk-install-card p-3.5 rounded-2xl flex items-center justify-between gap-3">
         <div>
           <span class="text-sm font-bold text-white block leading-tight flex items-center gap-1.5">
             <svg class="w-4 h-4 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -3840,7 +3899,7 @@
         </div>
         <button 
           type="button" 
-          id="settingsInstallBtn" class="shrink-0 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition active:scale-95 shadow-md flex items-center gap-1.5 cursor-pointer"
+          id="settingsInstallBtn" class="shrink-0 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white text-xs font-bold transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
         >
           <span>Install</span>
         </button>
@@ -23236,7 +23295,7 @@ function renderHistory() {
       if (!historyList) return;
 
       if (scanHistory.length === 0) {
-        historyList.innerHTML = '<p class="text-xs text-slate-500 italic py-8 text-center">No foods monitored yet. Scan barcodes or snap a grocery receipt to organize your pantry.</p>';
+        historyList.innerHTML = `<div class="rk-empty text-center py-10 px-4 space-y-3"><div class="rk-empty-icon mx-auto w-14 h-14 rounded-2xl flex items-center justify-center"><svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><p class="rk-empty-title text-base font-bold">Nothing on your watchlist yet</p><p class="rk-empty-sub text-sm">Scan a barcode or a grocery receipt and RAKKA will keep checking it for recalls for 60 days.</p><button type="button" onclick="if (typeof setNavTab === 'function') setNavTab('barcodes')" class="bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white text-sm font-bold px-5 min-h-[44px] rounded-xl cursor-pointer active:scale-95 transition">Scan a barcode</button></div>`;
         return;
       }
 
@@ -24513,20 +24572,23 @@ function renderHistory() {
           .catch(err => console.log('SW registration error:', err));
       });
       let swRefreshing = false;
+      // Only announce an update if a service worker was already running; the first install also fires controllerchange.
+      const swHadController = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (swRefreshing) return;
+        if (swRefreshing || !swHadController) return;
         console.log('Rakka SW updated');
         if (!document.getElementById('rakkaUpdateToast')) {
           const toast = document.createElement('button');
           toast.id = 'rakkaUpdateToast';
           toast.type = 'button';
-          toast.textContent = 'New update ready — Tap to refresh';
-          toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 min-h-[44px] rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 text-white text-xs font-bold shadow-xl border border-cyan-300/40 active:scale-95 transition';
+          toast.textContent = 'Update ready. Tap to refresh';
+          toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 min-h-[44px] rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 text-white text-xs font-bold shadow-xl border border-cyan-300/40 active:scale-95 transition';
           toast.onclick = () => {
             swRefreshing = true;
             window.location.reload();
           };
           document.body.appendChild(toast);
+          setTimeout(() => { if (toast.parentNode) toast.remove(); }, 15000);
         }
       });
     }
