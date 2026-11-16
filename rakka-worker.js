@@ -51,6 +51,7 @@ const RATE_LIMIT_CONFIG = {
   'contribute-ocr': 10,  // 10 req/min per IP for community ingredient OCR
   'household': 30,       // 30 req/min per IP for 2-person household sync
   'household-join': 8,   // brute-force guard for invite codes
+  'plus': 10,            // Plus code redemption / status checks
   'contribute': 10       // community catalog submissions
 };
 
@@ -432,6 +433,65 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
 </body>
 </html>
 `;
+
+// ============================================================================
+// RAKKA PLUS: server-verified entitlement
+// Plus is granted by invite codes (secret PLUS_CODES = "CODE:maxDevices,CODE2:maxDevices") or a one-time
+// 7-day trial per device. The worker signs a token (secret PLUS_SIGNING_SECRET) that the app keeps and
+// re-checks with /plus/status. Removing a code from PLUS_CODES revokes it on the next check.
+// ============================================================================
+const PLUS_TOKEN_DAYS = 30;
+const PLUS_TRIAL_DAYS = 7;
+const plusEnc = new TextEncoder();
+const plusB64u = (bytes) => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const plusFromB64u = (str) => { const p = String(str).replace(/-/g, '+').replace(/_/g, '/'); const s = atob(p + '='.repeat((4 - (p.length % 4)) % 4)); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
+
+async function plusHmacKey(env) {
+  const secret = env && env.PLUS_SIGNING_SECRET;
+  if (!secret || String(secret).length < 16) return null;
+  return crypto.subtle.importKey('raw', plusEnc.encode(String(secret)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function signPlusToken(env, payload) {
+  const key = await plusHmacKey(env);
+  if (!key) return null;
+  const body = plusB64u(plusEnc.encode(JSON.stringify(payload)));
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, plusEnc.encode(body)));
+  return `${body}.${plusB64u(sig)}`;
+}
+
+function parsePlusCodes(env) {
+  const map = new Map();
+  String((env && env.PLUS_CODES) || '').split(',').forEach(part => {
+    const [rawCode, rawMax] = part.split(':');
+    const code = String(rawCode || '').trim().toUpperCase();
+    if (code.length >= 6) map.set(code, Math.max(1, Math.min(20, parseInt(rawMax, 10) || 1)));
+  });
+  return map;
+}
+
+// Returns the token payload if the token is genuine, unexpired, for this device, and (for codes) not revoked.
+async function checkPlus(env, token, deviceId) {
+  try {
+    if (!token || !deviceId || typeof token !== 'string' || token.length > 600) return null;
+    const key = await plusHmacKey(env);
+    if (!key) return null;
+    const [body, sig] = token.split('.');
+    if (!body || !sig) return null;
+    const ok = await crypto.subtle.verify('HMAC', key, plusFromB64u(sig), plusEnc.encode(body));
+    if (!ok) return null;
+    const p = JSON.parse(new TextDecoder().decode(plusFromB64u(body)));
+    if (!p || p.d !== String(deviceId) || !(p.exp > Date.now())) return null;
+    if (p.k === 'code') {
+      if (!parsePlusCodes(env).has(String(p.c))) return null;
+      const devs = await env.RAKKA_COMMUNITY_DB.get(`plusdev:${p.c}`, { type: 'json' });
+      if (!Array.isArray(devs) || !devs.includes(String(deviceId))) return null;
+    } else if (p.k !== 'trial') {
+      return null;
+    }
+    return p;
+  } catch (_) { return null; }
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -1585,6 +1645,57 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
       }
     }
 
+    // 7b. RAKKA PLUS ENTITLEMENT (invite codes + one-time trial; tokens are signed by this Worker)
+    if (request.method === 'POST' && url.pathname.startsWith('/plus/')) {
+      const rlPlus = checkEdgeRateLimit(request, 'plus');
+      const plusHeaders = { ...corsHeaders, 'Cache-Control': 'no-store' };
+      const plusReply = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { ...plusHeaders, ...extra } });
+      if (!rlPlus.allowed) return plusReply({ success: false, error: `Too many attempts. Please wait ${rlPlus.retryAfterSec}s.` }, 429, rlPlus.headers);
+      if (!env || !env.RAKKA_COMMUNITY_DB) return plusReply({ success: false, error: 'Storage is not bound to this Worker.' }, 503);
+      if (!(await plusHmacKey(env))) return plusReply({ success: false, error: 'Plus is not configured on the server yet.' }, 503);
+      let pb = {};
+      try { pb = await request.json(); } catch (_) {}
+      const pDevice = String(pb.deviceId || '').trim().slice(0, 80);
+      if (!pDevice) return plusReply({ success: false, error: 'deviceId required' }, 400);
+
+      if (url.pathname === '/plus/redeem') {
+        const code = String(pb.code || '').trim().toUpperCase().slice(0, 64);
+        const max = parsePlusCodes(env).get(code);
+        if (!max) return plusReply({ success: false, error: 'That code is not valid.' }, 403);
+        const devKey = `plusdev:${code}`;
+        const devs = (await env.RAKKA_COMMUNITY_DB.get(devKey, { type: 'json' })) || [];
+        if (!devs.includes(pDevice)) {
+          if (devs.length >= max) return plusReply({ success: false, error: 'That code has already been used on the maximum number of devices.' }, 403);
+          devs.push(pDevice);
+          await env.RAKKA_COMMUNITY_DB.put(devKey, JSON.stringify(devs));
+        }
+        const exp = Date.now() + PLUS_TOKEN_DAYS * 86400000;
+        const token = await signPlusToken(env, { d: pDevice, k: 'code', c: code, exp });
+        return plusReply({ success: true, active: true, kind: 'code', exp, token });
+      }
+
+      if (url.pathname === '/plus/trial') {
+        const tKey = `plustrial:${pDevice}`;
+        if (await env.RAKKA_COMMUNITY_DB.get(tKey)) return plusReply({ success: false, error: 'The free trial has already been used on this device.' }, 403);
+        const exp = Date.now() + PLUS_TRIAL_DAYS * 86400000;
+        await env.RAKKA_COMMUNITY_DB.put(tKey, String(Date.now()));
+        const token = await signPlusToken(env, { d: pDevice, k: 'trial', exp });
+        return plusReply({ success: true, active: true, kind: 'trial', exp, token });
+      }
+
+      if (url.pathname === '/plus/status') {
+        const p = await checkPlus(env, pb.token, pDevice);
+        if (!p) return plusReply({ success: true, active: false });
+        if (p.k === 'code') {
+          const exp = Date.now() + PLUS_TOKEN_DAYS * 86400000;
+          const token = await signPlusToken(env, { d: pDevice, k: 'code', c: p.c, exp });
+          return plusReply({ success: true, active: true, kind: 'code', exp, token });
+        }
+        return plusReply({ success: true, active: true, kind: 'trial', exp: p.exp, token: pb.token });
+      }
+      return plusReply({ success: false, error: 'Unknown Plus endpoint' }, 404);
+    }
+
     // 8. 2-PERSON HOUSEHOLD SYNC (Plus Tier - Max 2 Devices - Zero PII)
     if (request.method === 'POST' && url.pathname.startsWith('/household/')) {
       const rlHh = checkEdgeRateLimit(request, 'household');
@@ -1654,6 +1765,11 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           const existingId = String(body.householdId || '').trim();
           const inviteCode = generateInviteCode();
           const now = Date.now();
+          // Only a device with a valid Plus entitlement can host a household.
+          const hostPlus = await checkPlus(env, body.plusToken, deviceId);
+          if (!hostPlus) {
+            return new Response(JSON.stringify({ success: false, error: 'RAKKA Plus is required to host a household.' }), { status: 403, headers: noCacheHeaders });
+          }
 
           if (existingId) {
             const existingHh = await env.RAKKA_COMMUNITY_DB.get(`hh:${existingId}`, { type: 'json' });
@@ -1661,6 +1777,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
               if (existingHh.members.length >= 2) {
                 return new Response(JSON.stringify({ success: false, error: 'This household already has 2 linked devices.' }), { status: 403, headers: noCacheHeaders });
               }
+              existingHh.plusUntil = hostPlus.exp;
+              delete existingHh.plusActive;
+              await env.RAKKA_COMMUNITY_DB.put(`hh:${existingId}`, JSON.stringify(existingHh), { expirationTtl: HH_TTL_SECONDS });
               await env.RAKKA_COMMUNITY_DB.put(`hhcode:${inviteCode}`, JSON.stringify({ householdId: existingId, createdBy: deviceId }), { expirationTtl: 86400 });
               return new Response(JSON.stringify({
                 success: true,
@@ -1677,7 +1796,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           const hhRecord = {
             householdId,
             members: [deviceId],
-            plusActive: true,
+            plusUntil: hostPlus.exp,
             updatedAt: now,
             blob: cleanBlob(body.blob) || ''
           };
@@ -1729,7 +1848,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           return new Response(JSON.stringify({
             success: true,
             householdId: hh.householdId,
-            plusActive: Boolean(hh.plusActive),
+            plusActive: Boolean(hh.plusUntil && hh.plusUntil > Date.now()),
+            plusUntil: hh.plusUntil || 0,
             memberCount: hh.members.length,
             updatedAt: hh.updatedAt,
             blob: hh.blob || ''
@@ -1765,6 +1885,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             }
             delete hh.familyProfiles;
             delete hh.scanHistory;
+            const pushPlus = await checkPlus(env, body.plusToken, deviceId);
+            if (pushPlus) hh.plusUntil = pushPlus.exp;
             hh.updatedAt = Date.now();
             await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
           }
@@ -1772,7 +1894,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           return new Response(JSON.stringify({
             success: true,
             householdId: hh.householdId,
-            plusActive: Boolean(hh.plusActive),
+            plusActive: Boolean(hh.plusUntil && hh.plusUntil > Date.now()),
+            plusUntil: hh.plusUntil || 0,
             memberCount: members.length,
             updatedAt: hh.updatedAt || Date.now(),
             blob: hh.blob || ''
