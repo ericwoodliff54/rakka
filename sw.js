@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v174';
+const CACHE_NAME = 'rakka-v175';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
@@ -13,7 +13,7 @@ const SAFETY_ASSETS = [
 
 const ASSETS = [
   './index.html',
-  './app.css?v=2',
+  './app.css?v=3',
   './vendor/html5-qrcode.min.js',
   './vendor/qrcode.min.js',
   './manifest.json',
