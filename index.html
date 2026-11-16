@@ -2379,6 +2379,7 @@
 
   </style>
   <script type="module" src="./js/rakka-safety.js"></script>
+  <script type="module" src="./js/rakka-household.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
     <!-- RAKKA BRAND SPLASH SCREEN (Mascot with responsive mobile layout and guaranteed text visibility) -->
@@ -3825,7 +3826,7 @@
           <span id="householdSyncBadge" class="text-xs text-slate-400 font-semibold">Not Linked</span>
         </div>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Link up to 2 devices to share Family Allergen Profiles and your Pantry Watchlist in real time with zero accounts.
+          Link up to 2 devices to share Family Allergen Profiles with zero accounts. Profiles are end-to-end encrypted, so our server can't read them. Scan history and your watchlist stay on each device.
         </p>
 
         <!-- Invite Code Display (shown after generating) -->
@@ -4015,7 +4016,7 @@
 
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
           <p class="text-xs text-slate-300 leading-relaxed">
-            <strong>Privacy:</strong> RAKKA stores your household profiles, allergen filters and scan history on your device. If you turn on Household Sync, that data is also stored on our cloud server (Cloudflare) so your household can share it. Receipt and lot-code photos are sent through our server to Google Gemini to be read. We do not sell, rent, or monetize your personal grocery purchase data.
+            <strong>Privacy:</strong> RAKKA stores your household profiles, allergen filters and scan history on your device. If you turn on Household Sync, your allergen profiles are also stored on our cloud server (Cloudflare) in encrypted form that we cannot read. Receipt and lot-code photos are sent through our server to Google Gemini to be read. We do not sell, rent, or monetize your personal grocery purchase data.
           </p>
           <div class="space-y-2 pt-1">
             <div class="flex items-center gap-2">
@@ -25724,13 +25725,7 @@ function renderHistory() {
           saveFamilyProfiles();
           if (typeof renderFamilyProfilesBar === 'function') renderFamilyProfilesBar();
         }
-        if (Array.isArray(data.scanHistory)) {
-          scanHistory = data.scanHistory;
-          if (typeof auditWatchlistAllergens === 'function') auditWatchlistAllergens();
-          if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls();
-          saveHistory();
-          if (typeof renderHistory === 'function') renderHistory();
-        }
+        // Scan history is no longer synced; it stays on each device.
         if (data.plusActive) {
           isPlusActive = true;
           localStorage.setItem('safebite_plus_active', 'paid');
@@ -25745,33 +25740,53 @@ function renderHistory() {
       updateHouseholdSyncUI(data.memberCount || null);
     }
 
+    // ---- Encrypted household sync helpers (see js/core/householdCrypto.js) ----
+    const HH_KEY_STORE = 'rakka_household_key';
+    function getHouseholdKey() { try { return localStorage.getItem(HH_KEY_STORE) || ''; } catch (_) { return ''; } }
+    async function decryptHouseholdResponse(data, key) {
+      // Turns the encrypted blob in a server response into data.familyProfiles. Returns false if it could not be read.
+      const HH = window.RakkaHousehold;
+      if (!data || !HH) return false;
+      const blob = data.blob; delete data.blob; delete data.scanHistory; delete data.familyProfiles;
+      if (!blob) return true; // nothing uploaded yet
+      const profiles = await HH.decryptProfiles(blob, key || getHouseholdKey());
+      if (!profiles) return false;
+      data.familyProfiles = profiles;
+      return true;
+    }
+
     async function createHouseholdInvite() {
       if (!isPlusActive) {
         if (typeof openPaywall === 'function') openPaywall();
         return;
       }
       try {
+        const HHc = window.RakkaHousehold;
+        if (!HHc) throw new Error('Encryption is not loaded yet. Please reload the app.');
+        const hhKey = (localStorage.getItem('rakka_household_id') && getHouseholdKey()) || HHc.newKey();
         const res = await fetch(`${getWorkerBaseUrl()}/household/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             deviceId: getRakkaDeviceId(),
             householdId: localStorage.getItem('rakka_household_id') || '',
-            familyProfiles,
-            scanHistory
+            blob: await HHc.encryptProfiles(familyProfiles, hhKey)
           })
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Could not create invite code');
+        localStorage.setItem(HH_KEY_STORE, hhKey);
         localStorage.setItem('rakka_household_id', data.householdId);
         localStorage.setItem('rakka_household_updated_at', String(data.updatedAt || Date.now()));
         const box = document.getElementById('householdInviteBox');
         const codeEl = document.getElementById('householdInviteCodeText');
-        if (codeEl) codeEl.textContent = data.inviteCode;
+        const fullInvite = HHc.formatInvite(data.inviteCode, hhKey);
+        if (codeEl) { codeEl.textContent = fullInvite; codeEl.style.wordBreak = 'break-all'; codeEl.style.fontSize = '0.8rem'; codeEl.style.letterSpacing = '0.05em'; }
         const qrEl = document.getElementById('householdInviteQr');
         if (qrEl) {
           qrEl.innerHTML = '';
-          const joinUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(data.inviteCode)}`;
+          // The key goes after the # so it is never sent to any server.
+          const joinUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(data.inviteCode)}#k=${hhKey}`;
           if (typeof QRCode !== 'undefined') {
             new QRCode(qrEl, { text: joinUrl, width: 168, height: 168, colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
           } else {
@@ -25815,9 +25830,15 @@ function renderHistory() {
 
     async function joinHouseholdByCode(overrideCode = null) {
       const input = document.getElementById('householdJoinCodeInput');
-      const code = (overrideCode || (input ? input.value : '')).trim().toUpperCase();
-      if (!code) {
+      const raw = (overrideCode || (input ? input.value : '')).trim();
+      if (!raw) {
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Enter a partner invite code first.');
+        return;
+      }
+      const HHc = window.RakkaHousehold;
+      const invite = HHc ? HHc.parseInvite(raw) : null;
+      if (!invite || !invite.key) {
+        if (typeof showCustomizeToast === 'function') showCustomizeToast('Use the full invite code, including the part after the dot, or scan the QR.');
         return;
       }
       try {
@@ -25825,16 +25846,24 @@ function renderHistory() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            inviteCode: code,
-            deviceId: getRakkaDeviceId(),
-            familyProfiles,
-            scanHistory
+            inviteCode: invite.code,
+            deviceId: getRakkaDeviceId()
           })
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Could not join household');
+        const readable = await decryptHouseholdResponse(data, invite.key);
+        if (!readable) {
+          // Wrong key: leave again so this device is not left half-linked.
+          try { await fetch(`${getWorkerBaseUrl()}/household/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ householdId: data.householdId, deviceId: getRakkaDeviceId() }) }); } catch (_) {}
+          throw new Error('That invite key does not match. Ask your partner to create a new code.');
+        }
+        localStorage.setItem(HH_KEY_STORE, invite.key);
         localStorage.setItem('rakka_household_id', data.householdId);
+        // Combine this phone's profiles with the household's; allergens are always unioned.
+        data.familyProfiles = HHc.mergeProfiles(data.familyProfiles || [], familyProfiles);
         applySyncedHouseholdData(data);
+        scheduleHouseholdPush();
         if (input) input.value = '';
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Household linked & synced!');
       } catch (err) {
@@ -25859,9 +25888,16 @@ function renderHistory() {
         if (!res.ok || !data.success) {
           if (res.status === 403 || res.status === 404) {
             localStorage.removeItem('rakka_household_id');
+            localStorage.removeItem(HH_KEY_STORE);
             updateHouseholdSyncUI();
           }
           if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast(data.error || 'Sync failed');
+          return;
+        }
+        const readable = await decryptHouseholdResponse(data);
+        if (!readable) {
+          if (showToast && typeof showCustomizeToast === 'function') showCustomizeToast('Could not read household data. Unlink and re-link the devices.');
+          updateHouseholdSyncUI(data.memberCount || null);
           return;
         }
         const localTs = parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10);
@@ -25880,7 +25916,7 @@ function renderHistory() {
     let _householdPushTimer = null;
     function scheduleHouseholdPush() {
       const householdId = localStorage.getItem('rakka_household_id');
-      if (!householdId) return;
+      if (!householdId || !getHouseholdKey() || !window.RakkaHousehold) return;
       clearTimeout(_householdPushTimer);
       _householdPushTimer = setTimeout(async () => {
         try {
@@ -25892,12 +25928,21 @@ function renderHistory() {
               deviceId: getRakkaDeviceId(),
               action: 'push',
               baseUpdatedAt: parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10),
-              familyProfiles,
-              scanHistory
+              blob: await window.RakkaHousehold.encryptProfiles(familyProfiles, getHouseholdKey())
             })
           });
           const data = await res.json();
-          if (res.ok && data.success && data.updatedAt) {
+          if (res.status === 409 && data.conflict) {
+            // Other phone changed first: merge its profiles into ours, then push again (at most 3 times).
+            window._hhConflictRetries = (window._hhConflictRetries || 0) + 1;
+            if (window._hhConflictRetries <= 3 && await decryptHouseholdResponse(data)) {
+              data.familyProfiles = window.RakkaHousehold.mergeProfiles(data.familyProfiles || [], familyProfiles);
+              applySyncedHouseholdData(data);
+              scheduleHouseholdPush();
+            }
+          } else if (res.ok && data.success && data.updatedAt) {
+            window._hhConflictRetries = 0;
+            delete data.blob;
             applySyncedHouseholdData(data);
           }
         } catch (_) {}
@@ -25921,6 +25966,7 @@ function renderHistory() {
       } catch (_) {}
       localStorage.removeItem('rakka_household_id');
       localStorage.removeItem('rakka_household_updated_at');
+      localStorage.removeItem(HH_KEY_STORE);
       const box = document.getElementById('householdInviteBox');
       if (box) box.classList.add('hidden');
       updateHouseholdSyncUI();
@@ -25938,10 +25984,16 @@ function renderHistory() {
       updateHouseholdSyncUI();
       const params = new URLSearchParams(window.location.search);
       const joinCodeParam = params.get('join');
+      const hashKey = (/(?:^|[#&])k=([A-Za-z2-7]+)/.exec(window.location.hash || '') || [])[1] || '';
       if (joinCodeParam && joinCodeParam.trim().toUpperCase().startsWith('RKA-')) {
-        const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+        const cleanUrl = `${window.location.pathname}`;
         try { window.history.replaceState({}, document.title, cleanUrl); } catch (_) {}
-        joinHouseholdByCode(joinCodeParam.trim().toUpperCase());
+        joinHouseholdByCode(`${joinCodeParam.trim().toUpperCase()}.${hashKey.toUpperCase()}`);
+      } else if (localStorage.getItem('rakka_household_id') && !getHouseholdKey()) {
+        // Linked with the older, unencrypted sync: unlink so the old server copy is removed, then re-link with a new code.
+        leaveHouseholdSync().then(() => {
+          if (typeof showCustomizeToast === 'function') showCustomizeToast('Household sync is now encrypted. Please link your devices again.');
+        });
       } else {
         syncHouseholdNow(false);
       }
@@ -27318,7 +27370,7 @@ function renderHistory() {
 
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
         <p class="font-semibold text-white">Twin Ravens Digital LLC • RAKKA Food Safety & Recall Scanner</p>
-        <p><strong>1. Data Collection & Privacy:</strong> RAKKA is engineered with an offline-first architecture. Your custom family profiles, allergen shields, and scanned grocery receipt histories are saved in your device's local browser storage. If you turn on Household Sync, your profiles and up to 500 recent scan records are also stored on our cloud server (Cloudflare) for up to 90 days after the last sync. Receipt and lot-code photos are sent to Google Gemini through our server to be read. We do not sell, rent, or monetize your personal shopping records.</p>
+        <p><strong>1. Data Collection & Privacy:</strong> RAKKA is engineered with an offline-first architecture. Your custom family profiles, allergen shields, and scanned grocery receipt histories are saved in your device's local browser storage. If you turn on Household Sync, your family allergen profiles are encrypted on your phone and the encrypted copy is stored on our cloud server (Cloudflare) for up to 90 days after the last sync. We cannot read it, because the key only exists on your devices. Scan history is never synced. Receipt and lot-code photos are sent to Google Gemini through our server to be read. We do not sell, rent, or monetize your personal shopping records.</p>
         <p><strong>2. Camera & Photo Usage:</strong> Camera access is used strictly in real-time to scan standard GS1 UPC barcodes on packaging. Photos taken for receipt imports or expiration lot audits are analyzed in volatile memory solely for character recognition and safety verification, and are never saved, stored, or shared.</p>
         <p><strong>3. Community Product Catalog:</strong> When an unindexed grocery barcode is resolved, its anonymous, publicly printed packaging declarations (product title, brand, and ingredient list) may be cached in our community food database to accelerate lookup speeds for all shoppers. This catalog contains solely publicly printed package facts and contains zero user identifiers, photos, device IDs, or personal shopping histories.</p>
         <p><strong>4. Food Safety Disclaimer:</strong> RAKKA cross-references packaging data against official federal openFDA enforcement records and USDA bulletins. Label formulations and recall statuses can change rapidly. Always inspect physical product packaging directly before consumption.</p>

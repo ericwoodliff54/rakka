@@ -1639,6 +1639,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         return [...map.values()].slice(0, 500);
       };
 
+      // Household sync is end-to-end encrypted by the phones. The worker only stores an opaque blob it cannot read.
+      const cleanBlob = (v) => (typeof v === 'string' && v.length <= 65536 && /^[A-Za-z0-9_-]*$/.test(v)) ? v : null;
+
       try {
         const body = await request.json();
         const deviceId = String(body.deviceId || '').trim().slice(0, 80);
@@ -1676,8 +1679,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             members: [deviceId],
             plusActive: true,
             updatedAt: now,
-            familyProfiles: Array.isArray(body.familyProfiles) ? body.familyProfiles.slice(0, 8) : [],
-            scanHistory: Array.isArray(body.scanHistory) ? body.scanHistory.slice(0, 500) : []
+            blob: cleanBlob(body.blob) || ''
           };
           await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hhRecord), { expirationTtl: HH_TTL_SECONDS });
           await env.RAKKA_COMMUNITY_DB.put(`hhcode:${inviteCode}`, JSON.stringify({ householdId, createdBy: deviceId }), { expirationTtl: 86400 });
@@ -1718,8 +1720,9 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           }
           if (!members.includes(deviceId)) members.push(deviceId);
           hh.members = members;
-          hh.familyProfiles = mergeProfiles(hh.familyProfiles, body.familyProfiles);
-          hh.scanHistory = mergeHistory(hh.scanHistory, body.scanHistory);
+          // Remove any plaintext profiles/scans left over from the older, unencrypted sync.
+          delete hh.familyProfiles;
+          delete hh.scanHistory;
           hh.updatedAt = Date.now();
           await env.RAKKA_COMMUNITY_DB.put(`hh:${hh.householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
 
@@ -1729,8 +1732,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             plusActive: Boolean(hh.plusActive),
             memberCount: hh.members.length,
             updatedAt: hh.updatedAt,
-            familyProfiles: hh.familyProfiles,
-            scanHistory: hh.scanHistory
+            blob: hh.blob || ''
           }), { headers: noCacheHeaders });
         }
 
@@ -1753,16 +1755,16 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           if (action === 'push') {
             const baseTs = Number(body.baseUpdatedAt || 0);
             const isStale = baseTs > 0 && (hh.updatedAt || 0) > baseTs;
-            if (Array.isArray(body.familyProfiles)) {
-              hh.familyProfiles = isStale
-                ? mergeProfiles(hh.familyProfiles, body.familyProfiles)
-                : body.familyProfiles.slice(0, 8);
+            const newBlob = cleanBlob(body.blob);
+            if (newBlob !== null && body.blob !== undefined) {
+              if (isStale) {
+                // The other phone changed things first. The server cannot merge encrypted data, so the app merges and retries.
+                return new Response(JSON.stringify({ success: false, conflict: true, error: 'Household changed on another device.', updatedAt: hh.updatedAt, blob: hh.blob || '' }), { status: 409, headers: noCacheHeaders });
+              }
+              hh.blob = newBlob;
             }
-            if (Array.isArray(body.scanHistory)) {
-              hh.scanHistory = isStale
-                ? mergeHistory(hh.scanHistory, body.scanHistory)
-                : body.scanHistory.slice(0, 500);
-            }
+            delete hh.familyProfiles;
+            delete hh.scanHistory;
             hh.updatedAt = Date.now();
             await env.RAKKA_COMMUNITY_DB.put(`hh:${householdId}`, JSON.stringify(hh), { expirationTtl: HH_TTL_SECONDS });
           }
@@ -1773,8 +1775,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
             plusActive: Boolean(hh.plusActive),
             memberCount: members.length,
             updatedAt: hh.updatedAt || Date.now(),
-            familyProfiles: hh.familyProfiles || [],
-            scanHistory: hh.scanHistory || []
+            blob: hh.blob || ''
           }), { headers: noCacheHeaders });
         }
 
