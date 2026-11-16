@@ -4015,7 +4015,7 @@
 
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
           <p class="text-xs text-slate-300 leading-relaxed">
-            <strong>100% Client-Side Privacy:</strong> RAKKA stores personal household profiles, allergen filters, and pantry scans strictly on your device. We do not sell, rent, or monetize your personal grocery purchase data.
+            <strong>Privacy:</strong> RAKKA stores your household profiles, allergen filters and scan history on your device. If you turn on Household Sync, that data is also stored on our cloud server (Cloudflare) so your household can share it. Receipt and lot-code photos are sent through our server to Google Gemini to be read. We do not sell, rent, or monetize your personal grocery purchase data.
           </p>
           <div class="space-y-2 pt-1">
             <div class="flex items-center gap-2">
@@ -5248,22 +5248,6 @@
         : [(typeof getActiveProfile === 'function' ? getActiveProfile() : (familyProfiles[0] || { id: 'me', name: 'Me', allergens: [] }))];
 
       scanHistory.forEach(item => {
-        const itemCode = String(item.upc || '').trim();
-        const itemCleanCode = itemCode.replace(/\D/g, '');
-        const itemBrandLower = String(item.brand || item.receiptStore || '').toLowerCase().trim();
-        const itemTitleLower = String(item.productName || item.product || '').toLowerCase().trim();
-        const isAldi746502Immune = (itemCode === '746502' || itemCleanCode === '746502' || itemCleanCode === '0746502' || (itemBrandLower.includes('aldi') && itemTitleLower.includes('alfredo')));
-        if (isAldi746502Immune) {
-          item.recalledNow = false;
-          item.isRecalled = false;
-          delete item.activeRecallHazard;
-          delete item.recallAgency;
-          delete item.recallSeverity;
-          delete item.recallDate;
-          if (item.status === 'recalled' || item.status === 'recall_notice') {
-            item.status = 'clear';
-          }
-        }
         const isItemRecalled = Boolean(
           item.recalledNow ||
           item.status === 'recalled' ||
@@ -21012,8 +20996,8 @@
           if (!detectedAllergenIds.includes('gluten')) detectedAllergenIds.push('gluten');
         }
         // 2. Dairy & Milk (Includes casein, caseinate, sodium/calcium caseinate, lactalbumin, ghee, curds, butterfat, buttermilk; excludes cocoa/cacao/shea/apple/peanut butter)
-        const dairyCleanText = combinedFoodText.replace(/(?:cocoa|cacao|shea|apple|peanut|cookie|almond|cashew)\s*butters?/gi, '');
-        if (/(?:milk|dairy|lactose|cheese|whey|butter|cream|casein|caseinate|yogurt|ghee|curds|butterfat|buttermilk|lactalbumin|lactoglobulin)/i.test(dairyCleanText)) {
+        const dairyCleanText = combinedFoodText.replace(/\b(?:cocoa|cacao|shea|apple|peanut|cookie|almond|cashew)\s*butters?\b/gi, '');
+        if (/\b(?:milk|dairy|lactose|cheese|whey|butter|cream|casein|caseinate|yogurt|ghee|curds|butterfat|buttermilk|lactalbumin|lactoglobulin)\b/i.test(dairyCleanText)) {
           if (!detectedAllergenIds.includes('dairy')) detectedAllergenIds.push('dairy');
         }
         // 3. Peanuts (Includes peanut butter, peanut flour, peanut oil, ground roasted peanuts)
@@ -21029,8 +21013,8 @@
           if (!detectedAllergenIds.includes('soy')) detectedAllergenIds.push('soy');
         }
         // 6. Eggs (Includes egg whites, yolk, albumin, ovalbumin, lysozyme, meringue, mayonnaise; excludes eggplant)
-        const eggCleanText = combinedFoodText.replace(/eggplants?/gi, '');
-        if (/(?:eggs?|egg\s*whites?|egg\s*yolks?|albumin|ovalbumin|yolk|mayonnaise|mayo|lysozyme|meringue|ovomucin)/i.test(eggCleanText)) {
+        const eggCleanText = combinedFoodText.replace(/\beggplants?\b/gi, '');
+        if (/\b(?:eggs?|egg\s*whites?|egg\s*yolks?|albumin|ovalbumin|yolk|mayonnaise|mayo|lysozyme|meringue|ovomucin)\b/i.test(eggCleanText)) {
           if (!detectedAllergenIds.includes('eggs')) detectedAllergenIds.push('eggs');
         }
         // 7. Shellfish & Crustaceans (Includes shrimp, prawn, crab, lobster, crawfish/crayfish, clam, mussel, oyster, scallop, krill)
@@ -21046,8 +21030,8 @@
           if (!detectedAllergenIds.includes('sesame')) detectedAllergenIds.push('sesame');
         }
         // 10. Corn (Strict check: excludes false-positive substrings like peppercorn, peppercorns, acorn, unicorn)
-        const cornCleanText = combinedFoodText.replace(/(?:pepper|a|uni)corns?/gi, '');
-        const cornRegex = /(?:corn|corns|cornstarch|cornmeal|cornflour|cornbread|cornflakes|corncob|cornsyrup|popcorn|sweetcorn|maize|dextrose|dextrin|maltodextrin|hfcs)|corn\s+(?:starch|syrup|meal|flour|oil|bread|flakes|grain|gluten|chips?|tortillas?|cereal)|high[-_\s]*fructose[-_\s]*corn|zea\s*mays/i;
+        const cornCleanText = combinedFoodText.replace(/\b(?:pepper|a|uni)corns?\b/gi, '');
+        const cornRegex = /\b(?:corn|corns|cornstarch|cornmeal|cornflour|cornbread|cornflakes|corncob|cornsyrup|popcorn|sweetcorn|maize|dextrose|dextrin|maltodextrin|hfcs)\b|\bcorn\s+(?:starch|syrup|meal|flour|oil|bread|flakes|grain|gluten|chips?|tortillas?|cereal)\b|\bhigh[-_\s]*fructose[-_\s]*corn\b|\bzea\s*mays\b/i;
         if (cornRegex.test(cornCleanText)) {
           if (!detectedAllergenIds.includes('corn')) detectedAllergenIds.push('corn');
         } else {
@@ -23361,22 +23345,6 @@
         const brandLower = String(item.brand || item.receiptStore || '').toLowerCase().trim();
         const titleLower = String(item.productName || item.product || '').toLowerCase().trim();
 
-        // Safe staple immunity: Aldi 746502 (Alfredo/Meatball) & Aldi 344974 (Millville Soft Baked / Chewy Bars) - NEVER recalled
-        if (code === '746502' || cleanCode === '746502' || cleanCode === '0746502' || (brandLower.includes('aldi') && titleLower.includes('alfredo')) ||
-            code === '344974' || cleanCode === '344974' || cleanCode === '0344974' || (brandLower.includes('millville') && (titleLower.includes('soft baked') || titleLower.includes('granola') || titleLower.includes('chewy')))) {
-          item.recalledNow = false;
-          item.isRecalled = false;
-          delete item.activeRecallHazard;
-          delete item.recallAgency;
-          delete item.recallSeverity;
-          delete item.recallDate;
-          if (item.status === 'recalled' || item.status === 'recall_notice') {
-            item.status = 'clear';
-          }
-          historyNeedsSave = true;
-          return;
-        }
-
         // Terminated Recall & Curated Database Immunity:
         // If an item is in RECALL_DATABASE as cleared (isRecalled === false), has a terminatedNotice,
         // or is verified store-cleared, it is 100% IMMUNE from generic category fallback matching & recall alerts!
@@ -23595,16 +23563,7 @@
       const navBadge = document.getElementById('watchlistNavRecallBadge');
       if (!navBadge) return;
 
-      const isAldi746502Check = (item) => {
-        const code = String(item.upc || '').trim();
-        const cleanCode = code.replace(/\D/g, '');
-        const brandLower = String(item.brand || item.receiptStore || '').toLowerCase().trim();
-        const titleLower = String(item.productName || item.product || '').toLowerCase().trim();
-        return (code === '746502' || cleanCode === '746502' || cleanCode === '0746502' || (brandLower.includes('aldi') && titleLower.includes('alfredo')));
-      };
-
       const count = Array.isArray(scanHistory) ? scanHistory.filter(item => {
-        if (isAldi746502Check(item)) return false;
         if (item.terminatedNotice || (item.recallRecord && item.recallRecord.terminatedNotice)) return false;
         return Boolean(
           item.recalledNow ||
@@ -23995,11 +23954,10 @@ function renderHistory() {
         const cleanCode = code.replace(/\D/g, '');
         const brandLower = String(item.brand || item.receiptStore || '').toLowerCase().trim();
         const titleLower = String(item.productName || item.product || '').toLowerCase().trim();
-        const isAldi746502 = (code === '746502' || cleanCode === '746502' || cleanCode === '0746502' || (brandLower.includes('aldi') && titleLower.includes('alfredo')));
 
         const cardDirectRec = (typeof findRecallRecord === 'function') ? findRecallRecord(code || cleanCode) : null;
         const isItemTerminated = Boolean(item.terminatedNotice || (item.recallRecord && item.recallRecord.terminatedNotice) || (cardDirectRec && cardDirectRec.terminatedNotice));
-        const isItemRecalled = !isAldi746502 && !isItemTerminated && Boolean(
+        const isItemRecalled = !isItemTerminated && Boolean(
           item.recalledNow ||
           item.status === 'recalled' ||
           item.status === 'recall_notice' ||
@@ -24273,15 +24231,7 @@ function renderHistory() {
       sortedReceipts.forEach((rcpt, rcptIdx) => {
         const isDirectBarcode = rcpt.isDirectBarcode || rcpt.id === 'direct_barcode';
 
-        const isAldi746502Check = (item) => {
-          const code = String(item.upc || '').trim();
-          const cleanCode = code.replace(/\D/g, '');
-          const brandLower = String(item.brand || item.receiptStore || '').toLowerCase().trim();
-          const titleLower = String(item.productName || item.product || '').toLowerCase().trim();
-          return (code === '746502' || cleanCode === '746502' || cleanCode === '0746502' || (brandLower.includes('aldi') && titleLower.includes('alfredo')));
-        };
-
-        const hasRecalls = rcpt.items.some(i => !isAldi746502Check(i) && Boolean(i.recalledNow || i.status === 'recalled' || i.status === 'recall_notice' || i.isRecalled || (i.activeRecallHazard && String(i.activeRecallHazard).trim().length > 0)));
+        const hasRecalls = rcpt.items.some(i => Boolean(i.recalledNow || i.status === 'recalled' || i.status === 'recall_notice' || i.isRecalled || (i.activeRecallHazard && String(i.activeRecallHazard).trim().length > 0)));
         const hasAlerts = !hasRecalls && rcpt.items.some(i => i.status === 'allergen_alert' || (Array.isArray(i.familyMatches) && i.familyMatches.length > 0));
         const isAllClear = !hasRecalls && !hasAlerts;
 
@@ -24304,8 +24254,8 @@ function renderHistory() {
 
         // PUSH RECALLED ITEMS TO THE VERY TOP OF THE RECEIPT LIST!
         uniqueItems.sort((a, b) => {
-          const aRec = !isAldi746502Check(a) && Boolean(a.recalledNow || a.status === 'recalled' || a.status === 'recall_notice' || a.isRecalled || (a.activeRecallHazard && String(a.activeRecallHazard).trim().length > 0));
-          const bRec = !isAldi746502Check(b) && Boolean(b.recalledNow || b.status === 'recalled' || b.status === 'recall_notice' || b.isRecalled || (b.activeRecallHazard && String(b.activeRecallHazard).trim().length > 0));
+          const aRec = Boolean(a.recalledNow || a.status === 'recalled' || a.status === 'recall_notice' || a.isRecalled || (a.activeRecallHazard && String(a.activeRecallHazard).trim().length > 0));
+          const bRec = Boolean(b.recalledNow || b.status === 'recalled' || b.status === 'recall_notice' || b.isRecalled || (b.activeRecallHazard && String(b.activeRecallHazard).trim().length > 0));
           if (aRec && !bRec) return -1;
           if (!aRec && bRec) return 1;
 
@@ -24320,7 +24270,7 @@ function renderHistory() {
         let statusPill = `<span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Cleared</span>`;
 
         if (hasRecalls) {
-          const recallCount = rcpt.items.filter(i => !isAldi746502Check(i) && Boolean(i.recalledNow || i.status === 'recalled' || i.status === 'recall_notice' || i.isRecalled || (i.activeRecallHazard && String(i.activeRecallHazard).trim().length > 0))).length;
+          const recallCount = rcpt.items.filter(i => Boolean(i.recalledNow || i.status === 'recalled' || i.status === 'recall_notice' || i.isRecalled || (i.activeRecallHazard && String(i.activeRecallHazard).trim().length > 0))).length;
           statusPill = `<span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40">${recallCount} Recall${recallCount > 1 ? 's' : ''}</span>`;
         } else if (hasAlerts) {
           statusPill = `<span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert</span>`;
@@ -27029,15 +26979,6 @@ function renderHistory() {
 
         // RECALL CROSS-CHECK INTELLIGENCE
         let isRecalledItem = item.status === 'recalled' || Boolean(item.isRecalled);
-        if (resolvedUpc === '746502' || resolvedUpc === '0746502' || resolvedUpc === '344974' || resolvedUpc === '0344974' ||
-            resolvedUpc === '00388481' || resolvedUpc === '388481' ||
-            (String(receiptStore).toLowerCase().includes('trader joe') && (itemName.toLowerCase().includes('orange chicken') || itemName.toLowerCase().includes('mandarin'))) ||
-            (String(receiptStore).toLowerCase().includes('aldi') && itemName.toLowerCase().includes('alfredo')) ||
-            (itemName.toLowerCase().includes('millville') && (itemName.toLowerCase().includes('soft baked') || itemName.toLowerCase().includes('granola') || itemName.toLowerCase().includes('chewy')))) {
-          isRecalledItem = false;
-          item.status = 'clear';
-          item.isRecalled = false;
-        }
         let hazardText = item.warning || item.hazard || '';
         let recallAgencyText = item.recallAgency || 'FDA';
         let recallSeverityText = item.recallSeverity || 'Class I High Risk';
@@ -27377,7 +27318,7 @@ function renderHistory() {
 
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed max-h-[55vh] overflow-y-auto pr-1">
         <p class="font-semibold text-white">Twin Ravens Digital LLC • RAKKA Food Safety & Recall Scanner</p>
-        <p><strong>1. Data Collection & Privacy:</strong> RAKKA is engineered with an offline-first architecture. Your custom family profiles, allergen shields, and scanned grocery receipt histories are saved directly in your device's local browser storage. We do not sell, rent, or monetize your personal shopping records.</p>
+        <p><strong>1. Data Collection & Privacy:</strong> RAKKA is engineered with an offline-first architecture. Your custom family profiles, allergen shields, and scanned grocery receipt histories are saved in your device's local browser storage. If you turn on Household Sync, your profiles and up to 500 recent scan records are also stored on our cloud server (Cloudflare) for up to 90 days after the last sync. Receipt and lot-code photos are sent to Google Gemini through our server to be read. We do not sell, rent, or monetize your personal shopping records.</p>
         <p><strong>2. Camera & Photo Usage:</strong> Camera access is used strictly in real-time to scan standard GS1 UPC barcodes on packaging. Photos taken for receipt imports or expiration lot audits are analyzed in volatile memory solely for character recognition and safety verification, and are never saved, stored, or shared.</p>
         <p><strong>3. Community Product Catalog:</strong> When an unindexed grocery barcode is resolved, its anonymous, publicly printed packaging declarations (product title, brand, and ingredient list) may be cached in our community food database to accelerate lookup speeds for all shoppers. This catalog contains solely publicly printed package facts and contains zero user identifiers, photos, device IDs, or personal shopping histories.</p>
         <p><strong>4. Food Safety Disclaimer:</strong> RAKKA cross-references packaging data against official federal openFDA enforcement records and USDA bulletins. Label formulations and recall statuses can change rapidly. Always inspect physical product packaging directly before consumption.</p>
