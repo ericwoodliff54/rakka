@@ -22,7 +22,7 @@ Developed by **Twin Ravens Digital LLC**.
 
 ```text
 ├── index.html                  # Main Rakka application interface & PWA container
-├── recall_scanner.html         # Dedicated standalone barcode & recall scanner
+├── recall_scanner.html         # Old address; redirects to index.html
 ├── rakka-worker.js             # Cloudflare Worker backend API proxy & edge vision auditor
 ├── staples_catalog.json        # Curated offline dictionary of grocery staples
 ├── staples_kv_seed.json        # 1,338 pre-formatted records for Cloudflare KV
@@ -41,8 +41,8 @@ Developed by **Twin Ravens Digital LLC**.
 ## 🚀 Deployment Guide
 
 ### Step 1: Frontend Web Host (GitHub Pages / Cloudflare Pages / Vercel)
-Replace `index.html` and `recall_scanner.html` on your web host:
-1. Upload `index.html` and `recall_scanner.html` (along with icons/manifest/sw.js if needed) to your hosting repository root.
+Replace `index.html` on your web host (`recall_scanner.html` is only a redirect to it):
+1. Upload `index.html` (along with icons/manifest/sw.js if needed) to your hosting repository root.
 2. Refresh your browser or clear the PWA service worker cache.
 
 ### Step 2: Backend Cloudflare Worker (`rakka-worker.js`)
