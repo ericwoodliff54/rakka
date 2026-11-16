@@ -72,7 +72,7 @@ To pre-seed your cloud database with grocery staples before launch:
 
 ## 🔒 Privacy & Compliance
 - Profiles, allergen filters, scan history and the watchlist are stored on the device by default.
-- If Household Sync is turned on, profiles and up to 500 recent scans are stored in Cloudflare KV (`RAKKA_COMMUNITY_DB`) for up to 90 days after the last sync. This data is not end-to-end encrypted.
+- If Household Sync is turned on, family allergen profiles are encrypted on the device (AES-GCM, key shared only in the invite) and the encrypted blob is stored in Cloudflare KV (`RAKKA_COMMUNITY_DB`) for up to 90 days after the last sync. The server cannot read it. Scan history is never synced.
 - Receipt and lot-code images are sent through the Cloudflare Worker to Google Gemini for reading.
 - Packaging facts (title, brand, ingredients) for unknown barcodes may be cached in a shared community catalog.
 - No data is sold. Recall data covers FDA and USDA notices only, and RAKKA never guarantees a product is safe: always read the package label.

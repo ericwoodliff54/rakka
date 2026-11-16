@@ -177,7 +177,7 @@
 
     <div class="summary-card">
       <h2>Summary: No Accounts, No Tracking, Local-First</h2>
-      <p>RAKKA was built on the core principle that personal dietary and health data belongs solely to the user. We do not require accounts, we do not track your location, and we do not sell or monetize personal shopping records. By default, household profiles, allergen filters, and pantry lists are stored on your device. If you turn on Household Sync, they are also stored on our cloud server (see section 2).</p>
+      <p>RAKKA was built on the core principle that personal dietary and health data belongs solely to the user. We do not require accounts, we do not track your location, and we do not sell or monetize personal shopping records. By default, household profiles, allergen filters, and pantry lists are stored on your device. If you turn on Household Sync, your family allergen profiles are also stored on our cloud server in encrypted form (see section 2).</p>
     </div>
 
     <section>
@@ -198,7 +198,7 @@
         <li><strong>Allergen & Additive Shields:</strong> Toggles for the 12 essential allergens and 37 scrutinized food chemicals/dyes.</li>
         <li><strong>Pantry & Fridge Watchlist:</strong> Up to 50 items (Free tier) or 500 items (Plus tier) saved for continuous federal recall cross-referencing.</li>
       </ul>
-      <p><strong>Household Sync (optional):</strong> If you create or join a household, your family profiles (including allergen preferences) and up to 500 recent scan records are stored on our Cloudflare servers (Cloudflare KV), linked to a random household ID and invite code rather than an account. Records are deleted automatically 90 days after the last sync. This data is not end-to-end encrypted, and we do not sell or share it. Do not enable sync if you are not comfortable with this.</p>
+      <p><strong>Household Sync (optional):</strong> If you create or join a household, your family profiles (names and allergen preferences) are encrypted on your device with a random key before upload. The key is part of the invite code or QR you share with your partner and is never sent to us, so we cannot read the stored data. The encrypted copy is kept in Cloudflare KV under a random household ID rather than an account, and is deleted automatically 90 days after the last sync or when the last device unlinks. Scan history and the pantry watchlist are never synced; they stay on each device. If you lose both devices and the invite, the encrypted copy cannot be recovered.</p>
       <p>You can instantly delete all local records at any time using the <strong>"Factory Reset & Clear All Data"</strong> button in the Settings menu.</p>
     </section>
 
