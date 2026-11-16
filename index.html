@@ -2661,7 +2661,7 @@
           id="activatePlusTrialBtn" 
           class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-950/60 hover:opacity-95 transition active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          <span id="activatePlusTrialBtnText">Start 7-Day Free Trial (then $24.99/yr)</span>
+          <span id="activatePlusTrialBtnText">Start 7-Day Free Trial</span>
         </button>
 
         <!-- Family & Tester Access Pass Redeemer -->
@@ -3917,16 +3917,7 @@
             id="openPaywallBtn" 
             class="w-full min-h-[52px] py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-sm shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>View RAKKA Plus Plans ($2.99/mo or $24.99/yr)</span>
-          </button>
-          <button 
-            type="button" 
-            id="shareFamilyVipBtn" 
-            class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
-            title="Share an instant unlocked VIP Plus link with your spouse or family members"
-          >
-            <svg class="w-4 h-4 text-sky-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span>Share Family VIP Pass (Free Unlocked Link)</span>
+            <span>Unlock RAKKA Plus (invite code or free trial)</span>
           </button>
           <!-- Developer Testing Tier Switcher -->
           <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/30 flex items-center justify-between gap-3 shadow-sm">
@@ -5322,163 +5313,98 @@
     let trialDaysRemaining = 0;
     let justUnlockedViaUrl = false;
 
-    // Bulletproof Family VIP Link Detector (Executes BEFORE checkPlusStatus)
-    function checkFamilyAccessUrl() {
+    // ============================================================================
+    // RAKKA PLUS ENTITLEMENT
+    // Plus comes only from the server: an invite code or a one-time trial that the Worker signs for this
+    // device. The signed token is kept here and re-checked with the Worker at startup. URL tricks, local
+    // "paid" flags and hardcoded codes no longer unlock anything.
+    // ============================================================================
+    const PLUS_ENT_KEY = 'rakka_plus_ent';       // { token, kind: 'code'|'trial', exp }
+    const PLUS_HH_KEY = 'rakka_hh_plus_until';   // household plus (hosted by a partner), expiry in ms
+    const PLUS_PREVIEW_FREE_KEY = 'rakka_preview_free'; // session only: preview the Free tier
+
+    // One-time cleanup of the old, forgeable flags.
+    try {
+      ['safebite_pro_active', 'safebite_plus_active', 'rakka_pro_active', 'rakka_dev_mode', 'safebite_trial_start'].forEach(k => localStorage.removeItem(k));
+      sessionStorage.removeItem('safebite_pro_active');
+      document.cookie = 'safebite_pro_vip=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    } catch (e) {}
+
+    function readPlusEntitlement() {
       try {
-        const href = (window.location.href || '').toLowerCase();
-        const search = (window.location.search || '').toLowerCase();
-        const hash = (window.location.hash || '').toLowerCase();
-        const params = new URLSearchParams(window.location.search);
-
-        const vipParam = (params.get('vip') || '').toLowerCase();
-        const promoParam = (params.get('promo') || '').toLowerCase();
-        const codeParam = (params.get('code') || '').toLowerCase();
-        const familyParam = (params.get('family') || '').toLowerCase();
-        const proParam = (params.get('plus') || params.get('pro') || '').toLowerCase();
-
-        // 1. Detect if this is a VIP / Family invitation link
-        const isVipCandidate = (
-          vipParam === 'family' || vipParam === 'plus' || vipParam === 'pro' || vipParam === 'true' || vipParam === '1' || vipParam === 'tester' || vipParam === 'vip' ||
-          familyParam === 'vip' || familyParam === 'true' || familyParam === '1' || familyParam === 'plus' || familyParam === 'pro' ||
-          proParam === 'family' || proParam === 'vip' || proParam === 'true' || proParam === '1' ||
-          codeParam === 'family' || codeParam === 'vip' || codeParam === 'plus' || codeParam === 'pro' || codeParam === 'tester' ||
-          promoParam === 'family' || promoParam === 'vip' || promoParam === 'plus' || promoParam === 'pro' ||
-          search.includes('vip=family') || search.includes('vip=pro') || search.includes('vip=true') || search.includes('vip=1') ||
-          search.includes('family=vip') || search.includes('pro=vip') || search.includes('code=family') ||
-          hash.includes('vip=family') || hash.includes('family') || hash.includes('vip') || hash.includes('plus') || hash.includes('pro') ||
-          href.includes('vip=family') || href.includes('vip=pro') || href.includes('family=vip')
-        );
-
-        if (!isVipCandidate) return;
-
-        // 2. Validate Expiration (Default 10-day window from link creation)
-        const expParam = params.get('exp') || params.get('expires') || params.get('t') || '';
-        let isExpired = false;
-        let expDateObj = null;
-
-        if (expParam) {
-          let expVal = Number(expParam);
-          if (!isNaN(expVal)) {
-            if (expVal < 10000000000) expVal = expVal * 1000; // convert seconds to ms
-            expDateObj = new Date(expVal);
-          } else {
-            expDateObj = new Date(expParam);
-          }
-
-          if (expDateObj && !isNaN(expDateObj.getTime())) {
-            if (Date.now() > expDateObj.getTime()) {
-              isExpired = true;
-            }
-          }
-        } else {
-          // Legacy links without an exp parameter: allowed through Nov 11, 2026, then expire
-          const LEGACY_CUTOFF = new Date('2026-11-12T00:00:00Z').getTime();
-          if (Date.now() > LEGACY_CUTOFF) {
-            isExpired = true;
-          }
-        }
-
-        if (isExpired) {
-          window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-              if (typeof showCustomizeToast === 'function') {
-                showCustomizeToast('This Family VIP link has expired. Please ask Eric for a fresh 10-day invite pass.');
-              }
-            }, 800);
-          });
-          return;
-        }
-
-        // 3. Link is valid and unexpired: Activate permanent Lifetime Plus access
-        isPlusActive = true;
-        plusStatusType = 'paid';
-        trialDaysRemaining = 0;
-        justUnlockedViaUrl = true;
-
-        // Multi-layer persistence: localStorage + sessionStorage + persistent 10-year cookie
-        try {
-          localStorage.setItem('safebite_pro_active', 'paid');
-          localStorage.setItem('safebite_plus_active', 'paid');
-          sessionStorage.setItem('safebite_pro_active', 'paid');
-          document.cookie = "safebite_pro_vip=paid; max-age=315360000; path=/; SameSite=Lax";
-        } catch (e) {}
-
-        // Strip the VIP parameters from the browser address bar so if they copy or share the URL, it's just the clean home URL
-        if (window.history && window.history.replaceState) {
-          const cleanUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
-        }
+        const e = JSON.parse(localStorage.getItem(PLUS_ENT_KEY) || 'null');
+        return (e && typeof e.token === 'string' && Number(e.exp) > 0) ? e : null;
+      } catch (e) { return null; }
+    }
+    function writePlusEntitlement(ent) {
+      try {
+        if (ent) localStorage.setItem(PLUS_ENT_KEY, JSON.stringify({ token: ent.token, kind: ent.kind, exp: ent.exp }));
+        else localStorage.removeItem(PLUS_ENT_KEY);
       } catch (e) {}
     }
 
-    // Run VIP check first so localStorage is populated before checkPlusStatus runs!
-    checkFamilyAccessUrl();
-
     function checkPlusStatus() {
+      isPlusActive = false; plusStatusType = 'free'; trialDaysRemaining = 0;
       try {
-        // 1. Explicit Developer Mode Override (Highest Priority: Never overridden by cookies or cache)
-        const devOverride = localStorage.getItem('rakka_dev_mode') ;
-        if (devOverride === 'free') {
-          isPlusActive = false;
-          plusStatusType = 'free';
-          trialDaysRemaining = 0;
-          return;
-        } else if (devOverride === 'paid') {
+        const ent = readPlusEntitlement();
+        const now = Date.now();
+        if (ent && ent.exp > now) {
           isPlusActive = true;
-          plusStatusType = 'paid';
-          trialDaysRemaining = 0;
-          return;
-        }
-
-        // 2. Standard Storage & Persistent Cookie checks
-        let savedPro = null;
-        try {
-          savedPro = localStorage.getItem('rakka_pro_active')  || localStorage.getItem('safebite_pro_active') || localStorage.getItem('safebite_plus_active') || sessionStorage.getItem('safebite_pro_active');
-        } catch (e) {}
-
-        if (!savedPro && document.cookie && document.cookie.includes('safebite_pro_vip=paid')) {
-          savedPro = 'paid';
-          try {
-            localStorage.setItem('safebite_pro_active', 'paid');
-            localStorage.setItem('safebite_plus_active', 'paid');
-          } catch (e) {}
-        }
-
-        const trialStart = localStorage.getItem('safebite_trial_start');
-
-        if (savedPro === 'paid' || savedPro === 'true') {
-          isPlusActive = true;
-          plusStatusType = 'paid';
-          trialDaysRemaining = 0;
-          return;
-        }
-
-        if (savedPro === 'trial' && trialStart) {
-          const elapsedMs = Date.now() - parseInt(trialStart, 10);
-          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-          if (elapsedMs < SEVEN_DAYS_MS) {
-            isPlusActive = true;
+          if (ent.kind === 'trial') {
             plusStatusType = 'trial';
-            trialDaysRemaining = Math.max(1, Math.ceil((SEVEN_DAYS_MS - elapsedMs) / (24 * 60 * 60 * 1000)));
-            return;
+            trialDaysRemaining = Math.max(1, Math.ceil((ent.exp - now) / 86400000));
           } else {
-            isPlusActive = false;
-            plusStatusType = 'expired';
-            trialDaysRemaining = 0;
-            return;
+            plusStatusType = 'paid';
           }
+        } else if (ent && ent.kind === 'trial') {
+          plusStatusType = 'expired';
+        } else if (Number(localStorage.getItem(PLUS_HH_KEY) || 0) > now) {
+          isPlusActive = true; plusStatusType = 'paid';
         }
-
-        isPlusActive = false;
-        plusStatusType = 'free';
-        trialDaysRemaining = 0;
+        if (isPlusActive && sessionStorage.getItem(PLUS_PREVIEW_FREE_KEY) === '1') {
+          isPlusActive = false; plusStatusType = 'free'; trialDaysRemaining = 0;
+        }
       } catch (e) {
-        isPlusActive = false;
-        plusStatusType = 'free';
-        trialDaysRemaining = 0;
+        isPlusActive = false; plusStatusType = 'free'; trialDaysRemaining = 0;
       }
     }
     checkPlusStatus();
+
+    async function plusServerCall(path, extra) {
+      const res = await fetch(`${getWorkerBaseUrl()}/plus/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getRakkaDeviceId(), ...extra })
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    function refreshPlusUi() {
+      try { if (typeof updatePlusUI === 'function') updatePlusUI(); } catch (e) {}
+      try { if (typeof renderAllergensTab === 'function') renderAllergensTab(); } catch (e) {}
+      try { if (typeof renderCustomizeTab === 'function') renderCustomizeTab(); } catch (e) {}
+    }
+
+    // Re-check the saved token with the Worker. Offline or on a server error the saved token keeps working until it expires.
+    async function verifyPlusWithServer() {
+      const ent = readPlusEntitlement();
+      if (!ent) return;
+      try {
+        const r = await plusServerCall('status', { token: ent.token });
+        if (!r.ok || !r.data || r.data.success === false) return;
+        if (r.data.active) {
+          writePlusEntitlement({ token: r.data.token || ent.token, kind: r.data.kind, exp: r.data.exp });
+        } else {
+          writePlusEntitlement(null);
+        }
+        checkPlusStatus();
+        refreshPlusUi();
+      } catch (e) {}
+    }
+    setTimeout(verifyPlusWithServer, 1500);
+
 
         // Store-Ready Offline FDA Cache State
     let cachedFDARecalls = [];
@@ -18970,23 +18896,30 @@
     }
 
     if (redeemPromoBtn && promoCodeInput) {
-      redeemPromoBtn.addEventListener('click', () => {
+      redeemPromoBtn.addEventListener('click', async () => {
         const inputCode = promoCodeInput.value.trim().toUpperCase();
-        if (inputCode === 'FAMILY' || inputCode === 'TESTER' || inputCode === 'VIP' || inputCode === 'RAKKA'  || inputCode === 'PRO' || inputCode === 'PLUS') {
-          triggerHaptic([60, 40, 60]);
-          sound.playClearChime();
-          isPlusActive = true;
-          plusStatusType = 'paid';
-          try {
-            localStorage.setItem('safebite_pro_active', 'paid'); localStorage.setItem('safebite_plus_active', 'paid');
-          } catch (e) {}
-          updatePlusUI();
-          closePaywall();
-          renderAllergensTab();
-          showCustomizeToast("Family VIP Access Unlocked! Full RAKKA Plus is active.");
-        } else {
-          triggerHaptic([40, 40]);
-          showCustomizeToast("Invalid code. Please check with the app creator.");
+        if (!inputCode) return;
+        redeemPromoBtn.disabled = true;
+        try {
+          const r = await plusServerCall('redeem', { code: inputCode });
+          if (r.ok && r.data.success && r.data.token) {
+            writePlusEntitlement({ token: r.data.token, kind: r.data.kind, exp: r.data.exp });
+            sessionStorage.removeItem(PLUS_PREVIEW_FREE_KEY);
+            promoCodeInput.value = '';
+            triggerHaptic([60, 40, 60]);
+            sound.playClearChime();
+            checkPlusStatus();
+            refreshPlusUi();
+            closePaywall();
+            showCustomizeToast("Plus unlocked. Thank you for testing RAKKA!");
+          } else {
+            triggerHaptic([40, 40]);
+            showCustomizeToast(r.data.error || "That code did not work. Please check it and try again.");
+          }
+        } catch (e) {
+          showCustomizeToast("Could not reach the server. Check your connection and try again.");
+        } finally {
+          redeemPromoBtn.disabled = false;
         }
       });
     }
@@ -19131,12 +19064,12 @@
       if (activatePlusTrialBtnText) {
         if (selected === 'monthly') {
           activatePlusTrialBtnText.textContent = plusStatusType === 'expired' 
-            ? "Subscribe for $2.99/month" 
-            : "Start 7-Day Free Trial (then $2.99/mo)";
+            ? "Enter a Plus code to continue" 
+            : "Start 7-Day Free Trial";
         } else {
           activatePlusTrialBtnText.textContent = plusStatusType === 'expired' 
-            ? "Subscribe for $24.99/year (Save 30%)" 
-            : "Start 7-Day Free Trial (then $24.99/yr)";
+            ? "Enter a Plus code to continue" 
+            : "Start 7-Day Free Trial";
         }
       }
     }
@@ -19145,24 +19078,33 @@
       r.addEventListener('change', updateSelectedPlanUI);
     });
 
-    activatePlusTrialBtn.addEventListener('click', () => {
+    activatePlusTrialBtn.addEventListener('click', async () => {
       triggerHaptic([60, 40, 60]);
-      sound.playClearChime();
-
-      const selected = document.querySelector('input[name="plusPlan"]:checked')?.value || 'annual';
-
-      isPlusActive = true;
-      plusStatusType = 'trial';
-      trialDaysRemaining = 7;
+      if (plusStatusType === 'expired') {
+        // Trial already used: point to the code box instead.
+        const box = document.getElementById('promoInputContainer');
+        if (box) box.classList.remove('hidden');
+        showCustomizeToast("Your trial has ended. Enter a Plus code below to continue.");
+        return;
+      }
       try {
-        localStorage.setItem('safebite_plus_active', 'trial');
-        localStorage.setItem('safebite_trial_start', Date.now().toString());
-      } catch (e) {}
-      showCustomizeToast(`7-Day Free Trial activated! (${selected === 'monthly' ? '$2.99/mo' : '$24.99/yr - Save 30%'}) Family profiles & additive guards unlocked.`);
-
-      updatePlusUI();
-      closePaywall();
-      renderAllergensTab();
+        const r = await plusServerCall('trial', {});
+        if (r.ok && r.data.success && r.data.token) {
+          writePlusEntitlement({ token: r.data.token, kind: r.data.kind, exp: r.data.exp });
+          sessionStorage.removeItem(PLUS_PREVIEW_FREE_KEY);
+          sound.playClearChime();
+          checkPlusStatus();
+          refreshPlusUi();
+          closePaywall();
+          showCustomizeToast("7-day free trial started. Family profiles & additive guards unlocked.");
+        } else {
+          showCustomizeToast(r.data.error || "Could not start the trial. Enter a Plus code instead.");
+          const box = document.getElementById('promoInputContainer');
+          if (box) box.classList.remove('hidden');
+        }
+      } catch (e) {
+        showCustomizeToast("Could not reach the server. Check your connection and try again.");
+      }
     });
 
     function updatePlusUI() {
@@ -19218,7 +19160,7 @@
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "TRIAL EXPIRED";
         plusActiveBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40";
-        openPaywallBtn.innerHTML = `<span>Upgrade to RAKKA Plus ($24.99/yr or $2.99/mo)</span>`;
+        openPaywallBtn.innerHTML = `<span>Unlock RAKKA Plus (invite code or free trial)</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
           additiveBadge.textContent = "LOCKED (PLUS)";
@@ -19233,7 +19175,7 @@
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "FREE TIER";
         plusActiveBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
-        openPaywallBtn.innerHTML = `<span>Start 7-Day Free Trial ($24.99/yr or $2.99/mo)</span>`;
+        openPaywallBtn.innerHTML = `<span>Start 7-Day Free Trial</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
           additiveBadge.textContent = "LOCKED (PLUS)";
@@ -22972,39 +22914,19 @@
     if (toggleTesterModeBtn) {
       toggleTesterModeBtn.addEventListener('click', () => {
         triggerHaptic([40]);
+        // This button can only preview the Free tier for the current session. It can never grant Plus.
         if (isPlusActive) {
-          // Switch to Free Mode (Paywall & restrictions active)
-          try {
-            localStorage.setItem('rakka_dev_mode', 'free');
-            localStorage.setItem('rakka_pro_active', 'free');
-            localStorage.setItem('safebite_pro_active', 'free');
-            localStorage.setItem('safebite_plus_active', 'free');
-            sessionStorage.setItem('safebite_pro_active', 'free');
-            document.cookie = 'safebite_pro_vip=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          } catch (e) {}
-          isPlusActive = false;
-          plusStatusType = 'free';
-          updatePlusUI();
-          renderAllergensTab();
-          renderCustomizeTab();
+          try { sessionStorage.setItem(PLUS_PREVIEW_FREE_KEY, '1'); } catch (e) {}
+          checkPlusStatus(); refreshPlusUi();
           sound.playScanBeep();
-          showCustomizeToast("Developer Mode: Switched to Free Tier (Paywall Active)");
-        } else {
-          // Switch to Plus Active Mode (All features unlocked)
-          try {
-            localStorage.setItem('rakka_dev_mode', 'paid');
-            localStorage.setItem('rakka_pro_active', 'paid');
-            localStorage.setItem('safebite_pro_active', 'paid');
-            localStorage.setItem('safebite_plus_active', 'paid');
-            sessionStorage.setItem('safebite_pro_active', 'paid');
-          } catch (e) {}
-          isPlusActive = true;
-          plusStatusType = 'paid';
-          updatePlusUI();
-          renderAllergensTab();
-          renderCustomizeTab();
+          showCustomizeToast("Previewing the Free tier (this session only).");
+        } else if (sessionStorage.getItem(PLUS_PREVIEW_FREE_KEY) === '1') {
+          try { sessionStorage.removeItem(PLUS_PREVIEW_FREE_KEY); } catch (e) {}
+          checkPlusStatus(); refreshPlusUi();
           sound.playClearChime();
-          showCustomizeToast("Developer Mode: Switched to Plus Active (All Features Unlocked)");
+          showCustomizeToast("Back to your Plus access.");
+        } else {
+          showCustomizeToast("Enter a Plus code to unlock Plus.");
         }
       });
     }
@@ -25035,42 +24957,6 @@ function renderHistory() {
     });
 
 
-    // Share Family VIP Pass handler (Copies link with ?vip=family or triggers native OS share sheet)
-    const shareFamilyVipBtn = document.getElementById('shareFamilyVipBtn');
-    if (shareFamilyVipBtn) {
-      shareFamilyVipBtn.addEventListener('click', async () => {
-        triggerHaptic([40]);
-        const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000; // 10 days validity window
-        const expTimestamp = Date.now() + TEN_DAYS_MS;
-        const expDateFormatted = new Date(expTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const shareUrl = window.location.origin + window.location.pathname + '?vip=family&exp=' + expTimestamp;
-        const shareData = {
-          title: 'RAKKA Plus - Family VIP Pass',
-          text: `Here is your Family VIP Pass for RAKKA Plus! Open this link before ${expDateFormatted} to unlock lifetime Plus for free:`,
-          url: shareUrl
-        };
-
-        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-          try {
-            await navigator.share(shareData);
-            showCustomizeToast("10-Day Family VIP Pass shared.");
-            return;
-          } catch (err) {
-            if (err.name === 'AbortError') return;
-          }
-        }
-
-        // Fallback: Clipboard Copy
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          sound.playClearChime();
-          showCustomizeToast(`10-Day VIP Pass copied. (Valid through ${expDateFormatted})`);
-        } catch (clipErr) {
-          showCustomizeToast("VIP Link (10-day pass): " + shareUrl);
-        }
-      });
-    }
-
     try { renderHistory(); } catch (e) { console.error('renderHistory startup error:', e); }
     // Built-in Production Cloud Edge Hook
     const DEFAULT_CLOUDFLARE_HOOK = 'https://rakka-edge.ericwoodliff.workers.dev';
@@ -25093,7 +24979,7 @@ function renderHistory() {
 
 
     // If page was just opened via VIP link, display celebratory confirmation toast
-    if (justUnlockedViaUrl) {
+    if (false && justUnlockedViaUrl) {
       setTimeout(() => {
         triggerHaptic([60, 40, 60]);
         sound.playClearChime();
@@ -25726,11 +25612,13 @@ function renderHistory() {
           if (typeof renderFamilyProfilesBar === 'function') renderFamilyProfilesBar();
         }
         // Scan history is no longer synced; it stays on each device.
-        if (data.plusActive) {
-          isPlusActive = true;
-          localStorage.setItem('safebite_plus_active', 'paid');
-          localStorage.setItem('safebite_pro_active', 'paid');
+        if (data.plusActive && Number(data.plusUntil) > Date.now()) {
+          localStorage.setItem(PLUS_HH_KEY, String(data.plusUntil));
+        } else if (data.plusActive === false) {
+          localStorage.removeItem(PLUS_HH_KEY);
         }
+        checkPlusStatus();
+        if (typeof refreshPlusUi === 'function') refreshPlusUi();
         if (data.updatedAt) {
           localStorage.setItem('rakka_household_updated_at', String(data.updatedAt));
         }
@@ -25770,6 +25658,7 @@ function renderHistory() {
           body: JSON.stringify({
             deviceId: getRakkaDeviceId(),
             householdId: localStorage.getItem('rakka_household_id') || '',
+            plusToken: (readPlusEntitlement() || {}).token || '',
             blob: await HHc.encryptProfiles(familyProfiles, hhKey)
           })
         });
@@ -25861,7 +25750,10 @@ function renderHistory() {
         localStorage.setItem(HH_KEY_STORE, invite.key);
         localStorage.setItem('rakka_household_id', data.householdId);
         // Combine this phone's profiles with the household's; allergens are always unioned.
-        data.familyProfiles = HHc.mergeProfiles(data.familyProfiles || [], familyProfiles);
+        // A brand-new default profile ("Me", no allergens) is dropped so it does not replace the host's profile of the same id.
+        const localKept = familyProfiles.filter(p => !(p && p.id === 'me' && String(p.name) === 'Me' && !(p.allergens || []).length));
+        data.familyProfiles = HHc.mergeProfiles(localKept, data.familyProfiles || []);
+        if (!data.familyProfiles.length) data.familyProfiles = familyProfiles;
         applySyncedHouseholdData(data);
         scheduleHouseholdPush();
         if (input) input.value = '';
@@ -25927,6 +25819,7 @@ function renderHistory() {
               householdId,
               deviceId: getRakkaDeviceId(),
               action: 'push',
+              plusToken: (readPlusEntitlement() || {}).token || '',
               baseUpdatedAt: parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10),
               blob: await window.RakkaHousehold.encryptProfiles(familyProfiles, getHouseholdKey())
             })
@@ -25967,6 +25860,9 @@ function renderHistory() {
       localStorage.removeItem('rakka_household_id');
       localStorage.removeItem('rakka_household_updated_at');
       localStorage.removeItem(HH_KEY_STORE);
+      localStorage.removeItem(PLUS_HH_KEY);
+      checkPlusStatus();
+      if (typeof refreshPlusUi === 'function') refreshPlusUi();
       const box = document.getElementById('householdInviteBox');
       if (box) box.classList.add('hidden');
       updateHouseholdSyncUI();
