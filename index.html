@@ -2082,6 +2082,19 @@
       background: linear-gradient(to bottom, rgba(248, 250, 252, 0.88) 0%, rgba(248, 250, 252, 0) 65%) !important;
     }
 
+    /* Light mode: lot-audit buttons keep white text on the red/amber gradient; share buttons use the light button style */
+    html.theme-light body button[onclick*="openLotAuditorFor"],
+    html.theme-light body button[onclick*="openLotAuditorFor"] span { color: #ffffff !important; }
+    html.theme-light body button[onclick*="openLotAuditorFor"] svg { color: #ffffff !important; }
+    html.theme-light body button[data-share-key],
+    html.theme-light body button[onclick*="registerRecallSharePayload"] { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+    html.theme-light body button[data-share-key] span,
+    html.theme-light body button[onclick*="registerRecallSharePayload"] span { color: #0f172a !important; }
+    html.theme-light body button[data-share-key] svg,
+    html.theme-light body button[onclick*="registerRecallSharePayload"] svg { color: #0891b2 !important; }
+    html.theme-light body button[data-share-key]:hover,
+    html.theme-light body button[onclick*="registerRecallSharePayload"]:hover { background: #e2e8f0 !important; }
+
     /* Share Recall Alert Card Button in Light Mode */
     html.theme-light button[onclick*="shareRecallByKey"] {
       background-color: #f1f5f9 !important;
@@ -21743,7 +21756,7 @@
       let verdictCardHtml = '';
       try {
         if (window.RakkaSafety && typeof window.RakkaSafety.cardHtmlFor === 'function') {
-          verdictCardHtml = window.RakkaSafety.cardHtmlFor(data, { isPlus: isPlusActive, profiles: familyProfiles, lastSyncTimestamp: lastSyncTimestamp });
+          verdictCardHtml = window.RakkaSafety.cardHtmlFor(data, { isPlus: isPlusActive, profiles: familyProfiles, lastSyncTimestamp: lastSyncTimestamp, recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) });
         }
       } catch (verdictErr) {
         console.error('RakkaSafety card failed, using legacy windows:', verdictErr);
@@ -22841,7 +22854,8 @@
         recallRecord: item.recallRecord || null,
         terminatedNotice: item.terminatedNotice || (item.recallRecord && item.recallRecord.terminatedNotice) || null,
         detectedAllergens: item.detectedAllergens || [],
-        detectedAdditives: item.detectedAdditives || []
+        detectedAdditives: item.detectedAdditives || [],
+        unverified: Boolean(item.unverified || item.productUnverified)
       });
 
       const now = Date.now();
@@ -23894,6 +23908,9 @@ function renderHistory() {
           } else {
             statusPill = `<button type="button" onclick="event.stopPropagation(); openPaywall();" class="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer" title="Tap to unlock RAKKA Plus allergen guard"><span>🔒 Allergen Alert • Unlock Plus</span></button>`;
           }
+        }
+        if (!isItemRecalled && !isItemTerminated && !isAlert && (item.unverified === true || item.productUnverified === true || (!item.ingredients && /Packaged Food Item|Scanned Product/i.test(String(item.title || item.productName || ''))))) {
+          statusPill = `<span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-500/20 text-slate-300 border border-slate-500/40">Couldn't verify</span>`;
         }
 
         const recallReason = item.activeRecallHazard || (item.recallRecord && item.recallRecord.hazard) || 'FDA/USDA Public Health Recall on record.';
