@@ -17,6 +17,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=18">
   <link rel="manifest" href="./manifest.json">
 
+  <link rel="preconnect" href="https://rakka-edge.ericwoodliff.workers.dev" crossorigin>
+  <link rel="preconnect" href="https://world.openfoodfacts.org" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20080,6 +20082,7 @@
     // Reset workflow to seamlessly scan the next item
     async function resetAndScanNext() {
       triggerHaptic([40]);
+      try { rkHideScanOverlay(); } catch (e) {}
       
       // 1. Reset scan lock and lastScannedCode so user can immediately re-scan any item (even the same one)
       isScanningLocked = false;
@@ -20295,7 +20298,21 @@
     }
 
     // REAL-TIME GROCERY PRODUCT RESOLUTION & ALLERGEN ANALYSIS
+    // Warm up the lookup server (wakes it and opens the connection) so the first scan after opening the app is not slow.
+    let rkLastWarm = 0;
+    function rkWarmLookup() {
+      if (Date.now() - rkLastWarm < 60000 || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+      rkLastWarm = Date.now();
+      try {
+        const base = (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim().replace(/\/+$/, '');
+        fetch(base + '/health', { cache: 'no-store' }).catch(() => {});
+      } catch (_) {}
+    }
+    setTimeout(rkWarmLookup, 800);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') rkWarmLookup(); });
+
     async function processUPC(rawCode, source = 'camera') {
+      rkWarmLookup();
       try {
         const code = String(rawCode).replace(/\D/g, '');
         if (!code) return;
@@ -20453,10 +20470,11 @@
         }
         const activeHookUrl = (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim();
         if (!isDeviceOffline && (!ingredientsSummary || brandName === "Grocery Brand")) {
+              let workerTimeoutMs = 9000;
               const fetchWorkerOnce = async () => {
                 if (!activeHookUrl) return null;
                 const hookCtrl = new AbortController();
-                const hookTimeout = setTimeout(() => hookCtrl.abort(), 4500);
+                const hookTimeout = setTimeout(() => hookCtrl.abort(), workerTimeoutMs);
                 try {
                   const hookRes = await fetch(`${activeHookUrl.replace(/\/+$/, '')}/lookup?upc=${encodeURIComponent(code)}`, { signal: hookCtrl.signal });
                   if (hookRes && hookRes.ok) {
@@ -20471,6 +20489,7 @@
 
               const fetchWorkerWithSilentRetry = async () => {
                 for (let attempt = 0; attempt < 2; attempt++) {
+                  workerTimeoutMs = attempt === 0 ? 9000 : 7000;
                   try {
                     const res = await fetchWorkerOnce();
                     if (res && res.ok) return res.data;
@@ -20485,7 +20504,7 @@
                 try {
                   const offVariants = [...new Set([code, code.padStart(12, '0'), code.padStart(13, '0'), code.replace(/^0+/, '')])].filter(c => c.length >= 8);
                   const offCtrl = new AbortController();
-                  const offTimer = setTimeout(() => offCtrl.abort(), 2500);
+                  const offTimer = setTimeout(() => offCtrl.abort(), 7000);
                   try {
                     return await Promise.any(offVariants.map(q =>
                       fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(q)}.json`, { signal: offCtrl.signal })
@@ -20507,7 +20526,7 @@
                 if (!workerDone && !offPromise) {
                   offPromise = fetchOffFallback();
                 }
-              }, 1800);
+              }, 3000);
 
               const hookData = await workerPromise;
               clearTimeout(overlapTimer);
@@ -21251,6 +21270,7 @@
 
       // Notes under the product (wrong-length code, same-brand recall). Never marks the item recalled.
       let notes = '';
+      if (/^Retail Grocery Item/i.test(String(data.productName || ''))) notes += '<p class="rk-note">Product details were not found. Try scanning again, or check your connection.</p>';
       try {
         if (window.RakkaSafety && window.RakkaSafety.extraNotesFor) {
           notes = window.RakkaSafety.extraNotesFor(data, { recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) }) || '';
@@ -21938,6 +21958,8 @@
       `;
         attachResultActionListeners();
         if (fromWatchlist) return;
+        rkShowScanOverlay();
+        return;
         setTimeout(() => {
           const navOffset = 135;
           const rect = targetContainer.getBoundingClientRect();
@@ -21963,6 +21985,8 @@
 
       attachResultActionListeners();
       if (fromWatchlist) return;
+      rkShowScanOverlay();
+      return;
       setTimeout(() => {
         const navOffset = 135;
         const rect = targetContainer.getBoundingClientRect();
@@ -23897,6 +23921,56 @@
     }
     window.rkCloseWatchDetail = rkCloseWatchDetail;
 
+    // Barcode scan results open in the same full-screen view as watchlist items.
+    function rkShowScanOverlay() {
+      const box = scannerResultContainer;
+      if (!box) return;
+      let ov = document.getElementById('rkScanDetail');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'rkScanDetail';
+        ov.className = 'rk-wd';
+        ov.setAttribute('role', 'dialog');
+        ov.setAttribute('aria-modal', 'true');
+        ov.setAttribute('aria-label', 'Scan result');
+        ov.innerHTML = '<div class="rk-wd-bar"><button type="button" class="rk-wd-back" aria-label="Back">&larr; Back</button><button type="button" class="rk-wd-x" aria-label="Close">&times;</button></div><div class="rk-wd-body"></div>';
+        document.body.appendChild(ov);
+        ov.querySelector('.rk-wd-back').addEventListener('click', () => rkCloseScanOverlay());
+        ov.querySelector('.rk-wd-x').addEventListener('click', () => rkCloseScanOverlay());
+        let sx = 0, sy = 0, st = 0;
+        ov.addEventListener('touchstart', (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+        ov.addEventListener('touchend', (e) => {
+          const t = e.changedTouches[0];
+          const dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+          if (dx > 90 && dy < 60 && Date.now() - st < 700 && sx < window.innerWidth * 0.5) rkCloseScanOverlay();
+        }, { passive: true });
+      }
+      const body = ov.querySelector('.rk-wd-body');
+      if (box.parentNode !== body) body.appendChild(box);
+      box.classList.remove('animate-slide-up-spring');
+      box.classList.remove('hidden');
+      box.style.display = '';
+      body.scrollTop = 0;
+      const wasOpen = ov.classList.contains('rk-wd-open');
+      ov.classList.add('rk-wd-open');
+      document.documentElement.classList.add('rk-wd-lock');
+      if (!wasOpen) { try { BackNav.pushModal('scanDetail', () => rkHideScanOverlay(true, true)); } catch (e) {} }
+    }
+    function rkHideScanOverlay(fromBack = false, clear = false) {
+      const ov = document.getElementById('rkScanDetail');
+      if (!ov || !ov.classList.contains('rk-wd-open')) return;
+      ov.classList.remove('rk-wd-open');
+      document.documentElement.classList.remove('rk-wd-lock');
+      if (!fromBack) { try { BackNav.popModal('scanDetail'); } catch (e) {} }
+      if (clear) rkClearScanState();
+    }
+    function rkClearScanState() {
+      try { clearCurrentProductResult(); } catch (e) {}
+      try { if (typeof html5QrCode !== 'undefined' && html5QrCode && isCameraRunning && isCameraPaused && typeof html5QrCode.resume === 'function') { html5QrCode.resume(); isCameraPaused = false; } } catch (e) {}
+    }
+    function rkCloseScanOverlay() { rkHideScanOverlay(false, true); }
+    window.rkCloseScanOverlay = rkCloseScanOverlay;
+
     function toggleWatchlistItemDetails(cardKey) {
       triggerHaptic([20]);
       rkOpenWatchDetail(cardKey);
@@ -25096,6 +25170,7 @@ function renderHistory() {
     // Attach event listeners to dynamic "Scan Next Item" and "Look Up Another Barcode" buttons
         function clearCurrentProductResult() {
       triggerHaptic([30]);
+      try { rkHideScanOverlay(); } catch (e) {}
       if (scannerResultContainer) {
         scannerResultContainer.classList.add('hidden');
         if (scannerResultContainer.style) scannerResultContainer.style.display = 'none';

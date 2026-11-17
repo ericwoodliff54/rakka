@@ -1284,7 +1284,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v7',
+        build: '2026-11-17-matcher-v7-lookup2',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',
@@ -1334,7 +1334,8 @@ export default {
       try {
         const fetchPromises = uniqueCodes.map(q => {
           return fetch(`https://world.openfoodfacts.org/api/v0/product/${q}.json`, {
-            headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (https://rakka.app)' }
+            headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (https://rakka.app)' },
+            signal: AbortSignal.timeout(9000)
           })
           .then(r => r.ok ? r.json() : null)
           .then(data => {
@@ -1342,7 +1343,21 @@ export default {
             throw new Error('Not found');
           });
         });
-        offProduct = await Promise.any(fetchPromises);
+        const offAny = Promise.any(fetchPromises);
+        // Keep going and cache the result even if the phone gave up waiting (slow first lookup), so the next scan is instant.
+        ctx.waitUntil(offAny.then(async (prod) => {
+          const nm = prod.product_name || prod.product_name_en || prod.generic_name;
+          if (!(env && env.RAKKA_COMMUNITY_DB) || !nm || nm.length < 2) return;
+          const b12 = cleanUpc.length === 13 && cleanUpc.startsWith('0') ? cleanUpc.substring(1) : cleanUpc.padStart(12, '0');
+          const rec = JSON.stringify({
+            upc: cleanUpc, name: nm,
+            brand: prod.brands || prod.brand_owner || (prod.brands_tags && prod.brands_tags[0]) || 'Packaged Grocery',
+            ingredients: prod.ingredients_text_en || prod.ingredients_text || '',
+            additives: prod.additives_tags || [], allergens: prod.allergens_tags || []
+          });
+          await Promise.all([env.RAKKA_COMMUNITY_DB.put(`upc:${b12}`, rec), env.RAKKA_COMMUNITY_DB.put(`upc:0${b12}`, rec)]);
+        }).catch(() => {}));
+        offProduct = await offAny;
       } catch (e) {}
 
       if (offProduct) {
