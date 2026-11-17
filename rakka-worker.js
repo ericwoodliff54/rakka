@@ -53,6 +53,7 @@ const RATE_LIMIT_CONFIG = {
   'household-join': 8,   // brute-force guard for invite codes
   'plus': 10,            // Plus code redemption / status checks
   'alerts': 40,          // background alert sync, queue reads and data deletion
+  'pinned': 30,          // public pinned-recall list (small and cacheable)
   'contribute': 10       // community catalog submissions
 };
 
@@ -644,13 +645,13 @@ function alTokens(text) {
 }
 
 /** One normalised recall record. */
-function alMakeRecall({ id, product, firm, reason, classification, status, date, agency, codesText }) {
-  const prod = alNorm(product);
+function alMakeRecall({ id, product, firm, reason, classification, status, date, agency, codesText, extra }) {
+  const prod = alNorm(`${product || ''} ${extra || ''}`);
   const rec = {
     id: String(id || '').slice(0, 60), product: String(product || '').slice(0, 300), firm: String(firm || '').slice(0, 120),
     reason: String(reason || '').slice(0, 400), classification: String(classification || '').slice(0, 40),
     status: String(status || ''), date: String(date || ''), agency: agency || 'FDA',
-    prodText: prod, text: alNorm(`${product} ${firm}`), gtins: new Set(), stems: new Set(), pfx: new Set(), est: new Set(),
+    prodText: prod, text: alNorm(`${product} ${firm} ${extra || ''}`), gtins: new Set(), stems: new Set(), pfx: new Set(), est: new Set(),
   };
   rec.words = new Set(prod.split(' '));
   alEstIds(`${product || ''} ${codesText || ''} ${firm || ''}`).forEach((e) => rec.est.add(e));
@@ -747,6 +748,40 @@ function alMatchPrepared(p, rec) {
   return null;
 }
 
+// ---- Pinned recalls: hand-added notices the live FDA/USDA feeds miss (for example USDA Public Health Alerts).
+// The app downloads this same list (GET /recalls/pinned), and the background alert matcher uses it too, so the two always agree.
+// To add or retire one: edit this list, paste the Worker into Cloudflare. No app update is needed.
+// Fields use the app's recall shape. `expires` (YYYY-MM-DD) is optional; after that date the entry drops out by itself.
+const AL_PINNED = [
+  {
+    id: 'USDA-PHA-2026-M3177',
+    agency: 'USDA FSIS',
+    product: 'Betterballen Foods 6-piece Bami Rolls (Pork), 10-piece Saté Kroketten (Chicken), and 12-piece Bitterballen (Beef) — Best By Oct 2027 (EST. M3177 / P3177)',
+    brand: 'Betterballen Foods LLC / Lowlands House',
+    reason: 'USDA Public Health Alert: Undeclared sesame in all three products and undeclared anchovies (fish) in Worcestershire sauce in Bitterballen. Lot codes: BR-2026-01, BR-2026-02, SK-1026-01, BB-1026-01.',
+    severity: 'USDA Public Health Alert',
+    date: '11/06/2026',
+    status: 'Public Health Alert',
+    upcs: [],
+    lotCodes: ['BR-2026-01', 'BR-2026-02', 'SK-1026-01', 'BB-1026-01'],
+    keywords: ['bitterballen', 'bami rolls', 'sate kroketten', 'saté kroketten'],
+    raw: 'betterballen foods llc lowlands house bami rolls sate kroketten saté kroketten bitterballen est. m3177 est. p3177 br-2026-01 br-2026-02 sk-1026-01 bb-1026-01 sesame anchovies fish',
+    expires: '2027-11-06',
+  },
+];
+function alPinnedActive() {
+  const now = Date.now();
+  return AL_PINNED.filter((p) => !p.expires || Date.parse(p.expires + 'T23:59:59Z') > now);
+}
+function alPinnedToRecord(p) {
+  return {
+    id: p.id, product: p.product, firm: p.brand || '', reason: p.reason || '', classification: p.severity || 'Pinned notice',
+    status: p.status || 'Ongoing', agency: p.agency || 'RAKKA', date: p.date || '',
+    codesText: [].concat(p.upcs || [], p.lotCodes || []).join(' '),
+    extra: [].concat(p.keywords || [], p.raw || '').join(' '),
+  };
+}
+
 function alUsdaDate(s) { const t = Date.parse(s || ''); return isNaN(t) ? null : t; }
 
 async function alLoadFeed(env, { force = false } = {}) {
@@ -757,7 +792,7 @@ async function alLoadFeed(env, { force = false } = {}) {
       if (cached && Array.isArray(cached.records) && Date.now() - cached.at < AL_FEED_TTL_MS) return cached;
     } catch (_) {}
   }
-  const records = [];
+  const records = alPinnedActive().map(alPinnedToRecord);
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 12000);
   let fdaOk = false, usdaOk = false;
@@ -798,13 +833,17 @@ async function alLoadFeed(env, { force = false } = {}) {
       }
     }
   } catch (_) { /* fall through with whatever loaded */ } finally { clearTimeout(timer); }
-  const feed = { at: Date.now(), fdaOk, usdaOk, records };
+  const feed = { at: Date.now(), fdaOk, usdaOk, records: records.filter((r, i) => records.findIndex((x) => x.id === r.id) === i) };
   if (fdaOk || usdaOk) {
     try { await kv.put('alfeed:v1', JSON.stringify(feed), { expirationTtl: 3600 }); } catch (_) {}
   } else {
     try {
       const stale = await kv.get('alfeed:v1', { type: 'json' });
-      if (stale && Array.isArray(stale.records)) return stale;
+      if (stale && Array.isArray(stale.records)) {
+        const have = new Set(stale.records.map((r) => r.id));
+        for (const p of alPinnedActive()) if (!have.has(p.id)) stale.records.push(alPinnedToRecord(p));
+        return stale;
+      }
     } catch (_) {}
   }
   return feed;
@@ -1200,6 +1239,16 @@ export default {
           'Access-Control-Allow-Origin': '*'
         }
       });
+    }
+
+    // Pinned recall notices (hand-added; the app and the background alerts read the same list)
+    if (request.method === 'GET' && url.pathname === '/recalls/pinned') {
+      const rlPin = checkEdgeRateLimit(request, 'pinned');
+      if (!rlPin.allowed) {
+        return new Response(JSON.stringify({ success: false, error: 'Too many requests.' }), { status: 429, headers: { ...corsHeaders, ...rlPin.headers } });
+      }
+      return new Response(JSON.stringify({ success: true, at: Date.now(), items: alPinnedActive().map(({ expires, ...p }) => ({ ...p, pinned: true })) }),
+        { headers: { ...corsHeaders, 'Cache-Control': 'public, max-age=300' } });
     }
 
     if (url.pathname === '/' || url.pathname === '/health') {
