@@ -2101,27 +2101,23 @@
 
   
     /* Allergens Sheet Disclaimers in Light Mode */
-    html.theme-light #allergenDetectionNotice {
-      background-color: #f1f5f9 !important;
-      border-color: #cbd5e1 !important;
-      color: #0f172a !important;
-    }
-    html.theme-light #allergenDetectionNotice span {
-      color: #334155 !important;
-    }
-    html.theme-light #allergenDetectionNotice span.font-bold {
-      color: #0f172a !important;
-    }
-    html.theme-light #allergenMedicalNotice {
-      background-color: #fffbeb !important;
-      border-color: #fde68a !important;
-    }
-    html.theme-light #allergenMedicalNotice p {
-      color: #78350f !important;
-    }
-    html.theme-light #allergenMedicalNotice div span {
-      color: #92400e !important;
-    }
+    /* Collapsible notices (allergen page) */
+    .rk-disc-stack { display: flex; flex-direction: column; gap: 8px; }
+    .rk-disc { border-radius: 16px; background: rgba(148,163,184,.08); border: 1px solid rgba(148,163,184,.2); color: #cbd5e1; }
+    .rk-disc > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px; cursor: pointer; border-radius: 16px; }
+    .rk-disc > summary::-webkit-details-marker { display: none; }
+    .rk-disc-ico { display: inline-flex; width: 28px; height: 28px; border-radius: 9px; align-items: center; justify-content: center; flex: none; background: rgba(56,189,248,.12); color: #7dd3fc; }
+    .rk-disc-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: #e2e8f0; line-height: 1.25; }
+    .rk-disc-sub { display: block; font-size: 11.5px; font-weight: 500; color: #94a3b8; margin-top: 2px; }
+    .rk-disc-chev { flex: none; color: #94a3b8; transition: transform .2s; }
+    .rk-disc[open] .rk-disc-chev { transform: rotate(180deg); }
+    .rk-disc-body { margin: 0; padding: 0 14px 14px 52px; font-size: 12px; line-height: 1.55; color: #cbd5e1; }
+    html.theme-light .rk-disc { background: #f8fafc; border-color: #cbd5e1; color: #334155; }
+    html.theme-light .rk-disc-ico { background: #e0f2fe; color: #0369a1; }
+    html.theme-light .rk-disc-title { color: #0f172a; }
+    html.theme-light .rk-disc-sub { color: #475569; }
+    html.theme-light .rk-disc-chev { color: #475569; }
+    html.theme-light .rk-disc-body { color: #334155; }
 
     /* Privacy Modal Light Mode Styling */
     html.theme-light #privacyPolicyModal > div {
@@ -2405,7 +2401,7 @@
     html.theme-light body #headerSettingsBtn.gear-active {
       background: linear-gradient(90deg, #0891b2 0%, #14b8a6 50%, #06b6d4 100%) !important;
       border-color: transparent !important;
-      box-shadow: 0 0 0 2px rgba(251,191,36,.65), 0 4px 10px rgba(8,51,68,.45) !important;
+      box-shadow: 0 3px 10px rgba(8,145,178,.35) !important;
     }
     html body #headerSettingsBtn.gear-active svg,
     html.theme-light body #headerSettingsBtn.gear-active svg { color: #ffffff !important; stroke: #ffffff !important; }
@@ -2472,7 +2468,7 @@
     html body #customizePanel { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
     html.theme-light body #customizePanel { background: transparent !important; border: none !important; box-shadow: none !important; }
     #customizePanel > div:first-child { border-bottom: none !important; padding-bottom: 0 !important; }
-    .rk-set-jump { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+    .rk-set-jump { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 4px; }
     .rk-set-jump::-webkit-scrollbar { display: none; }
     .rk-set-jump button { flex: none; min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; background: rgba(148,163,184,.12); color: #cbd5e1; border: 1px solid rgba(148,163,184,.28); }
     html.theme-light .rk-set-jump button { background: #fff; color: #475569; border-color: #cbd5e1; }
@@ -3398,8 +3394,8 @@
           </h2>
           
         </div>
-        <span id="activeAllergensBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-          Locked (Plus)
+        <span id="activeAllergensBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+          Free
         </span>
       </div>
 
@@ -3409,7 +3405,7 @@
           <span id="allergensPlusBannerTitle" class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
             <svg class="w-3 h-3 text-amber-400 shrink-0 inline-block" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> <span>RAKKA Plus Required</span>
           </span>
-          <p id="allergensPlusBannerSub" class="text-xs text-slate-300">Start your 7-day free trial (no card needed) to unlock family profiles, 12 allergens & additive screening.</p>
+          <p id="allergensPlusBannerSub" class="text-xs text-slate-300">Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening (7-day free trial, no card needed).</p>
         </div>
         <button type="button" id="unlockAllergensBannerBtn" class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-xl flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-950/40 hover:opacity-95 transition active:scale-95">
           Start 7-Day Trial
@@ -3564,26 +3560,24 @@
         </div>
       </div>
 
-      <!-- Clarifying Notice: FDA Big 9 vs. Deep Ingredient Parsing (Corn, Sulfites & Yeast) -->
-      <div id="allergenDetectionNotice" class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs flex items-start gap-2.5 shadow-sm">
-        <div class="w-5 h-5 rounded-lg bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 shrink-0 mt-0.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
-        </div>
-        <div class="text-xs leading-relaxed">
-          <span class="font-bold text-slate-200 block mb-0.5">Federal Big 9 & Custom Ingredient Screening</span>
-          <span class="text-slate-400">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened directly from FDA-mandated bold allergen disclosures. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</span>
-        </div>
-      </div>
-
-      <!-- Explicit Non-Blocking Medical & Food Safety Disclaimer (App Store Guideline 1.4.1) -->
-      <div id="allergenMedicalNotice" class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200/90 text-xs space-y-1 shadow-sm">
-        <div class="flex items-center gap-2 text-amber-300 font-bold text-xs">
-          <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
-          <span class="uppercase tracking-wider text-xs">Important Medical & Food Safety Disclaimer</span>
-        </div>
-        <p class="text-xs text-slate-300 leading-relaxed">
-          RAKKA is an informational grocery safety assistant based on FDA, USDA, and manufacturer product label disclosures. It does not replace professional medical advice, emergency allergy treatment, or clinical diagnostics for severe food allergies or anaphylaxis. Always verify physical packaging labels before consuming.
-        </p>
+      <!-- Collapsible notices: tap a title to read the details -->
+      <div class="rk-disc-stack">
+        <details id="allergenDetectionNotice" class="rk-disc">
+          <summary>
+            <span class="rk-disc-ico"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-11v5m0-8h.01"/></svg></span>
+            <span class="rk-disc-title">How allergen screening works</span>
+            <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <p class="rk-disc-body">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened directly from FDA-mandated bold allergen disclosures. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</p>
+        </details>
+        <details id="allergenMedicalNotice" class="rk-disc">
+          <summary>
+            <span class="rk-disc-ico"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <span class="rk-disc-title">Medical &amp; food safety notice<span class="rk-disc-sub">Informational only. Always read the package label.</span></span>
+            <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <p class="rk-disc-body">RAKKA is an informational grocery safety assistant based on FDA, USDA, and manufacturer product label disclosures. It does not replace professional medical advice, emergency allergy treatment, or clinical diagnostics for severe food allergies or anaphylaxis. Always verify physical packaging labels before consuming.</p>
+        </details>
       </div>
 
     </section>
@@ -21986,23 +21980,22 @@
           </div>`;
       }
 
+      // Free and Plus both get all 12 guards on the active profile; Plus adds family profiles and additive screening.
+      activeAllergensBadge.textContent = `${userAllergens.length} Active (${currentProfile.name})`;
+      activeAllergensBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0";
       if (isPlusActive) {
-        activeAllergensBadge.textContent = `${userAllergens.length} Active (${currentProfile.name})`;
-        activeAllergensBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0";
         // Plus user: Hide the Plus banner completely per user request (no redundant promo banner)
         if (allergensPlusBanner) {
           allergensPlusBanner.classList.add('hidden');
         }
       } else {
-        activeAllergensBadge.textContent = "Locked (Plus)";
-        activeAllergensBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0";
         if (allergensPlusBanner) {
           allergensPlusBanner.className = "rk-plus-quiet p-3.5 rounded-2xl flex items-center justify-between gap-3";
-          allergensPlusBannerTitle.innerHTML = UI_ICONS.star + " RAKKA Plus Required";
+          allergensPlusBannerTitle.innerHTML = UI_ICONS.star + " Want more with RAKKA Plus?";
           allergensPlusBannerTitle.className = "text-xs font-bold text-amber-300 flex items-center gap-1.5";
           allergensPlusBannerSub.textContent = plusStatusType === 'expired'
-            ? "Your 7-day trial has ended. Subscribe to Plus to re-enable family profiles, allergen alerts & additive screening."
-            : "Start your 7-day free trial (no card needed) to unlock family profiles, 12 allergens & synthetic dye screening.";
+            ? "Your 7-day trial has ended. You keep one profile with all 12 allergen guards. Plus adds family profiles & additive screening."
+            : "Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening (7-day free trial, no card needed).";
           unlockAllergensBannerBtn.classList.remove('hidden');
           unlockAllergensBannerBtn.textContent = plusStatusType === 'expired' ? "Upgrade to Plus" : "Start 7-Day Trial";
         }
