@@ -52,6 +52,7 @@ const RATE_LIMIT_CONFIG = {
   'household': 30,       // 30 req/min per IP for 2-person household sync
   'household-join': 8,   // brute-force guard for invite codes
   'plus': 10,            // Plus code redemption / status checks
+  'alerts': 40,          // background alert sync, queue reads and data deletion
   'contribute': 10       // community catalog submissions
 };
 
@@ -491,6 +492,586 @@ async function checkPlus(env, token, deviceId) {
     }
     return p;
   } catch (_) { return null; }
+}
+
+
+// ============================================================================
+// RECEIPT SCAN QUOTA (server-side, so clearing browser data cannot reset it)
+// Free: 5 receipt scans / month per device (+ a generous per-network backstop).
+// Plus (invite code or trial): 15 receipt scans / day per device.
+// One receipt photo is sent as up to 3 slices; the app tags them with one scanId so they count once.
+// ============================================================================
+const FREE_RECEIPT_MONTHLY = 5;
+const FREE_RECEIPT_MONTHLY_PER_NETWORK = 150; // phone carriers put many people behind one address, so keep this loose
+const PLUS_RECEIPT_DAILY = 15;
+
+async function receiptQuotaSlot(env, key, limit, scanId, ttlSeconds) {
+  let ids = [];
+  try {
+    const cur = await env.RAKKA_COMMUNITY_DB.get(key, { type: 'json' });
+    if (Array.isArray(cur)) ids = cur;
+  } catch (_) {}
+  if (ids.includes(scanId)) return true;
+  if (ids.length >= limit) return false;
+  ids.push(scanId);
+  await env.RAKKA_COMMUNITY_DB.put(key, JSON.stringify(ids), { expirationTtl: ttlSeconds });
+  return true;
+}
+
+async function enforceReceiptQuota(env, request, body) {
+  const deviceId = String((body && body.deviceId) || '').trim().slice(0, 80);
+  const scanId = String((body && body.scanId) || '').trim().slice(0, 64);
+  if (!deviceId || !scanId) {
+    return { ok: false, status: 400, error: 'Please refresh RAKKA to get the latest version, then scan again.' };
+  }
+  const now = new Date();
+  const month = now.toISOString().slice(0, 7);
+  const day = now.toISOString().slice(0, 10);
+  const plus = await checkPlus(env, body.plusToken, deviceId);
+  if (plus) {
+    const ok = await receiptQuotaSlot(env, `rq:d:${deviceId}:${day}`, PLUS_RECEIPT_DAILY, scanId, 172800);
+    return ok ? { ok: true } : { ok: false, status: 429, quotaExceeded: true, plus: true,
+      error: `Daily fair-use limit reached (${PLUS_RECEIPT_DAILY} receipt scans today). It resets at midnight UTC.` };
+  }
+  const okDevice = await receiptQuotaSlot(env, `rq:m:${deviceId}:${month}`, FREE_RECEIPT_MONTHLY, scanId, 3456000);
+  if (!okDevice) {
+    return { ok: false, status: 429, quotaExceeded: true, plus: false,
+      error: `Monthly free limit reached (${FREE_RECEIPT_MONTHLY}/${FREE_RECEIPT_MONTHLY} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_RECEIPT_DAILY} scans a day.` };
+  }
+  // Backstop against a fresh device ID on every scan. Only a hash of the network address is kept.
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  if (ip) {
+    const dig = new Uint8Array(await crypto.subtle.digest('SHA-256', plusEnc.encode('rq|' + ip)));
+    const ipKey = Array.from(dig.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const okIp = await receiptQuotaSlot(env, `rq:ip:${ipKey}:${month}`, FREE_RECEIPT_MONTHLY_PER_NETWORK, scanId, 3456000);
+    if (!okIp) {
+      return { ok: false, status: 429, quotaExceeded: true, plus: false,
+        error: 'This network has used its free receipt scans for the month. Start your 7-day free Plus trial to keep scanning.' };
+    }
+  }
+  return { ok: true };
+}
+
+
+// ============================================================================
+// BACKGROUND RECALL ALERTS (RAKKA Plus)
+// While alerts are on, the phone sends the NAMES, BRANDS and BARCODES of its watchlist, plus a random
+// device id, a random alert secret and (in the store app) a push token. Nothing else: no allergen
+// profiles, family profiles, household, name or email. A scheduled job (Cloudflare Cron Trigger) checks
+// new FDA and USDA recalls against those items, queues what matches, and sends a generic push when a
+// push token exists. The app also fetches the queue every time it opens, so a missed push is never a
+// missed recall. Matches are labelled exact / near / possible; the app tells the person to check lot codes.
+// KV record  al:<deviceId> = { v, sec, tk, pt, pf, items:[{n,b,u}], upd, chk, seen:{recallId:ts}, pending:[...] }
+// ============================================================================
+const AL_PREFIX = 'al:';
+const AL_TTL_SECONDS = 120 * 86400;
+const AL_MAX_ITEMS = 500;
+const AL_MAX_PENDING = 20;
+const AL_MAX_SEEN = 400;
+const AL_FEED_TTL_MS = 20 * 60 * 1000;
+const AL_DEVICES_PER_RUN = 2500;   // per scheduled run (Workers Paid allows 10,000 storage calls per run)
+const AL_RUN_BUDGET_MS = 22000;     // stop a run early after this long and resume on the next one
+const AL_CONCURRENCY = 25;
+const AL_KNOWN_CAP = 3000;
+
+const alNorm = (value) => String(value == null ? '' : value)
+  .replace(/[ÂÃâã][\u0080-¿]+/g, ' ')
+  .toLowerCase()
+  .replace(/[‘’]/g, '')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^\x00-\x7f]/g, ' ')
+  .replace(/['`]/g, '')
+  .replace(/[-_/]/g, ' ')
+  .replace(/[()[\]{}*]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+const alDigits = (v) => String(v == null ? '' : v).replace(/\D/g, '');
+const alEscRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const alHasWord = (wordSet, w) => wordSet.has(w) || wordSet.has(w + 's') || wordSet.has(w + 'es');
+
+function alCheckDigit(body) {
+  let sum = 0;
+  for (let i = body.length - 1, w = 3; i >= 0; i--, w = w === 3 ? 1 : 3) sum += Number(body[i]) * w;
+  return (10 - (sum % 10)) % 10;
+}
+const alValidCheck = (code) => code.length >= 2 && alCheckDigit(code.slice(0, -1)) === Number(code.slice(-1));
+function alExpandUpcE(c8) {
+  if (!/^[01]\d{7}$/.test(c8)) return null;
+  const ns = c8[0], chk = c8[7];
+  const [d1, d2, d3, d4, d5, d6] = c8.slice(1, 7);
+  let body;
+  if ('012'.includes(d6)) body = ns + d1 + d2 + d6 + '0000' + d3 + d4 + d5;
+  else if (d6 === '3') body = ns + d1 + d2 + d3 + '00000' + d4 + d5;
+  else if (d6 === '4') body = ns + d1 + d2 + d3 + d4 + '00000' + d5;
+  else body = ns + d1 + d2 + d3 + d4 + d5 + '0000' + d6;
+  return body + chk;
+}
+// Same readings as the app's barcode normaliser: every plausible GTIN-14, plus a "stem" for misread check digits.
+function alBarcodeKeys(raw) {
+  const digits = alDigits(raw);
+  const out = { gtins: new Set(), stems: new Set() };
+  const L = digits.length;
+  if (L < 8 || L === 9 || L === 10 || L > 14) return out;
+  const add = (g) => { const g14 = g.padStart(14, '0'); out.gtins.add(g14); out.stems.add(g14.slice(0, 13)); };
+  if (L === 8) {
+    const upca = alExpandUpcE(digits);
+    if (alValidCheck(digits)) add(digits);
+    if (upca && alValidCheck(upca)) add(upca);
+    if (!out.gtins.size) { add(digits); if (upca) add(upca); }
+  } else if (L === 11) add(digits + alCheckDigit(digits));
+  else add(digits);
+  return out;
+}
+
+const AL_STOP = new Set(['the', 'and', 'for', 'with', 'from', 'pack', 'size', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'count', 'ct', 'each', 'fresh', 'organic', 'original', 'brand', 'natural', 'new', 'item', 'food', 'foods', 'product', 'products', 'grocery']);
+function alTokens(text) {
+  const seen = new Set();
+  for (const t of alNorm(text).split(' ')) {
+    if (t.length >= 3 && !/^\d+$/.test(t) && !AL_STOP.has(t)) seen.add(t);
+  }
+  return [...seen];
+}
+
+/** One normalised recall record. */
+function alMakeRecall({ id, product, firm, reason, classification, status, date, agency, codesText }) {
+  const prod = alNorm(product);
+  const rec = {
+    id: String(id || '').slice(0, 60), product: String(product || '').slice(0, 300), firm: String(firm || '').slice(0, 120),
+    reason: String(reason || '').slice(0, 400), classification: String(classification || '').slice(0, 40),
+    status: String(status || ''), date: String(date || ''), agency: agency || 'FDA',
+    prodText: prod, text: alNorm(`${product} ${firm}`), gtins: new Set(), stems: new Set(),
+  };
+  rec.words = new Set(prod.split(' '));
+  rec.padText = ' ' + rec.text + ' ';
+  const blob = `${product || ''} ${codesText || ''}`;
+  for (const m of blob.match(/\b\d{8,14}\b/g) || []) {
+    const k = alBarcodeKeys(m);
+    k.gtins.forEach((g) => rec.gtins.add(g));
+    k.stems.forEach((s) => rec.stems.add(s));
+  }
+  return rec;
+}
+const alRecallActive = (r) => !/terminat|complet|closed|ended|resolved/i.test(String(r.status || ''));
+
+/** Work that depends only on the item, done once per item instead of once per recall. */
+function alPrepItem(item) {
+  const brand = alNorm(item.b);
+  const name = alNorm(item.n);
+  return {
+    item, keys: alBarcodeKeys(item.u), brand,
+    brandTokens: alTokens(brand), nameTokens: alTokens(name), hasText: !!(name || brand), name,
+  };
+}
+
+/** Returns { confidence, why } or null. Exact and near are by barcode; "possible" is by brand and product words. */
+function alMatchPrepared(p, rec) {
+  const keys = p.keys;
+  for (const g of keys.gtins) if (rec.gtins.has(g)) return { confidence: 'exact', why: 'Barcode matches the recall notice.' };
+  for (const s of keys.stems) if (rec.stems.has(s)) return { confidence: 'near', why: 'Same product code, but the check digit differs. The barcode may have been misread.' };
+  if (!p.hasText) return null;
+
+  const brand = p.brand;
+  let nameTokens = p.nameTokens;
+  // Cheap early exit: none of the item's words appear in the notice at all.
+  let any = false;
+  for (const t of nameTokens) { if (alHasWord(rec.words, t)) { any = true; break; } }
+  if (!any) return null;
+
+  const brandHit = brand.length >= 3 && (rec.padText.includes(' ' + brand + ' ') || rec.padText.includes(' ' + brand + 's ') || rec.padText.includes(' ' + brand + 'es '));
+  if (brandHit) {
+    nameTokens = nameTokens.filter((t) => !p.brandTokens.includes(t));
+    if (!nameTokens.length) return null;
+    const hits = nameTokens.filter((t) => alHasWord(rec.words, t));
+    // The item has its own barcode and the notice lists barcodes, but not this one: likely another size or flavor, so ask for the whole name.
+    const otherBarcode = keys.gtins.size > 0 && rec.gtins.size > 0;
+    const need = otherBarcode ? Math.max(2, nameTokens.length) : (nameTokens.length >= 2 ? 2 : 1);
+    if (hits.length >= need) return { confidence: 'possible', why: 'Brand and product words match. Check the lot code and best-by date.' };
+    return null;
+  }
+  // A brand was given but is not in the notice: a different product unless the name is very specific.
+  if (brand && nameTokens.length < 4) return null;
+  // No brand on the item. A short name ("baby carrots") only counts when its two words appear next to each other in the notice.
+  if (!brand && nameTokens.length === 2 && nameTokens[0].length >= 4 && nameTokens[1].length >= 4) {
+    const phrase = nameTokens.join(' ');
+    if (rec.padText.includes(' ' + phrase + ' ') || rec.padText.includes(' ' + phrase + 's ') || rec.padText.includes(' ' + phrase + 'es ')) {
+      return { confidence: 'possible', why: 'Product name matches. Check the brand, lot code and best-by date.' };
+    }
+    return null;
+  }
+  // The name has to carry the brand, so ask for at least three distinctive words, all present.
+  if (nameTokens.length >= 3) {
+    const hits = nameTokens.filter((t) => alHasWord(rec.words, t));
+    if (hits.length === nameTokens.length) return { confidence: 'possible', why: 'Product name matches. Check the lot code and best-by date.' };
+  }
+  return null;
+}
+
+function alUsdaDate(s) { const t = Date.parse(s || ''); return isNaN(t) ? null : t; }
+
+async function alLoadFeed(env, { force = false } = {}) {
+  const kv = env.RAKKA_COMMUNITY_DB;
+  if (!force) {
+    try {
+      const cached = await kv.get('alfeed:v1', { type: 'json' });
+      if (cached && Array.isArray(cached.records) && Date.now() - cached.at < AL_FEED_TTL_MS) return cached;
+    } catch (_) {}
+  }
+  const records = [];
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 12000);
+  let fdaOk = false, usdaOk = false;
+  try {
+    const [fdaRes, usdaRes] = await Promise.allSettled([
+      fetch('https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22&limit=100&sort=report_date:desc', { signal: ctl.signal }),
+      fetch('https://www.fsis.usda.gov/fsis/api/recall/v/1', { signal: ctl.signal }),
+    ]);
+    if (fdaRes.status === 'fulfilled' && fdaRes.value.ok) {
+      const j = await fdaRes.value.json();
+      for (const r of (j && j.results) || []) {
+        records.push({
+          id: r.recall_number, product: r.product_description, firm: r.recalling_firm, reason: r.reason_for_recall,
+          classification: r.classification, status: r.status, agency: 'FDA',
+          date: r.recall_initiation_date && r.recall_initiation_date.length === 8
+            ? `${r.recall_initiation_date.slice(4, 6)}/${r.recall_initiation_date.slice(6, 8)}/${r.recall_initiation_date.slice(0, 4)}` : '',
+          codesText: r.code_info || '',
+        });
+      }
+      fdaOk = true;
+    }
+    if (usdaRes.status === 'fulfilled' && usdaRes.value.ok) {
+      const j = await usdaRes.value.json();
+      if (Array.isArray(j)) {
+        for (const u of j.slice(0, 60)) {
+          const when = alUsdaDate(u.field_recall_date);
+          if (when && Date.now() - when > 120 * 86400000) continue;
+          const summary = String(u.field_summary || u.field_reason || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          records.push({
+            id: u.field_recall_number || `USDA-${String(u.field_title || '').slice(0, 24)}`,
+            product: `${u.field_title || 'USDA notice'} ${summary}`.slice(0, 600), firm: u.field_establishment || '',
+            reason: summary, classification: u.field_risk_level || u.field_recall_classification || 'USDA FSIS',
+            status: u.field_closed_date ? 'Closed' : 'Ongoing', agency: 'USDA FSIS', date: u.field_recall_date || '',
+            codesText: '',
+          });
+        }
+        usdaOk = true;
+      }
+    }
+  } catch (_) { /* fall through with whatever loaded */ } finally { clearTimeout(timer); }
+  const feed = { at: Date.now(), fdaOk, usdaOk, records };
+  if (fdaOk || usdaOk) {
+    try { await kv.put('alfeed:v1', JSON.stringify(feed), { expirationTtl: 3600 }); } catch (_) {}
+  } else {
+    try {
+      const stale = await kv.get('alfeed:v1', { type: 'json' });
+      if (stale && Array.isArray(stale.records)) return stale;
+    } catch (_) {}
+  }
+  return feed;
+}
+
+/** Built once per run and shared by every device: which recalls mention which word or barcode. */
+function alBuildIndex(recalls) {
+  const byWord = new Map(), byGtin = new Map(), byStem = new Map();
+  const add = (map, key, r) => { let a = map.get(key); if (!a) { a = []; map.set(key, a); } if (a[a.length - 1] !== r) a.push(r); };
+  for (const r of recalls) {
+    if (!r.id || !alRecallActive(r)) continue;
+    r.words.forEach((w) => add(byWord, w, r));
+    r.gtins.forEach((g) => add(byGtin, g, r));
+    r.stems.forEach((st) => add(byStem, st, r));
+  }
+  return { byWord, byGtin, byStem };
+}
+
+let AL_INDEX_CACHE = { at: -1, index: null };
+function alIndexFor(feed) {
+  if (AL_INDEX_CACHE.index && AL_INDEX_CACHE.at === feed.at) return AL_INDEX_CACHE.index;
+  const index = alBuildIndex((feed.records || []).map(alMakeRecall));
+  AL_INDEX_CACHE = { at: feed.at, index };
+  return index;
+}
+const alHash = (str) => { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36); };
+
+/** Matches one device's items against the feed and queues new alerts. Returns the number of new alerts. */
+function alProcessDevice(rec, index) {
+  rec.seen = rec.seen && typeof rec.seen === 'object' ? rec.seen : {};
+  rec.pending = Array.isArray(rec.pending) ? rec.pending : [];
+  const items = Array.isArray(rec.items) ? rec.items : [];
+  const byRecall = new Map();
+  for (const it of items) {
+    const pi = alPrepItem(it);
+    const cands = new Set();
+    for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
+    for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
+    for (const t of pi.nameTokens) for (const w of [t, t + 's', t + 'es']) (index.byWord.get(w) || []).forEach((r) => cands.add(r));
+    for (const r of cands) {
+      if (rec.seen[r.id]) continue;
+      const m = alMatchPrepared(pi, r);
+      if (!m) continue;
+      let list = byRecall.get(r);
+      if (!list) { list = []; byRecall.set(r, list); }
+      if (list.length < 6) list.push({ name: String(it.n || it.b || 'Watchlist item').slice(0, 120), confidence: m.confidence, why: m.why });
+    }
+  }
+  let added = 0;
+  for (const [r, matches] of byRecall) {
+    rec.seen[r.id] = Date.now();
+    rec.pending.push({
+      id: r.id, title: r.product.slice(0, 200), agency: r.agency, cls: r.classification, date: r.date,
+      reason: r.reason.slice(0, 240), matches, at: Date.now(),
+    });
+    added++;
+  }
+  // Keep the records small: drop the oldest.
+  if (rec.pending.length > AL_MAX_PENDING) rec.pending = rec.pending.slice(-AL_MAX_PENDING);
+  const seenKeys = Object.keys(rec.seen);
+  if (seenKeys.length > AL_MAX_SEEN) {
+    seenKeys.sort((a, b) => rec.seen[a] - rec.seen[b]).slice(0, seenKeys.length - AL_MAX_SEEN).forEach((k) => delete rec.seen[k]);
+  }
+  return added;
+}
+
+// ---- Push delivery (Firebase Cloud Messaging HTTP v1; one sender covers Android and iPhone in the store app) ----
+let AL_FCM_CACHE = { token: '', exp: 0 };
+const alB64u = (buf) => { const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf); let s = ''; for (const x of b) s += String.fromCharCode(x); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+
+async function alFcmAccess(env) {
+  if (AL_FCM_CACHE.token && AL_FCM_CACHE.exp > Date.now() + 60000) return { token: AL_FCM_CACHE.token, projectId: AL_FCM_CACHE.projectId };
+  let sa;
+  try { sa = JSON.parse(env.FCM_SERVICE_ACCOUNT); } catch (_) { return null; }
+  if (!sa || !sa.private_key || !sa.client_email || !sa.project_id) return null;
+  const now = Math.floor(Date.now() / 1000);
+  const enc = new TextEncoder();
+  const head = alB64u(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT' })));
+  const claim = alB64u(enc.encode(JSON.stringify({
+    iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600,
+  })));
+  const pem = String(sa.private_key).replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(`${head}.${claim}`));
+  const jwt = `${head}.${claim}.${alB64u(sig)}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${jwt}`,
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  AL_FCM_CACHE = { token: j.access_token, exp: Date.now() + (Number(j.expires_in) || 3000) * 1000, projectId: sa.project_id };
+  return { token: AL_FCM_CACHE.token, projectId: sa.project_id };
+}
+
+/** Generic text only: the product never passes through Apple's or Google's push services. Returns 'ok' | 'gone' | 'skip' | 'fail'. */
+async function alSendPush(env, pushToken, count) {
+  if (!pushToken || !env.FCM_SERVICE_ACCOUNT) return 'skip';
+  try {
+    const acc = await alFcmAccess(env);
+    if (!acc) return 'skip';
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${acc.projectId}/messages:send`, {
+      method: 'POST', headers: { Authorization: `Bearer ${acc.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: {
+        token: pushToken,
+        notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
+        data: { type: 'recall', count: String(count) },
+        android: { priority: 'HIGH' },
+        apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
+      } }),
+    });
+    if (res.ok) return 'ok';
+    if (res.status === 404 || res.status === 400) {
+      const t = await res.text();
+      if (/UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/.test(t)) return 'gone';
+    }
+    return 'fail';
+  } catch (_) { return 'fail'; }
+}
+
+/**
+ * Cron entry point. Scales by doing no per-device work unless a recall is new:
+ *  1. fetch the feed, find recalls not seen in an earlier cycle;
+ *  2. if there are none, stop (this is almost every run);
+ *  3. otherwise check every device against ONLY those new recalls, in pages, resuming on the next run if time or call limits are hit;
+ *  4. when the last device is done, remember those recalls so they are never re-checked.
+ * Devices that register later are checked against the whole feed at registration.
+ */
+async function alRunScheduled(env) {
+  if (!env || !env.RAKKA_COMMUNITY_DB) return { processed: 0 };
+  const kv = env.RAKKA_COMMUNITY_DB;
+  const startedAt = Date.now();
+  try {
+    const lock = await kv.get('alrun:lock');
+    if (lock && startedAt - Number(lock) < 8 * 60 * 1000) return { skipped: 'another run is active' };
+    await kv.put('alrun:lock', String(startedAt), { expirationTtl: 600 });
+  } catch (_) {}
+  try {
+    let state = null;
+    try { state = await kv.get('alrun:state', { type: 'json' }); } catch (_) {}
+    if (!state || !Array.isArray(state.recalls)) {
+      const feed = await alLoadFeed(env, { force: true });
+      if (!feed.records || !feed.records.length) return { processed: 0, note: 'no feed' };
+      let known = new Set();
+      try { known = new Set((await kv.get('alknown', { type: 'json' })) || []); } catch (_) {}
+      const fresh = feed.records.filter((r) => r.id && alRecallActive(r) && !known.has(String(r.id)))
+        .map((r) => ({ ...r, codesText: String(r.codesText || '').slice(0, 1500) }));
+      if (!fresh.length) return { processed: 0, newRecalls: 0 };
+      state = { recalls: fresh, cursor: '', processed: 0, queued: 0, pushed: 0, startedAt };
+    }
+    const index = alBuildIndex(state.recalls.map(alMakeRecall));
+
+    const handle = async (name) => {
+      const deviceId = name.slice(AL_PREFIX.length);
+      let rec;
+      try { rec = await kv.get(name, { type: 'json' }); } catch (_) { return; }
+      if (!rec) return;
+      // Alerts are a Plus feature: when the entitlement has lapsed or a code was revoked, erase the watchlist copy.
+      if (!(await checkPlus(env, rec.tk, deviceId))) { try { await kv.delete(name); } catch (_) {} return; }
+      const added = alProcessDevice(rec, index);
+      state.processed++;
+      if (added > 0) {
+        state.queued += added;
+        const r = await alSendPush(env, rec.pt, added);
+        if (r === 'ok') state.pushed++;
+        if (r === 'gone') rec.pt = '';
+        try { await kv.put(name, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS }); } catch (_) {}
+      }
+    };
+
+    let complete = false;
+    let handledThisRun = 0;
+    while (true) {
+      const page = await kv.list({ prefix: AL_PREFIX, cursor: state.cursor || undefined, limit: 500 });
+      const names = page.keys.map((k) => k.name);
+      for (let n = 0; n < names.length; n += AL_CONCURRENCY) {
+        await Promise.all(names.slice(n, n + AL_CONCURRENCY).map(handle));
+      }
+      handledThisRun += names.length;
+      state.cursor = page.list_complete ? '' : (page.cursor || '');
+      if (page.list_complete) { complete = true; break; }
+      if (handledThisRun >= AL_DEVICES_PER_RUN || Date.now() - startedAt > AL_RUN_BUDGET_MS) break;
+    }
+
+    if (complete) {
+      let known = [];
+      try { known = (await kv.get('alknown', { type: 'json' })) || []; } catch (_) {}
+      const merged = [...known, ...state.recalls.map((r) => String(r.id))];
+      const trimmed = merged.slice(-AL_KNOWN_CAP);
+      await kv.put('alknown', JSON.stringify(trimmed));
+      await kv.delete('alrun:state');
+    } else {
+      await kv.put('alrun:state', JSON.stringify(state), { expirationTtl: 86400 });
+    }
+    return { processed: state.processed, queued: state.queued, pushed: state.pushed, complete, newRecalls: state.recalls.length };
+  } finally {
+    try { await kv.delete('alrun:lock'); } catch (_) {}
+  }
+}
+
+function alCleanItems(raw) {
+  const out = [];
+  const seen = new Set();
+  for (const it of Array.isArray(raw) ? raw : []) {
+    if (!it || typeof it !== 'object') continue;
+    const n = String(it.n || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const b = String(it.b || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const u = alDigits(it.u).slice(0, 14);
+    if (!n && !b && !u) continue;
+    const key = `${u}|${alNorm(n)}|${alNorm(b)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ n, b, u });
+    if (out.length >= AL_MAX_ITEMS) break;
+  }
+  return out;
+}
+
+const alSecretOk = (rec, secret) => !!(rec && rec.sec && typeof secret === 'string' && secret.length >= 16 && secret === rec.sec);
+
+/** Handles /alerts/* and /data/delete. Returns a Response, or null when the path is not ours. */
+async function alHandleRequest(request, env, url, replyHeaders) {
+  const path = url.pathname;
+  const isAlerts = path.startsWith('/alerts/');
+  if (!(request.method === 'POST' && (isAlerts || path === '/data/delete'))) return null;
+  const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...replyHeaders, 'Cache-Control': 'no-store' } });
+  if (!env || !env.RAKKA_COMMUNITY_DB) return reply({ success: false, error: 'Storage is not bound to this Worker.' }, 503);
+  const kv = env.RAKKA_COMMUNITY_DB;
+  let b = {};
+  try { b = await request.json(); } catch (_) {}
+  const deviceId = String(b.deviceId || '').trim().slice(0, 80);
+  const secret = String(b.secret || '').slice(0, 80);
+  if (!deviceId) return reply({ success: false, error: 'deviceId required' }, 400);
+  const key = AL_PREFIX + deviceId;
+
+  if (path === '/alerts/register') {
+    if (secret.length < 16) return reply({ success: false, error: 'A device secret is required.' }, 400);
+    const plus = await checkPlus(env, b.plusToken, deviceId);
+    if (!plus) return reply({ success: false, error: 'Background recall alerts are a RAKKA Plus feature.', needsPlus: true }, 403);
+    const existing = await kv.get(key, { type: 'json' });
+    if (existing && !alSecretOk(existing, secret)) return reply({ success: false, error: 'This device is already registered with a different secret.' }, 403);
+    const rec = existing || { v: 1, seen: {}, pending: [] };
+    const items = alCleanItems(b.items);
+    const itemsHash = alHash(JSON.stringify(items));
+    const token = String(b.plusToken || '').slice(0, 600);
+    const pushToken = (typeof b.pushToken === 'string' && b.pushToken.length >= 20 && b.pushToken.length <= 400) ? b.pushToken : '';
+    const feed = await alLoadFeed(env);
+    const feedOk = !!(feed.fdaOk || feed.usdaOk);
+    // Nothing changed and the copy is fresh: no need to rewrite it (saves a storage write on most app opens).
+    if (existing && existing.ih === itemsHash && existing.tk === token && (!pushToken || existing.pt === pushToken) && Date.now() - (existing.upd || 0) < 12 * 3600 * 1000) {
+      return reply({ success: true, watching: items.length, queued: (existing.pending || []).length, newAlerts: 0, checkedAt: feed.at || Date.now(), feedOk });
+    }
+    rec.sec = secret;
+    rec.tk = token;
+    rec.items = items;
+    rec.ih = itemsHash;
+    if (pushToken) { rec.pt = pushToken; rec.pf = String(b.platform || '').slice(0, 12); }
+    rec.upd = Date.now();
+    // Check right away against everything in the feed, so what the person sees is already up to date.
+    const added = alProcessDevice(rec, alIndexFor(feed));
+    await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
+    return reply({ success: true, watching: rec.items.length, queued: rec.pending.length, newAlerts: added, checkedAt: feed.at || Date.now(), feedOk });
+  }
+
+  if (path === '/alerts/pending') {
+    const rec = await kv.get(key, { type: 'json' });
+    if (!alSecretOk(rec, secret)) return reply({ success: false, error: 'Not registered.' }, 403);
+    return reply({ success: true, pending: rec.pending || [], watching: (rec.items || []).length, checkedAt: rec.chk || 0 });
+  }
+
+  if (path === '/alerts/ack') {
+    const rec = await kv.get(key, { type: 'json' });
+    if (!alSecretOk(rec, secret)) return reply({ success: false, error: 'Not registered.' }, 403);
+    const ids = new Set((Array.isArray(b.ids) ? b.ids : []).map((x) => String(x).slice(0, 60)));
+    rec.pending = (rec.pending || []).filter((p) => !ids.has(p.id));
+    await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
+    return reply({ success: true, remaining: rec.pending.length });
+  }
+
+  if (path === '/alerts/unregister') {
+    const rec = await kv.get(key, { type: 'json' });
+    if (rec && !alSecretOk(rec, secret)) return reply({ success: false, error: 'Not authorised.' }, 403);
+    if (rec) await kv.delete(key);
+    return reply({ success: true });
+  }
+
+  if (path === '/data/delete') {
+    // Erases what the server holds for this device. Random usage counters (receipt limit, one-time trial marker)
+    // hold no personal data and are left to expire, so deleting and reinstalling cannot be used to reset them.
+    const rec = await kv.get(key, { type: 'json' });
+    if (rec && !alSecretOk(rec, secret)) return reply({ success: false, error: 'Not authorised.' }, 403);
+    let alertsDeleted = false, seatFreed = false;
+    if (rec) { await kv.delete(key); alertsDeleted = true; }
+    const plus = await checkPlus(env, b.plusToken, deviceId);
+    if (plus && plus.k === 'code' && plus.c) {
+      const devKey = `plusdev:${plus.c}`;
+      const devs = await kv.get(devKey, { type: 'json' });
+      if (Array.isArray(devs) && devs.includes(deviceId)) {
+        await kv.put(devKey, JSON.stringify(devs.filter((d) => d !== deviceId)));
+        seatFreed = true;
+      }
+    }
+    return reply({ success: true, alertsDeleted, seatFreed });
+  }
+
+  return reply({ success: false, error: 'Unknown endpoint' }, 404);
 }
 
 export default {
@@ -1391,6 +1972,11 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
       }
       try {
         const body = await request.json();
+        const rq = await enforceReceiptQuota(env, request, body);
+        if (!rq.ok) {
+          return new Response(JSON.stringify({ success: false, error: rq.error, quotaExceeded: !!rq.quotaExceeded, plus: !!rq.plus }),
+            { status: rq.status, headers: { ...corsHeaders, 'Cache-Control': 'no-store' } });
+        }
         // Support either server-side Cloudflare secret OR client-provided key
         const apiKey = resolveGeminiApiKey(env, body).key;
 
@@ -1643,6 +2229,17 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         console.error("Audit receipt exception:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
       }
+    }
+
+    // 7a. BACKGROUND RECALL ALERTS + DELETE MY DATA
+    if (request.method === 'POST' && (url.pathname.startsWith('/alerts/') || url.pathname === '/data/delete')) {
+      const rlAlerts = checkEdgeRateLimit(request, 'alerts');
+      if (!rlAlerts.allowed) {
+        return new Response(JSON.stringify({ success: false, error: `Too many requests. Please wait ${rlAlerts.retryAfterSec}s.` }),
+          { status: 429, headers: { ...corsHeaders, ...rlAlerts.headers, 'Cache-Control': 'no-store' } });
+      }
+      const alertsResponse = await alHandleRequest(request, env, url, corsHeaders);
+      if (alertsResponse) return alertsResponse;
     }
 
     // 7b. RAKKA PLUS ENTITLEMENT (invite codes + one-time trial; tokens are signed by this Worker)
@@ -1925,5 +2522,10 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
     }
 
     return new Response(JSON.stringify({ error: 'Endpoint not found' }), { status: 404, headers: corsHeaders });
+  },
+
+  // Cloudflare Cron Trigger: checks watchlists against new recalls (see SETUP-ALERTS.md).
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(alRunScheduled(env));
   }
 };
