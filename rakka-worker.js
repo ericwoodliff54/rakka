@@ -625,7 +625,7 @@ function alBarcodeKeys(raw) {
   return out;
 }
 
-const AL_STOP = new Set(['the', 'and', 'for', 'with', 'from', 'pack', 'size', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'count', 'ct', 'each', 'fresh', 'organic', 'original', 'brand', 'natural', 'new', 'item', 'food', 'foods', 'product', 'products', 'grocery']);
+const AL_STOP = new Set(['the', 'and', 'for', 'with', 'from', 'pack', 'size', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'count', 'ct', 'each', 'fresh', 'organic', 'original', 'brand', 'natural', 'new', 'item', 'food', 'foods', 'product', 'products', 'grocery', 'packed', 'packaged', 'packaging', 'plastic', 'clear', 'unit', 'units', 'sizes', 'case', 'cases', 'bag', 'bags', 'box', 'boxes', 'jar', 'jars', 'carton', 'cartons', 'pouch', 'bottle', 'bottles']);
 function alTokens(text) {
   const seen = new Set();
   for (const t of alNorm(text).split(' ')) {
@@ -695,7 +695,11 @@ function alMatchPrepared(p, rec) {
     // The item has its own barcode and the notice lists barcodes, but not this one: likely another size or flavor, so ask for the whole name.
     const otherBarcode = keys.gtins.size > 0 && rec.gtins.size > 0;
     const need = otherBarcode ? Math.max(2, nameTokens.length) : (nameTokens.length >= 2 ? 2 : 1);
-    if (hits.length >= need) return { confidence: 'possible', why: 'Brand and product words match. Check the lot code and best-by date.' };
+    if (hits.length >= need) {
+      // Every product word present: a likely match. Only some of them: a related product from the same brand (queued in the app, but no push).
+      if (hits.length === nameTokens.length) return { confidence: 'possible', why: 'Brand and product words match. Check the lot code and best-by date.' };
+      return { confidence: 'related', why: 'Same brand and some matching product words. A related product may be affected. Check the name, lot code and best-by date.' };
+    }
     return null;
   }
   // A brand was given but is not in the notice: a different product unless the name is very specific.
@@ -822,8 +826,9 @@ function alProcessDevice(rec, index) {
       if (list.length < 6) list.push({ name: String(it.n || it.b || 'Watchlist item').slice(0, 120), confidence: m.confidence, why: m.why });
     }
   }
-  let added = 0;
+  let added = 0, strong = 0;
   for (const [r, matches] of byRecall) {
+    if (matches.some((m) => m.confidence !== 'related')) strong++;
     rec.seen[r.id] = Date.now();
     rec.pending.push({
       id: r.id, title: r.product.slice(0, 200), agency: r.agency, cls: r.classification, date: r.date,
@@ -837,6 +842,7 @@ function alProcessDevice(rec, index) {
   if (seenKeys.length > AL_MAX_SEEN) {
     seenKeys.sort((a, b) => rec.seen[a] - rec.seen[b]).slice(0, seenKeys.length - AL_MAX_SEEN).forEach((k) => delete rec.seen[k]);
   }
+  alProcessDevice.lastStrong = strong;   // read synchronously by the caller: how many of the new recalls deserve a push
   return added;
 }
 
@@ -936,10 +942,11 @@ async function alRunScheduled(env) {
       // Alerts are a Plus feature: when the entitlement has lapsed or a code was revoked, erase the watchlist copy.
       if (!(await checkPlus(env, rec.tk, deviceId))) { try { await kv.delete(name); } catch (_) {} return; }
       const added = alProcessDevice(rec, index);
+      const strong = alProcessDevice.lastStrong || 0;
       state.processed++;
       if (added > 0) {
         state.queued += added;
-        const r = await alSendPush(env, rec.pt, added);
+        const r = strong > 0 ? await alSendPush(env, rec.pt, strong) : 'skip';
         if (r === 'ok') state.pushed++;
         if (r === 'gone') rec.pt = '';
         try { await kv.put(name, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS }); } catch (_) {}
