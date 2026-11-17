@@ -688,6 +688,14 @@ function alPrepItem(item) {
 }
 
 /** Returns { confidence, why } or null. Exact and near are by barcode; "possible" is by brand and product words. */
+// Everyday food words. A product name made only of these cannot tell one brand's product from another's.
+const AL_GENERIC_FOOD = new Set(('ice cream sandwich sandwiches vanilla chocolate strawberry original classic organic fresh frozen natural ' +
+  'cheese chicken beef pork turkey ham bacon sausage fish salmon tuna shrimp bread buns bagels rolls milk juice water soda salad soup ' +
+  'cookie cookies cake cakes pie pies pizza yogurt cereal snack snacks bars bar chips crackers cracker butter sauce pasta rice beans corn ' +
+  'eggs egg apple apples orange lemon banana berries blueberry grapes carrots spinach lettuce tomato tomatoes potato potatoes onion cheddar ' +
+  'mozzarella parmesan peanut almond nuts mixed whole sliced shredded diced grilled roasted baked fried crispy crunchy creamy mild sweet ' +
+  'salted unsalted plain flavor flavored family size pack variety assorted deluxe premium style').split(/\s+/));
+
 function alMatchPrepared(p, rec) {
   const keys = p.keys;
   for (const g of keys.gtins) if (rec.gtins.has(g)) return { confidence: 'exact', why: 'Barcode matches the recall notice.' };
@@ -732,6 +740,8 @@ function alMatchPrepared(p, rec) {
   }
   // A brand was given but is not in the notice: a different product unless the name is very specific.
   if (brand && nameTokens.length < 4) return null;
+  // Even a long name does not identify a product when its words are everyday food words ("vanilla ice cream sandwiches").
+  if (brand && nameTokens.filter((t) => !AL_GENERIC_FOOD.has(t)).length < 2) return null;
   // No brand on the item. A short name ("baby carrots") only counts when its two words appear next to each other in the notice.
   if (!brand && nameTokens.length === 2 && nameTokens[0].length >= 4 && nameTokens[1].length >= 4) {
     const phrase = nameTokens.join(' ');
@@ -1274,7 +1284,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v6',
+        build: '2026-11-17-matcher-v7',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',
