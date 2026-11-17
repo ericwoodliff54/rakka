@@ -113,10 +113,12 @@ async function exportFromCloudflareKV() {
   if (!records) {
     records = await exportFromCloudflareKV();
   }
-  const version = new Date().toISOString().slice(0, 10);
+  records.sort((x, y) => (x.upc < y.upc ? -1 : 1));
+  // Version = fingerprint of the content, so an unchanged catalog keeps the same version and phones skip the download.
+  const version = require('crypto').createHash('sha256').update(JSON.stringify(records)).digest('hex').slice(0, 10);
   const payload = JSON.stringify({ version, count: records.length, items: records });
   const gz = zlib.gzipSync(Buffer.from(payload, 'utf8'), { level: 9 });
   fs.writeFileSync(path.join('.', 'community_catalog.json.gz'), gz);
-  fs.writeFileSync(path.join('.', 'catalog_manifest.json'), JSON.stringify({ version, count: records.length, file: 'community_catalog.json', generatedAt: new Date().toISOString() }) + '\n');
+  fs.writeFileSync(path.join('.', 'catalog_manifest.json'), JSON.stringify({ version, count: records.length, file: 'community_catalog.json', }) + '\n');
   console.log(`Done! Wrote community_catalog.json.gz (${records.length} items, ${(gz.length / 1024 / 1024).toFixed(2)} MB).`);
 })();
