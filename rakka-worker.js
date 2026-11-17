@@ -611,10 +611,10 @@ function alExpandUpcE(c8) {
 // Same readings as the app's barcode normaliser: every plausible GTIN-14, plus a "stem" for misread check digits.
 function alBarcodeKeys(raw) {
   const digits = alDigits(raw);
-  const out = { gtins: new Set(), stems: new Set() };
+  const out = { gtins: new Set(), stems: new Set(), pfx: new Set() };
   const L = digits.length;
   if (L < 8 || L === 9 || L === 10 || L > 14) return out;
-  const add = (g) => { const g14 = g.padStart(14, '0'); out.gtins.add(g14); out.stems.add(g14.slice(0, 13)); };
+  const add = (g) => { const g14 = g.padStart(14, '0'); out.gtins.add(g14); out.stems.add(g14.slice(0, 13)); const z = g14.replace(/^0+/, ''); if (z.length >= 11) out.pfx.add(z); };
   if (L === 8) {
     const upca = alExpandUpcE(digits);
     if (alValidCheck(digits)) add(digits);
@@ -625,6 +625,15 @@ function alBarcodeKeys(raw) {
   return out;
 }
 
+/** USDA establishment numbers ("EST. M3177", "P-3177", "Est 4520A") identify the plant printed on meat, poultry and egg packages. */
+function alEstIds(text) {
+  const out = new Set();
+  const t = String(text || '');
+  if (!/\best(?:ablishment)?\b/i.test(t) && !/\b[MP]-?\d{3,5}\b/.test(t)) return out;
+  for (const m of t.matchAll(/\best(?:ablishment)?\.?\s*(?:no\.?|number|#)?\s*:?\s*([A-Z]{0,2}-?\d{2,5}[A-Z]?)\b/gi)) out.add(m[1].toUpperCase().replace(/-/g, ''));
+  if (out.size || /\best\b/i.test(t)) for (const m of t.matchAll(/\b([MP])-?(\d{3,5})\b/g)) out.add(m[1] + m[2]);
+  return out;
+}
 const AL_STOP = new Set(['the', 'and', 'for', 'with', 'from', 'pack', 'size', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'count', 'ct', 'each', 'fresh', 'organic', 'original', 'brand', 'natural', 'new', 'item', 'food', 'foods', 'product', 'products', 'grocery', 'packed', 'packaged', 'packaging', 'plastic', 'clear', 'unit', 'units', 'sizes', 'case', 'cases', 'bag', 'bags', 'box', 'boxes', 'jar', 'jars', 'carton', 'cartons', 'pouch', 'bottle', 'bottles']);
 function alTokens(text) {
   const seen = new Set();
@@ -641,23 +650,27 @@ function alMakeRecall({ id, product, firm, reason, classification, status, date,
     id: String(id || '').slice(0, 60), product: String(product || '').slice(0, 300), firm: String(firm || '').slice(0, 120),
     reason: String(reason || '').slice(0, 400), classification: String(classification || '').slice(0, 40),
     status: String(status || ''), date: String(date || ''), agency: agency || 'FDA',
-    prodText: prod, text: alNorm(`${product} ${firm}`), gtins: new Set(), stems: new Set(),
+    prodText: prod, text: alNorm(`${product} ${firm}`), gtins: new Set(), stems: new Set(), pfx: new Set(), est: new Set(),
   };
   rec.words = new Set(prod.split(' '));
+  alEstIds(`${product || ''} ${codesText || ''} ${firm || ''}`).forEach((e) => rec.est.add(e));
   rec.padText = ' ' + rec.text + ' ';
   const blob = `${product || ''} ${codesText || ''}`;
   for (const m of blob.match(/\b\d{8,14}\b/g) || []) {
     const k = alBarcodeKeys(m);
     k.gtins.forEach((g) => rec.gtins.add(g));
     k.stems.forEach((s) => rec.stems.add(s));
+    k.pfx.forEach((x) => rec.pfx.add(x));
   }
   // Notices often print the code with spaces or hyphens ("0 71430 01234 5", "8-12345-67890-1"). Only accept those when the check digit is valid.
   for (const m of blob.match(/(?<![\d.])\d{1,3}(?:[ -]\d{1,6}){2,5}(?![\d])/g) || []) {
     const d = m.replace(/\D/g, '');
-    if (d.length < 8 || d.length > 14 || d.length === 9 || d.length === 10 || !alValidCheck(d)) continue;
+    if (d.length < 8 || d.length > 14 || d.length === 9 || d.length === 10) continue;
+    if (!alValidCheck(d)) { const z = d.replace(/^0+/, ''); if (z.length >= 11) rec.pfx.add(z); continue; }   // invalid check digit: usable only as a "near" hint
     const k = alBarcodeKeys(d);
     k.gtins.forEach((g) => rec.gtins.add(g));
     k.stems.forEach((x) => rec.stems.add(x));
+    k.pfx.forEach((y) => rec.pfx.add(y));
   }
   return rec;
 }
@@ -668,7 +681,7 @@ function alPrepItem(item) {
   const brand = alNorm(item.b);
   const name = alNorm(item.n);
   return {
-    item, keys: alBarcodeKeys(item.u), brand,
+    item, keys: alBarcodeKeys(item.u), brand, est: alEstIds(`${item.n || ''} ${item.b || ''}`),
     brandTokens: alTokens(brand), nameTokens: alTokens(name), hasText: !!(name || brand), name,
   };
 }
@@ -678,7 +691,21 @@ function alMatchPrepared(p, rec) {
   const keys = p.keys;
   for (const g of keys.gtins) if (rec.gtins.has(g)) return { confidence: 'exact', why: 'Barcode matches the recall notice.' };
   for (const s of keys.stems) if (rec.stems.has(s)) return { confidence: 'near', why: 'Same product code, but the check digit differs. The barcode may have been misread.' };
+  // A barcode that lost (or gained) its last digit, e.g. a misread or truncated scan: the shorter number is the start of the longer one.
+  for (const a of keys.pfx) for (const b of rec.pfx) {
+    if (b.startsWith(a) || a.startsWith(b)) return { confidence: 'near', why: 'Barcode almost matches the recall notice (same digits, or off by the last digit). It may have been misread. Check the product.' };
+  }
   if (!p.hasText) return null;
+
+  // Same USDA plant number on the item and in the notice.
+  if (p.est.size && rec.est.size) {
+    for (const e of p.est) if (rec.est.has(e)) {
+      const hit = p.nameTokens.some((t) => alHasWord(rec.words, t) && !/^[mp]?\d+$/.test(t) && t !== 'est');
+      return hit
+        ? { confidence: 'possible', why: 'Same USDA plant number (EST) and matching product words. Check the lot code and best-by date.' }
+        : { confidence: 'related', why: 'Same USDA plant number (EST) as the recall, but the product name differs. Check whether it is one of the recalled products.' };
+    }
+  }
 
   const brand = p.brand;
   let nameTokens = p.nameTokens;
@@ -785,15 +812,17 @@ async function alLoadFeed(env, { force = false } = {}) {
 
 /** Built once per run and shared by every device: which recalls mention which word or barcode. */
 function alBuildIndex(recalls) {
-  const byWord = new Map(), byGtin = new Map(), byStem = new Map();
+  const byWord = new Map(), byGtin = new Map(), byStem = new Map(), byPfx = new Map(), byEst = new Map();
   const add = (map, key, r) => { let a = map.get(key); if (!a) { a = []; map.set(key, a); } if (a[a.length - 1] !== r) a.push(r); };
   for (const r of recalls) {
     if (!r.id || !alRecallActive(r)) continue;
     r.words.forEach((w) => add(byWord, w, r));
     r.gtins.forEach((g) => add(byGtin, g, r));
     r.stems.forEach((st) => add(byStem, st, r));
+    r.pfx.forEach((z) => add(byPfx, z.slice(0, 11), r));
+    r.est.forEach((e) => add(byEst, e, r));
   }
-  return { byWord, byGtin, byStem };
+  return { byWord, byGtin, byStem, byPfx, byEst };
 }
 
 let AL_INDEX_CACHE = { at: -1, index: null };
@@ -816,6 +845,8 @@ function alProcessDevice(rec, index) {
     const cands = new Set();
     for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
     for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
+    for (const e of pi.est) (index.byEst.get(e) || []).forEach((r) => cands.add(r));
+    for (const z of pi.keys.pfx) (index.byPfx.get(z.slice(0, 11)) || []).forEach((r) => cands.add(r));
     for (const t of pi.nameTokens) for (const w of [t, t + 's', t + 'es']) (index.byWord.get(w) || []).forEach((r) => cands.add(r));
     for (const r of cands) {
       if (rec.seen[r.id]) continue;
