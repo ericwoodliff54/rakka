@@ -2090,6 +2090,35 @@
     html.theme-light body .rk-card .rk-badge, html.theme-light body .rk-card .rk-badge span { color: #ffffff !important; }
     html.theme-light body .rk-wd-remove { background: #ffffff !important; border-color: #cbd5e1 !important; color: #b91c1c !important; }
     html.theme-light body .rk-wd-remove span { color: #b91c1c !important; }
+    /* Simple result sections */
+    .rk-sec { border-radius: 16px; padding: 12px 14px; border: 1px solid; --h:#94a3b8; --b:#e2e8f0; --bg:rgba(148,163,184,.08); --bd:rgba(148,163,184,.3); background: var(--bg); border-color: var(--bd); }
+    .rk-sec .rk-sec-h { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--h) !important; list-style: none; cursor: default; }
+    .rk-sec .rk-sec-main { font-size: 17px; font-weight: 800; margin-top: 4px; color: var(--b) !important; }
+    .rk-sec .rk-sec-sub { font-size: 13px; margin-top: 4px; line-height: 1.4; color: var(--b) !important; opacity: .85; }
+    .rk-sec .rk-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--b) !important; }
+    .rk-sec .rk-row b { font-weight: 800; color: var(--b) !important; }
+    .rk-sec .rk-row span { text-align: right; opacity: .9; color: var(--b) !important; }
+    .rk-sec-recall { --h:#fda4af; --b:#ffe4e6; --bg:rgba(244,63,94,.14); --bd:rgba(244,63,94,.5); }
+    .rk-sec-allergen { --h:#fbbf24; --b:#fef3c7; --bg:rgba(245,158,11,.12); --bd:rgba(245,158,11,.45); }
+    .rk-sec-additive { --h:#d8b4fe; --b:#f3e8ff; --bg:rgba(168,85,247,.13); --bd:rgba(168,85,247,.45); }
+    .rk-sec-ingredients { --h:#94a3b8; --b:#cbd5e1; }
+    .rk-sec-ingredients summary { cursor: pointer; }
+    .rk-sec-ingredients summary::after { content: ' \25BE'; }
+    .rk-sec-ingredients[open] summary::after { content: ' \25B4'; }
+    .rk-sec-note { --h:#94a3b8; --b:#cbd5e1; }
+    .rk-sec-note .rk-note { margin: 4px 0 0; font-size: 13px; color: var(--b) !important; }
+    .rk-sec .rk-ok { color: var(--b) !important; }
+    .rk-sec .rk-sec-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .rk-sec .rk-btn-audit, .rk-sec .rk-btn-share { min-height: 44px; border-radius: 12px; font-weight: 800; font-size: 13px; padding: 0 10px; }
+    .rk-sec .rk-btn-audit { background: linear-gradient(90deg,#e11d48,#d97706); color: #fff !important; }
+    .rk-sec .rk-btn-share { background: rgba(255,255,255,.08); border: 1px solid rgba(244,63,94,.5); color: var(--b) !important; }
+    .rk-sec .rk-btn-link { margin-top: 6px; font-size: 13px; font-weight: 800; text-decoration: underline; color: var(--h) !important; }
+    html.theme-light body .rk-sec { --bg:#f8fafc; --bd:#cbd5e1; --h:#475569; --b:#0f172a; }
+    html.theme-light body .rk-sec-recall { --bg:#fff1f2; --bd:#fda4af; --h:#be123c; --b:#881337; }
+    html.theme-light body .rk-sec-allergen { --bg:#fffbeb; --bd:#fcd34d; --h:#b45309; --b:#78350f; }
+    html.theme-light body .rk-sec-additive { --bg:#faf5ff; --bd:#d8b4fe; --h:#7e22ce; --b:#581c87; }
+    html.theme-light body .rk-sec-ingredients, html.theme-light body .rk-sec-note { --bg:#ffffff; --bd:#cbd5e1; --h:#475569; --b:#334155; }
+    html.theme-light body .rk-sec .rk-btn-share { background: #ffffff; border-color: #fda4af; }
     /* Watchlist item detail view (full screen) */
     .rk-wd { position: fixed; inset: 0; z-index: 45; display: none; flex-direction: column; background: #0b1220; color: #f1f5f9; }
     .rk-wd.rk-wd-open { display: flex; }
@@ -21187,9 +21216,100 @@
     }
     window.toggleResultCardDrawer = toggleResultCardDrawer;
 
+    // ---- Simple result sections (product, recall, allergens, additives, ingredients) shared by Barcodes and Watchlist detail ----
+    function rkShortHazard(rec) {
+      const src = String((rec && (rec.reason || rec.hazard)) || '').replace(/\s+/g, ' ').trim();
+      if (!src) return 'Recalled product';
+      let m = src.match(/undeclared\s+([a-z][a-z ,&\/-]*?)(?=[.;:)]|\s+(?:in|due|may|which|that|because|as|and\s+(?:may|could))\b|$)/i);
+      if (m) return 'Undeclared ' + m[1].trim().replace(/\s+and\s*$/i, '').toLowerCase();
+      m = src.match(/(salmonella|listeria(?:\s+monocytogenes)?|e\.?\s*coli(?:\s+o\d+(?::h?\d+)?)?|botulism|clostridium\s+botulinum|norovirus|hepatitis\s+a|cyclospora|staphylococcus(?:\s+aureus)?|cronobacter|bacillus\s+cereus)/i);
+      if (m) { let n = m[1].replace(/\s+/g, ' '); n = /^e\.?\s*coli/i.test(n) ? n.replace(/^e\.?\s*coli/i, 'E. coli') : n.charAt(0).toUpperCase() + n.slice(1).toLowerCase(); return 'Possible ' + n; }
+      m = src.match(/(foreign\s+(?:material|object)s?|metal|plastic|glass|rubber|wood)\s+(?:fragments?|pieces?|material|objects?)?/i);
+      if (m) return 'Possible ' + m[0].toLowerCase().trim();
+      if (/mislabel|misbrand|wrong\s+label|incorrect\s+label/i.test(src)) return 'Mislabeled product';
+      const first = src.split(/[.;]/)[0].replace(/^(?:fda|usda)[^:]*:\s*/i, '').trim();
+      return first.length > 80 ? first.slice(0, 77).trimEnd() + '...' : first;
+    }
+
+    function rkSimpleSections(data) {
+      const e = (v) => esc(v == null ? '' : v);
+      const hasIngredients = Boolean(data.ingredients && String(data.ingredients).trim() && !/unindexed/i.test(String(data.ingredients)));
+      const isRecalled = Boolean(data.isRecalled && data.recallRecord);
+      const rr = data.recallRecord || {};
+      const out = [];
+
+      // Notes under the product (wrong-length code, same-brand recall). Never marks the item recalled.
+      let notes = '';
+      try {
+        if (window.RakkaSafety && window.RakkaSafety.extraNotesFor) {
+          notes = window.RakkaSafety.extraNotesFor(data, { recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) }) || '';
+        }
+      } catch (_) {}
+      if (notes) out.push(`<div class="rk-sec rk-sec-note">${notes}</div>`);
+
+      // RECALL (red), only when present
+      if (isRecalled) {
+        const meta = [rr.severity ? String(rr.severity).replace(/\s*high risk$/i, '').trim() : '', rr.agency || '', rr.recallDate || rr.date || ''].filter(Boolean).join(' · ');
+        const maybe = /possible|near/i.test(String(rr.confidence || rr.matchType || '')) ? '<div class="rk-sec-sub">Possible match. Check the lot code.</div>' : '';
+        const shareClick = "registerRecallSharePayload('scan-current', { title: (window._currentScanResult && window._currentScanResult.title) || '', brand: (window._currentScanResult && window._currentScanResult.brand) || '', reason: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.hazard) || '', agency: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.agency) || 'FDA/USDA', lots: (window._currentScanResult && window._currentScanResult.recallRecord && window._currentScanResult.recallRecord.codeInfo) || '' }); shareRecallByKey('scan-current');";
+        out.push(`<div class="rk-sec rk-sec-recall">
+          <div class="rk-sec-h">Recall</div>
+          <div class="rk-sec-main">${e(rkShortHazard(rr))}</div>
+          ${meta ? `<div class="rk-sec-sub">${e(meta)}</div>` : ''}${maybe}
+          <div class="rk-sec-btns">
+            <button type="button" onclick="openLotAuditorForCurrentProduct()" class="rk-btn-audit">Audit lot code</button>
+            <button type="button" onclick="${shareClick}" class="rk-btn-share">Share alert</button>
+          </div>
+        </div>`);
+      } else if (data.terminatedNotice) {
+        out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub">A past recall for this product has ended. Check the package for the current lot.</div></div>`);
+      }
+
+      // ALLERGENS (amber)
+      let aBody = '';
+      if (typeof isPlusActive === 'undefined' || !isPlusActive) {
+        aBody = `<div class="rk-sec-sub">Allergen screening is a RAKKA Plus feature.</div><button type="button" onclick="openPaywall()" class="rk-btn-link">See Plus</button>`;
+      } else {
+        const profs = Array.isArray(familyProfiles) ? familyProfiles : [];
+        const anySelected = profs.some(p => (p.allergens || []).length);
+        const fam = Array.isArray(data.familyMatches) ? data.familyMatches : [];
+        if (!anySelected) aBody = `<div class="rk-sec-sub">No allergens are selected in Allergen Guard.</div>`;
+        else if (fam.length) {
+          aBody = fam.map(m => `<div class="rk-row"><b>${e(m.name)}</b><span>${e((m.allergens || []).join(', '))}</span></div>`).join('');
+          if (!hasIngredients) aBody += `<div class="rk-sec-sub">Based on the product name only. Read the label.</div>`;
+        } else if (!hasIngredients) aBody = `<div class="rk-sec-sub">Couldn't check allergens: no ingredient data. Read the label.</div>`;
+        else aBody = `<div class="rk-sec-main rk-ok">No allergen match found</div>`;
+        try {
+          const xIds = detectCrossContactAllergens(data.ingredients, data.traces, data.detectedAllergens);
+          if (xIds.length && anySelected) {
+            const xHit = profs.map(p => { const h = (p.allergens || []).map(normalizeAllergenId).filter(a => a && xIds.includes(a)); return h.length ? `${esc(p.name)} (${esc(formatAllergenList(h))})` : null; }).filter(Boolean);
+            if (xHit.length) aBody += `<div class="rk-sec-sub">May contain, per the label: ${xHit.join(', ')}</div>`;
+          }
+        } catch (_) {}
+      }
+      out.push(`<div class="rk-sec rk-sec-allergen"><div class="rk-sec-h">Allergens</div>${aBody}</div>`);
+
+      // ADDITIVES (purple)
+      let dBody = '';
+      const adds = Array.isArray(data.detectedAdditives) ? data.detectedAdditives : [];
+      if (typeof isPlusActive === 'undefined' || !isPlusActive) {
+        dBody = `<div class="rk-sec-sub">Additive screening is a RAKKA Plus feature.</div><button type="button" onclick="openPaywall()" class="rk-btn-link">See Plus</button>`;
+      } else if (adds.length) {
+        dBody = adds.map(a => `<div class="rk-row"><b>${e(a.name)}</b><span>${e(a.type || '')}</span></div>`).join('');
+        if (!hasIngredients) dBody += `<div class="rk-sec-sub">Estimated from the product type. Ingredients were not available.</div>`;
+      } else if (!hasIngredients) dBody = `<div class="rk-sec-sub">Couldn't check additives: no ingredient data.</div>`;
+      else dBody = `<div class="rk-sec-main rk-ok">No flagged additives</div>`;
+      out.push(`<div class="rk-sec rk-sec-additive"><div class="rk-sec-h">Additives${(typeof isPlusActive !== 'undefined' && isPlusActive && adds.length) ? ' (' + adds.length + ')' : ''}</div>${dBody}</div>`);
+
+      // INGREDIENTS (neutral, collapsed)
+      out.push(`<details class="rk-sec rk-sec-ingredients"><summary class="rk-sec-h">Ingredients</summary><div class="rk-sec-sub rk-ing">${hasIngredients ? e(data.ingredients) : 'Not available for this barcode. Read the package label.'}</div></details>`);
+      return out.join('');
+    }
+
     function displayResult(data, source = 'scanner', opts = {}) {
       const fromWatchlist = Boolean(opts && opts.container);
       currentActiveProductScanData = data;
+      window._currentScanResult = Object.assign({}, data, { title: data.productName });
       const activeSource = data.source || source;
       const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
       const targetContainer = (fromWatchlist ? opts.container : null) || scannerResultContainer || manualResultContainer;
@@ -21792,6 +21912,28 @@
       } catch (verdictErr) {
         console.error('RakkaSafety card failed, using legacy windows:', verdictErr);
         verdictCardHtml = '';
+      }
+
+      let simpleHtml = '';
+      try { simpleHtml = rkSimpleSections(data); } catch (simpleErr) { console.error('Simple result sections failed, using legacy windows:', simpleErr); simpleHtml = ''; }
+      if (simpleHtml) {
+        targetContainer.innerHTML = `
+        <div class="space-y-3 rk-result-simple">
+          ${masterHeaderHtml}
+          ${simpleHtml}
+          ${actionBtnHtml}
+          ${microNotice}
+        </div>
+      `;
+        attachResultActionListeners();
+        if (fromWatchlist) return;
+        setTimeout(() => {
+          const navOffset = 135;
+          const rect = targetContainer.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          window.scrollTo({ top: Math.max(0, scrollTop + rect.top - navOffset), behavior: 'smooth' });
+        }, 60);
+        return;
       }
 
       targetContainer.innerHTML = `
