@@ -2400,6 +2400,15 @@
     #headerSettingsBtn svg { color: #94a3b8 !important; stroke: #94a3b8 !important; }
     html.theme-light #headerSettingsBtn { background: #fff !important; border-color: #e2e8f0 !important; }
     html.theme-light #headerSettingsBtn svg { color: #475569 !important; stroke: #475569 !important; }
+    /* Settings gear: active state matches the active nav tabs (both themes) */
+    html body #headerSettingsBtn.gear-active,
+    html.theme-light body #headerSettingsBtn.gear-active {
+      background: linear-gradient(90deg, #0891b2 0%, #14b8a6 50%, #06b6d4 100%) !important;
+      border-color: transparent !important;
+      box-shadow: 0 0 0 2px rgba(251,191,36,.65), 0 4px 10px rgba(8,51,68,.45) !important;
+    }
+    html body #headerSettingsBtn.gear-active svg,
+    html.theme-light body #headerSettingsBtn.gear-active svg { color: #ffffff !important; stroke: #ffffff !important; }
 
     /* Nav bar */
     html body #stickyNavWrapper nav button.nav-tab:not(.rk-x) { background: transparent !important; background-image: none !important; border: none !important; box-shadow: none !important; --tw-ring-shadow: 0 0 #0000 !important; color: #94a3b8 !important; }
@@ -4106,9 +4115,11 @@
         </button>
 
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
-          <p class="text-xs text-slate-300 leading-relaxed">
-            <strong>Privacy:</strong> RAKKA stores your profiles, allergen filters and scan history on your device. Two optional Plus features use our server (Cloudflare): Household Sync stores your family profiles encrypted, and we cannot read them. Background Recall Alerts store the names, brands and barcodes of your watchlist so we can check recalls for you. Receipt photos are sent through our server to Google Gemini to be read and are not stored by us. We never sell your data. Delete my data erases it all.
-          </p>
+          <p class="text-xs text-slate-300 leading-relaxed"><strong>Your data stays on your device by default.</strong> Only optional features use our server:</p>
+          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Household Sync (Plus):</strong> family profiles are encrypted, and we cannot read them.</p>
+          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Recall Alerts (Plus):</strong> your watchlist names, brands and barcodes are stored so we can check recalls for you.</p>
+          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Receipt scans:</strong> photos go through our server to Google Gemini to be read, and we do not store them.</p>
+          <p class="text-xs text-slate-300 leading-relaxed">We never sell your data. <strong>Delete my data</strong> erases it all.</p>
           <div class="space-y-2 pt-1">
             <div class="flex items-center gap-2">
               <button 
@@ -19025,13 +19036,10 @@
       if (tabWatchlist) tabWatchlist.className = isWatchlist ? activeClass : inactiveClass;
       if (tabBulletins) tabBulletins.className = isBulletins ? activeClass : inactiveClass;
 
-      // Highlight header settings gear when settings is active
+      // Highlight header settings gear when settings is active (same look as the active nav tabs)
       if (headerSettingsBtn) {
-        if (isCustomize) {
-          headerSettingsBtn.className = "w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/50 flex items-center justify-center transition shadow-sm active:scale-95 cursor-pointer";
-        } else {
-          headerSettingsBtn.className = "w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95 shadow-sm cursor-pointer";
-        }
+        headerSettingsBtn.classList.toggle('gear-active', !!isCustomize);
+        headerSettingsBtn.setAttribute('aria-current', isCustomize ? 'page' : 'false');
       }
 
       // Real-time synchronization of red recall badge on Watchlist tab

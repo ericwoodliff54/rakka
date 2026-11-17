@@ -584,7 +584,7 @@ const alNorm = (value) => String(value == null ? '' : value)
   .replace(/[^\x00-\x7f]/g, ' ')
   .replace(/['`]/g, '')
   .replace(/[-_/]/g, ' ')
-  .replace(/[()[\]{}*]/g, ' ')
+  .replace(/[^a-z0-9\s]/g, ' ')   // commas, periods, colons etc. must not stick to words ("spinach," must equal "spinach")
   .replace(/\s+/g, ' ')
   .trim();
 const alDigits = (v) => String(v == null ? '' : v).replace(/\D/g, '');
@@ -620,7 +620,7 @@ function alBarcodeKeys(raw) {
     if (alValidCheck(digits)) add(digits);
     if (upca && alValidCheck(upca)) add(upca);
     if (!out.gtins.size) { add(digits); if (upca) add(upca); }
-  } else if (L === 11) add(digits + alCheckDigit(digits));
+  } else if (L === 11) { add(digits + alCheckDigit(digits)); if (alValidCheck('0' + digits)) add('0' + digits); }  // missing check digit, or a UPC-A that lost its leading zero
   else add(digits);
   return out;
 }
@@ -629,7 +629,7 @@ const AL_STOP = new Set(['the', 'and', 'for', 'with', 'from', 'pack', 'size', 'o
 function alTokens(text) {
   const seen = new Set();
   for (const t of alNorm(text).split(' ')) {
-    if (t.length >= 3 && !/^\d+$/.test(t) && !AL_STOP.has(t)) seen.add(t);
+    if (t.length >= 3 && !/^\d+$/.test(t) && !/^\d+(oz|lb|lbs|ct|pk|g|kg|ml|l|fl|gal|qt|pt)$/.test(t) && !AL_STOP.has(t)) seen.add(t);
   }
   return [...seen];
 }
@@ -650,6 +650,14 @@ function alMakeRecall({ id, product, firm, reason, classification, status, date,
     const k = alBarcodeKeys(m);
     k.gtins.forEach((g) => rec.gtins.add(g));
     k.stems.forEach((s) => rec.stems.add(s));
+  }
+  // Notices often print the code with spaces or hyphens ("0 71430 01234 5", "8-12345-67890-1"). Only accept those when the check digit is valid.
+  for (const m of blob.match(/(?<![\d.])\d{1,3}(?:[ -]\d{1,6}){2,5}(?![\d])/g) || []) {
+    const d = m.replace(/\D/g, '');
+    if (d.length < 8 || d.length > 14 || d.length === 9 || d.length === 10 || !alValidCheck(d)) continue;
+    const k = alBarcodeKeys(d);
+    k.gtins.forEach((g) => rec.gtins.add(g));
+    k.stems.forEach((x) => rec.stems.add(x));
   }
   return rec;
 }
