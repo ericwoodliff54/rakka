@@ -784,6 +784,13 @@ function alPinnedToRecord(p) {
 
 function alUsdaDate(s) { const t = Date.parse(s || ''); return isNaN(t) ? null : t; }
 
+// openFDA caps a request at 1000 rows. Ask for ongoing recalls reported in the last 12 months, newest first.
+function alFdaUrl(skip) {
+  const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+  const to = new Date(), from = new Date(Date.now() - 365 * 86400000);
+  return `https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+report_date:[${ymd(from)}+TO+${ymd(to)}]&limit=1000&skip=${skip}&sort=report_date:desc`;
+}
+
 async function alLoadFeed(env, { force = false } = {}) {
   const kv = env.RAKKA_COMMUNITY_DB;
   if (!force) {
@@ -798,18 +805,27 @@ async function alLoadFeed(env, { force = false } = {}) {
   let fdaOk = false, usdaOk = false;
   try {
     const [fdaRes, usdaRes] = await Promise.allSettled([
-      fetch('https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22&limit=100&sort=report_date:desc', { signal: ctl.signal }),
+      fetch(alFdaUrl(0), { signal: ctl.signal }),
       fetch('https://www.fsis.usda.gov/fsis/api/recall/v/1', { signal: ctl.signal }),
     ]);
     if (fdaRes.status === 'fulfilled' && fdaRes.value.ok) {
       const j = await fdaRes.value.json();
-      for (const r of (j && j.results) || []) {
+      let fdaRows = (j && j.results) || [];
+      // openFDA returns at most 1000 rows per request. If this year's ongoing recalls exceed that, page once more.
+      const fdaTotal = Number(j && j.meta && j.meta.results && j.meta.results.total) || 0;
+      if (fdaTotal > fdaRows.length && fdaRows.length >= 1000) {
+        try {
+          const r2 = await fetch(alFdaUrl(1000), { signal: ctl.signal });
+          if (r2.ok) { const j2 = await r2.json(); fdaRows = fdaRows.concat((j2 && j2.results) || []); }
+        } catch (_) { /* keep page 1 */ }
+      }
+      for (const r of fdaRows) {
         records.push({
           id: r.recall_number, product: r.product_description, firm: r.recalling_firm, reason: r.reason_for_recall,
           classification: r.classification, status: r.status, agency: 'FDA',
           date: r.recall_initiation_date && r.recall_initiation_date.length === 8
             ? `${r.recall_initiation_date.slice(4, 6)}/${r.recall_initiation_date.slice(6, 8)}/${r.recall_initiation_date.slice(0, 4)}` : '',
-          codesText: r.code_info || '',
+          codesText: String(r.code_info || '').slice(0, 1500),
         });
       }
       fdaOk = true;

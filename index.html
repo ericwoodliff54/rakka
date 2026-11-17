@@ -3280,6 +3280,7 @@
         <div class="space-y-2">
           <span class="font-display font-black text-white text-lg sm:text-xl block tracking-tight">Snap or Upload Paper Receipt</span>
           <p class="text-sm sm:text-base text-cyan-300/90 leading-relaxed max-w-xl mx-auto font-medium">Scanned receipts automatically load all items into your Watchlist. All audited grocery items are automatically monitored in your watchlist for 60 days.</p>
+          <p class="text-xs text-slate-400 leading-relaxed max-w-xl mx-auto">Receipt text can be misread, so check the item list. Recall checks use public FDA and USDA notices and can lag. Always verify the package itself.</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
@@ -5257,6 +5258,24 @@
       return s;
     }
     window.normalizeAllergenId = normalizeAllergenId;
+
+    // Cross-contact ("may contain", shared facility) detection. Returns allergen ids named ONLY in precautionary statements.
+    function detectCrossContactAllergens(ingredientsText, traceTags, declaredIds) {
+      const found = new Set();
+      const text = String(ingredientsText || '');
+      const re = /(?:may\s+contain|might\s+contain|can\s+contain|could\s+contain|contains?\s+traces?\s+of|traces?\s+of|(?:made|produced|manufactured|processed|packed|packaged)\s+(?:in|on)\s+(?:a\s+|the\s+)?(?:shared\s+)?(?:facility|facilities|plant|equipment|line|lines)|(?:shared|same)\s+(?:facility|equipment|production\s+line|line))[^.;\n]{0,160}/gi;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        detectAllergensFromProduct({ ingredients: m[0] }).forEach(a => found.add(a));
+      }
+      (Array.isArray(traceTags) ? traceTags : []).forEach(t => {
+        const n = normalizeAllergenId(String(t || '').replace(/^[a-z]{2}:/, '').replace(/-/g, ' '));
+        if (n) found.add(n);
+      });
+      (Array.isArray(declaredIds) ? declaredIds : []).forEach(d => found.delete(normalizeAllergenId(d)));
+      return Array.from(found);
+    }
+    window.detectCrossContactAllergens = detectCrossContactAllergens;
 
     function detectAllergensFromProduct(item) {
       if (!item) return [];
@@ -21006,6 +21025,7 @@
 
           // 2. Household Allergen Guardrail Category
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
+          traces: (offProductData && offProductData.traces_tags) || [],
           familyMatches: triggeredFamilyMatches,
 
           // 3. Food Additives & Dyes Category
@@ -21052,6 +21072,7 @@
           recallRecord: recallRecord,
           terminatedNotice: terminatedNotice,
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
+          traces: (offProductData && offProductData.traces_tags) || [],
           familyMatches: triggeredFamilyMatches,
           detectedAdditives: (detectedAdditivesList && detectedAdditivesList.length > 0) ? detectedAdditivesList : fallbackAdditives,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -21454,6 +21475,29 @@
         `;
       }
 
+      // Cross-contact ("may contain" / shared facility) line, shown for Plus users
+      if (isPlusActive) {
+        const xIds = detectCrossContactAllergens(data.ingredients, data.traces, data.detectedAllergens);
+        if (xIds.length) {
+          const xHit = (typeof familyProfiles !== 'undefined' ? familyProfiles : []).map(p => {
+            const hit = (p.allergens || []).map(normalizeAllergenId).filter(a => a && xIds.includes(a));
+            return hit.length ? { name: p.name, list: formatAllergenList(hit) } : null;
+          }).filter(Boolean);
+          allergenDrawerContent += `
+            <div class="mt-2.5 rounded-xl p-3 border ${xHit.length ? 'border-amber-500/50 bg-amber-950/40' : 'border-slate-800 bg-slate-950/60'} text-xs space-y-1">
+              <span class="font-bold ${xHit.length ? 'text-amber-300' : 'text-slate-200'} block">Possible cross-contact</span>
+              <p class="text-slate-300 leading-relaxed">The label mentions: ${esc(formatAllergenList(xIds))} (&ldquo;may contain&rdquo; or shared facility). These are not ingredients, but they can matter for severe allergies.</p>
+              ${xHit.length ? `<p class="text-amber-200 font-semibold">Relevant to: ${xHit.map(h => esc(h.name) + ' (' + esc(h.list) + ')').join(', ')}</p>` : ''}
+            </div>`;
+          if (xHit.length && !hasFamilyMatches) {
+            allergenBadgeText = 'Trace Risk';
+            allergenBadgeClass = 'px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+            allergenSummaryText = 'May contain: ' + xHit.map(h => h.list).join(', ');
+            allergenBorderClass = 'border-amber-500/60';
+          }
+        }
+      }
+
       const allergenWindowHtml = `
         <div class="rounded-2xl border-2 ${allergenBorderClass} ${allergenBgClass} overflow-hidden shadow-lg transition-all duration-200">
           <div onclick="toggleResultCardDrawer('allergen')" class="p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer select-none hover:brightness-105 active:scale-[0.99] transition">
@@ -21677,7 +21721,7 @@
           <p id="productSafetyNoticeText" class="product-safety-notice text-xs sm:text-[13px] font-medium leading-normal flex items-center justify-center gap-1.5 flex-wrap">
             <span class="product-safety-notice-icon inline-flex items-center shrink-0">${UI_ICONS.alertCircle}</span>
             <strong class="font-bold">Safety Notice:</strong>
-            <span>Formulations and lot batches change. Always verify printed packaging labels before consuming. Not affiliated with FDA or USDA.</span>
+            <span>Recall data comes from public FDA and USDA notices and can lag behind the news. Formulations and lot batches change, so always verify printed packaging labels before consuming. Not affiliated with FDA or USDA.</span>
           </p>
         </div>
       `;
