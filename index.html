@@ -2082,6 +2082,16 @@
       background: linear-gradient(to bottom, rgba(248, 250, 252, 0.88) 0%, rgba(248, 250, 252, 0) 65%) !important;
     }
 
+    /* Watchlist item detail view (full screen) */
+    .rk-wd { position: fixed; inset: 0; z-index: 45; display: none; flex-direction: column; background: #0b1220; color: #f1f5f9; }
+    .rk-wd.rk-wd-open { display: flex; }
+    html.theme-light .rk-wd { background: #f1f5f9; color: #0f172a; }
+    .rk-wd-bar { display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px; }
+    .rk-wd-back { min-height: 44px; padding: 0 14px; border-radius: 12px; font-weight: 700; font-size: 14px; background: rgba(148,163,184,.18); color: inherit; }
+    .rk-wd-x { width: 44px; height: 44px; border-radius: 12px; font-size: 28px; line-height: 1; background: rgba(148,163,184,.18); color: inherit; }
+    .rk-wd-body { flex: 1; overflow-y: auto; padding: 4px 12px calc(env(safe-area-inset-bottom, 0px) + 24px); -webkit-overflow-scrolling: touch; }
+    html.rk-wd-lock, html.rk-wd-lock body { overflow: hidden; }
+
     /* Light mode: lot-audit buttons keep white text on the red/amber gradient; share buttons use the light button style */
     html.theme-light body button[onclick*="openLotAuditorFor"],
     html.theme-light body button[onclick*="openLotAuditorFor"] span { color: #ffffff !important; }
@@ -23603,31 +23613,75 @@
     let activeExpandedCardKey = null;
 
     // Toggle Expand/Collapse for individual item accordion drawer (Single Accordion Rule)
+    // Watchlist item detail view: opens one item on its own full screen (the list is hidden behind it).
+    // Close with the X, the back gesture / button, a swipe right, or by removing the item.
+    function rkBuildWatchDetail(cardKey) {
+      const card = document.getElementById(`watchlist-card-${cardKey}`);
+      if (!card) return null;
+      const clone = card.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      clone.querySelectorAll('[onclick*="toggleWatchlistItemDetails"]').forEach(n => { n.removeAttribute('onclick'); n.style.cursor = 'default'; });
+      clone.querySelectorAll('.watchlist-trash-btn').forEach(n => n.remove());
+      // Chevron box (the "▼" toggle) is not needed in the detail view
+      clone.querySelectorAll('span.w-11').forEach(n => n.remove());
+      const drawer = clone.querySelector('[class*="border-t"][class*="space-y-2.5"]');
+      if (drawer) drawer.classList.remove('hidden');
+      // The old "Tap anywhere to collapse" hint no longer applies
+      clone.querySelectorAll('div,p,span').forEach(n => { if (n.children.length === 0 && /tap anywhere to collapse/i.test(n.textContent || '')) n.remove(); });
+      return clone;
+    }
+
+    function rkOpenWatchDetail(cardKey) {
+      const clone = rkBuildWatchDetail(cardKey);
+      if (!clone) return;
+      let ov = document.getElementById('rkWatchDetail');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'rkWatchDetail';
+        ov.className = 'rk-wd';
+        ov.setAttribute('role', 'dialog');
+        ov.setAttribute('aria-modal', 'true');
+        ov.setAttribute('aria-label', 'Product details');
+        ov.innerHTML = '<div class="rk-wd-bar"><button type="button" class="rk-wd-back" aria-label="Back to watchlist">&larr; Watchlist</button><button type="button" class="rk-wd-x" aria-label="Close">&times;</button></div><div class="rk-wd-body"></div>';
+        document.body.appendChild(ov);
+        ov.querySelector('.rk-wd-back').addEventListener('click', () => rkCloseWatchDetail());
+        ov.querySelector('.rk-wd-x').addEventListener('click', () => rkCloseWatchDetail());
+        let sx = 0, sy = 0, st = 0;
+        ov.addEventListener('touchstart', (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+        ov.addEventListener('touchend', (e) => {
+          const t = e.changedTouches[0];
+          const dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+          if (dx > 90 && dy < 60 && Date.now() - st < 700 && sx < window.innerWidth * 0.5) rkCloseWatchDetail();
+        }, { passive: true });
+      }
+      const body = ov.querySelector('.rk-wd-body');
+      const wasOpen = ov.classList.contains('rk-wd-open');
+      const prevScroll = wasOpen ? body.scrollTop : 0;
+      body.innerHTML = '';
+      body.appendChild(clone);
+      body.scrollTop = prevScroll;
+      ov.classList.add('rk-wd-open');
+      document.documentElement.classList.add('rk-wd-lock');
+      activeExpandedCardKey = cardKey;
+      if (!wasOpen) {
+        try { BackNav.pushModal('watchDetail', () => rkCloseWatchDetail(true)); } catch (e) {}
+      }
+    }
+
+    function rkCloseWatchDetail(fromBack = false) {
+      const ov = document.getElementById('rkWatchDetail');
+      if (!ov || !ov.classList.contains('rk-wd-open')) return;
+      ov.classList.remove('rk-wd-open');
+      document.documentElement.classList.remove('rk-wd-lock');
+      activeExpandedCardKey = null;
+      if (!fromBack) { try { BackNav.popModal('watchDetail'); } catch (e) {} }
+    }
+    window.rkCloseWatchDetail = rkCloseWatchDetail;
+
     function toggleWatchlistItemDetails(cardKey) {
       triggerHaptic([20]);
-      const targetDrawer = document.getElementById(`watchlist-drawer-${cardKey}`);
-      const targetChevron = document.getElementById(`watchlist-chevron-${cardKey}`);
-      if (!targetDrawer) return;
-
-      const isCurrentlyOpen = !targetDrawer.classList.contains('hidden');
-
-      // Collapse all other item detail drawers (Single Accordion Rule)
-      document.querySelectorAll('[id^="watchlist-drawer-"]').forEach(d => {
-        d.classList.add('hidden');
-      });
-      document.querySelectorAll('[id^="watchlist-chevron-"]').forEach(c => {
-        c.textContent = '▼';
-      });
-
-      if (isCurrentlyOpen) {
-        targetDrawer.classList.add('hidden');
-        if (targetChevron) targetChevron.textContent = '▼';
-        activeExpandedCardKey = null;
-      } else {
-        targetDrawer.classList.remove('hidden');
-        if (targetChevron) targetChevron.textContent = '▲';
-        activeExpandedCardKey = cardKey;
-      }
+      rkOpenWatchDetail(cardKey);
     }
     window.toggleWatchlistItemDetails = toggleWatchlistItemDetails;
     window.getActiveExpandedCardKey = () => activeExpandedCardKey;
@@ -24210,10 +24264,9 @@ function renderHistory() {
 
       historyList.innerHTML = finalHtml;
       if (activeExpandedCardKey) {
-        const expandedDrawer = document.getElementById(`watchlist-drawer-${activeExpandedCardKey}`);
-        const expandedChevron = document.getElementById(`watchlist-chevron-${activeExpandedCardKey}`);
-        if (expandedDrawer) expandedDrawer.classList.remove('hidden');
-        if (expandedChevron) expandedChevron.textContent = '▲';
+        // Keep the open detail view in sync after a re-render; close it if the item is gone (e.g. removed).
+        if (document.getElementById(`watchlist-card-${activeExpandedCardKey}`)) rkOpenWatchDetail(activeExpandedCardKey);
+        else rkCloseWatchDetail();
       }
     }
 
