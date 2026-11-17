@@ -5138,7 +5138,8 @@
     // Resilient Food Additive & Synthetic Dye Screener
     function auditFoodAdditives(ingredientsText = '', tags = [], productName = '') {
       const detected = [];
-      const cleanText = (String(ingredientsText || '') + ' ' + String(productName || '')).toLowerCase();
+      // Ingredients only: a product name is not evidence of an additive.
+      const cleanText = String(ingredientsText || '').toLowerCase();
       const lowerTags = (Array.isArray(tags) ? tags : []).map(t => String(t).toLowerCase());
 
       for (const item of ADDITIVES_DATABASE) {
@@ -18535,6 +18536,15 @@
     try {
       const saved = localStorage.getItem('rakka_history')  || localStorage.getItem('safebite_history') || localStorage.getItem('recall_radar_history');
       if (saved) scanHistory = JSON.parse(saved);
+      // Earlier versions guessed additives from product names when ingredients were missing. Drop those guesses.
+      const GUESSED_ADDITIVES = ['Calcium Propionate (E281/E282)', 'Calcium Propionate (E282)', 'DATEM / Monoglycerides (E472e)', 'Sodium Nitrite (E250)', 'Vanillin & Artificial Flavors', 'Mono- & Diglycerides (E471)', 'Sucralose & Acesulfame K', 'Citric Acid (Preservative)', 'Caramel Color (Class IV)'];
+      if (Array.isArray(scanHistory)) {
+        scanHistory.forEach((it) => {
+          if (it && !it.ingredients && Array.isArray(it.detectedAdditives) && it.detectedAdditives.length) {
+            it.detectedAdditives = it.detectedAdditives.filter((a) => !GUESSED_ADDITIVES.includes(a && a.name));
+          }
+        });
+      }
     } catch (e) {}
     function saveHistory() {
       try {
@@ -20990,7 +21000,8 @@
         let detectedAdditivesList = auditFoodAdditives(ingredientsSummary, productAdditivesTags, productName);
 
         // Common grocery heuristic fallback for unindexed bakery, snack & beverage items (keeps scanner & watchlist in sync)
-        if (detectedAdditivesList.length === 0 && (!ingredientsSummary || ingredientsSummary.includes('Unindexed'))) {
+        // Additives are never guessed from a product name. With no ingredient data they are reported as not checked.
+        if (false) {
           const lowerName = (String(productName) + ' ' + String(brandName)).toLowerCase();
           if (lowerName.includes('toast') || lowerName.includes('bread') || lowerName.includes('bun') || lowerName.includes('bagel')) {
             detectedAdditivesList.push({ name: 'Calcium Propionate (E281/E282)', type: 'Chemical Preservative', desc: 'Antifungal bread preservative used to extend commercial shelf life.' });
@@ -21294,12 +21305,12 @@
       const adds = Array.isArray(data.detectedAdditives) ? data.detectedAdditives : [];
       if (typeof isPlusActive === 'undefined' || !isPlusActive) {
         dBody = `<div class="rk-sec-sub">Additive screening is a RAKKA Plus feature.</div><button type="button" onclick="openPaywall()" class="rk-btn-link">See Plus</button>`;
+      } else if (!hasIngredients) {
+        dBody = `<div class="rk-sec-sub">Not checked. There is no ingredient data for this product, so additives can't be confirmed. Read the label.</div>`;
       } else if (adds.length) {
         dBody = adds.map(a => `<div class="rk-row"><b>${e(a.name)}</b><span>${e(a.type || '')}</span></div>`).join('');
-        if (!hasIngredients) dBody += `<div class="rk-sec-sub">Estimated from the product type. Ingredients were not available.</div>`;
-      } else if (!hasIngredients) dBody = `<div class="rk-sec-sub">Couldn't check additives: no ingredient data.</div>`;
-      else dBody = `<div class="rk-sec-main rk-ok">No flagged additives</div>`;
-      out.push(`<div class="rk-sec rk-sec-additive"><div class="rk-sec-h">Additives${(typeof isPlusActive !== 'undefined' && isPlusActive && adds.length) ? ' (' + adds.length + ')' : ''}</div>${dBody}</div>`);
+      } else dBody = `<div class="rk-sec-main rk-ok">No flagged additives</div>`;
+      out.push(`<div class="rk-sec rk-sec-additive"><div class="rk-sec-h">Additives${(typeof isPlusActive !== 'undefined' && isPlusActive && hasIngredients && adds.length) ? ' (' + adds.length + ')' : ''}</div>${dBody}</div>`);
 
       // INGREDIENTS (neutral, collapsed)
       out.push(`<details class="rk-sec rk-sec-ingredients"><summary class="rk-sec-h">Ingredients</summary><div class="rk-sec-sub rk-ing">${hasIngredients ? e(data.ingredients) : 'Not available for this barcode. Read the package label.'}</div></details>`);
@@ -23937,7 +23948,7 @@ function renderHistory() {
             item.receiptDate = item.date || item.time || 'Recent Scan';
           }
           // Only backfill inferred additives for unindexed items that have never been audited (do NOT overwrite clean scans)
-          if (!item.detectedAdditives && item.source === 'receipt') {
+          if (false) {
             const lowerName = String(item.productName || item.product || '').toLowerCase();
             const inferred = [];
             if (lowerName.includes('toast') || lowerName.includes('bread') || lowerName.includes('bun') || lowerName.includes('bagel')) {
@@ -24209,7 +24220,7 @@ function renderHistory() {
                     </button>
                   `) : `
                     <span class="px-2 py-0.5 text-xs rounded-lg font-medium bg-slate-950 text-slate-400 border border-slate-800">
-                      0 Additives
+                      ${String(item.ingredients || '').trim() ? '0 Additives' : 'Additives: not checked'}
                     </span>
                   `}
                 </div>
@@ -27166,7 +27177,7 @@ function renderHistory() {
         }
 
         // Common grocery heuristic fallback
-        if (localDetectedAdditives.length === 0) {
+        if (false) {
           const lowerName = itemName.toLowerCase();
           if (lowerName.includes('toast') || lowerName.includes('bread') || lowerName.includes('bun') || lowerName.includes('bagel')) {
             localDetectedAdditives.push({ name: 'Calcium Propionate (E282)', type: 'Chemical Preservative', desc: 'Antifungal bread preservative used to extend commercial shelf life.' });
