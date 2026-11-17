@@ -514,7 +514,9 @@ async function receiptQuotaSlot(env, key, limit, scanId, ttlSeconds) {
   if (ids.includes(scanId)) return true;
   if (ids.length >= limit) return false;
   ids.push(scanId);
-  await env.RAKKA_COMMUNITY_DB.put(key, JSON.stringify(ids), { expirationTtl: ttlSeconds });
+  // The three slices of one receipt arrive together and each try to save the same record. KV allows one write per second
+  // per key, so a write can be refused. That must never fail the scan: the slice that won already saved this scan id.
+  try { await env.RAKKA_COMMUNITY_DB.put(key, JSON.stringify(ids), { expirationTtl: ttlSeconds }); } catch (_) {}
   return true;
 }
 
