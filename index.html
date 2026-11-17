@@ -4109,7 +4109,7 @@
               <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Watchlist Recall Alerts</span>
               <span id="notifStatusBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Disabled</span>
             </div>
-            <span class="text-xs text-slate-400 block leading-tight">Receive push notifications when a monitored item triggers an FDA/USDA recall</span>
+            <span class="text-xs text-slate-400 block leading-tight">Receive push notifications when a monitored item triggers an FDA/USDA recall. Alerts follow public notices, which can lag behind the news.</span>
             <span id="notifPlatformNote" class="text-xs text-amber-400/90 font-medium block leading-tight hidden">Note: On iPhone, add Rakka to your Home Screen to enable web notifications.</span>
           </div>
           <button 
@@ -19901,7 +19901,22 @@
         } catch (_) {}
       }
 
-      return { getProduct, putProduct, putBatch, getMeta, setMeta };
+      // Deletes the whole local database (used by "Delete my data").
+      async function destroy() {
+        try {
+          const db = dbPromise ? await dbPromise : null;
+          if (db) { try { db.close(); } catch (_) {} }
+          dbPromise = null;
+          if (typeof indexedDB === 'undefined') return;
+          await new Promise((resolve) => {
+            const req = indexedDB.deleteDatabase(DB_NAME);
+            req.onsuccess = req.onerror = req.onblocked = () => resolve();
+            setTimeout(resolve, 2000);
+          });
+        } catch (_) {}
+      }
+
+      return { getProduct, putProduct, putBatch, getMeta, setMeta, destroy };
     })();
 
     async function getCatalogProductAsync(rawCode) {
@@ -23041,6 +23056,10 @@
         try {
           localStorage.clear();
           sessionStorage.clear();
+        } catch (e) {}
+        // Also erase the saved product database (it includes products this person scanned). The catalog downloads again afterward.
+        try {
+          if (typeof RakkaIDB !== 'undefined' && RakkaIDB.destroy) await RakkaIDB.destroy();
         } catch (e) {}
         try {
           if (window.caches && caches.keys) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
@@ -27183,7 +27202,7 @@ function renderHistory() {
 
     
     // Automatically loads all scanned receipt items directly into the Watchlist with zero user clicks needed!
-        function autoImportReceiptDirectlyToWatchlist(receipt) {
+        function autoImportReceiptCore(receipt) {
       let items = [];
       if (Array.isArray(receipt)) {
         items = receipt;
@@ -27192,6 +27211,7 @@ function renderHistory() {
       }
       if (items.length === 0) {
         showCustomizeToast("Could not detect readable grocery lines. Receipt may be blurry, dim, or folded. Lay the receipt flat in good lighting and snap again.");
+        rkFinishReceiptScreen(false);
         return;
       }
 
@@ -27421,6 +27441,37 @@ function renderHistory() {
       }, 700);
     }
 
+    // Always finishes the receipt screen: clears the results/progress and (when items were added) opens the Watchlist.
+    function rkFinishReceiptScreen(goWatchlist) {
+      try { closeReceiptAuditor(); } catch (_) {}
+      const lb = document.getElementById('receiptAuditLoadingBox'); if (lb) lb.classList.add('hidden');
+      const rb = document.getElementById('receiptAuditResultsBox'); if (rb) rb.classList.add('hidden');
+      const bar = document.getElementById('receiptProgressBarFill'); if (bar) bar.style.width = '0%';
+      if (receiptCameraInput) receiptCameraInput.value = '';
+      if (receiptUploadInput) receiptUploadInput.value = '';
+      if (goWatchlist) {
+        try { setNavTab('watchlist'); } catch (_) {}
+        try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+      }
+    }
+    function autoImportReceiptDirectlyToWatchlist(receipt) {
+      const before = Array.isArray(scanHistory) ? scanHistory.length : 0;
+      try {
+        autoImportReceiptCore(receipt);
+      } catch (err) {
+        console.warn('Receipt import hit an error; finishing anyway:', err);
+        try { saveHistory(); } catch (_) {}
+        rkFinishReceiptScreen(true);
+        return;
+      }
+      // Safety net: if anything stalls, still clear the screen and move on.
+      setTimeout(() => {
+        const lb = document.getElementById('receiptAuditLoadingBox');
+        if (lb && !lb.classList.contains('hidden')) {
+          rkFinishReceiptScreen((Array.isArray(scanHistory) ? scanHistory.length : 0) !== before);
+        }
+      }, 2500);
+    }
     window.autoImportReceiptDirectlyToWatchlist = autoImportReceiptDirectlyToWatchlist;
     function renderReceiptAuditResults(receipt) {
       if (!receiptAuditResultsBox) return;
