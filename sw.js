@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v193';
+const CACHE_NAME = 'rakka-v194';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
