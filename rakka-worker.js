@@ -837,7 +837,11 @@ function alProcessDevice(rec, index) {
     added++;
   }
   // Keep the records small: drop the oldest.
-  if (rec.pending.length > AL_MAX_PENDING) rec.pending = rec.pending.slice(-AL_MAX_PENDING);
+  // When the queue is full, drop "related" notices first so they can never push out a likely or exact one.
+  while (rec.pending.length > AL_MAX_PENDING) {
+    const idx = rec.pending.findIndex((p) => (p.matches || []).every((m) => m.confidence === 'related'));
+    rec.pending.splice(idx >= 0 ? idx : 0, 1);
+  }
   const seenKeys = Object.keys(rec.seen);
   if (seenKeys.length > AL_MAX_SEEN) {
     seenKeys.sort((a, b) => rec.seen[a] - rec.seen[b]).slice(0, seenKeys.length - AL_MAX_SEEN).forEach((k) => delete rec.seen[k]);
