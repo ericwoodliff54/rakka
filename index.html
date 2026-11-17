@@ -21267,6 +21267,19 @@
               <span class="font-bold text-rose-400 block mb-0.5">Health Hazard / Contaminant:</span>
               <p class="text-slate-200 leading-relaxed">${esc(data.recallRecord.hazard)}</p>
             </div>
+            ${(() => {
+              const rr = data.recallRecord || {};
+              const raw = String(rr.action || '').trim();
+              const generic = !raw || /no match|not a safety guarantee|cleared of federal|verified and cleared/i.test(raw);
+              const todo = generic ? 'Do not eat it. Return it to the store for a refund, or throw it away, and follow the official notice.' : raw;
+              const isUsda = /usda|fsis/i.test(String(rr.agency || rr.source || ''));
+              const href = isUsda ? 'https://www.fsis.usda.gov/recalls' : 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts';
+              return `<div class="pt-1 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5">
+                <span class="font-bold text-amber-300 block mb-0.5">What to do now:</span>
+                <p class="text-slate-200 leading-relaxed">${esc(todo)}</p>
+                <a href="${href}" target="_blank" rel="noopener noreferrer" class="inline-block mt-1.5 text-cyan-300 underline font-semibold">Read the official notice</a>
+              </div>`;
+            })()}
             <button 
               type="button" 
               onclick="openLotAuditorForCurrentProduct()" class="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer mt-1"
