@@ -1,0 +1,31 @@
+# Rebuilds the offline product catalog from the Cloudflare community database every week and
+# publishes it. Apps pick up the new version on their own (no app-store update needed).
+name: Update offline catalog
+on:
+  schedule:
+    - cron: '17 8 * * 1'   # Mondays, early morning UTC
+  workflow_dispatch: {}     # lets you run it by hand from the Actions tab
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build catalog from Cloudflare KV
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node export_kv_to_idb.cjs --from-kv
+      - name: Sanity check (never publish a tiny or broken catalog)
+        run: |
+          node -e "const z=require('zlib'),f=require('fs');const d=JSON.parse(z.gunzipSync(f.readFileSync('community_catalog.json.gz')));if(!d.items||d.items.length<20000){console.error('Catalog too small: '+(d.items||[]).length);process.exit(1)}console.log('ok',d.items.length)"
+      - name: Commit if changed
+        run: |
+          git config user.name "rakka-bot"
+          git config user.email "rakka-bot@users.noreply.github.com"
+          git add community_catalog.json.gz catalog_manifest.json
+          git diff --cached --quiet || (git commit -m "Update offline catalog" && git push)
