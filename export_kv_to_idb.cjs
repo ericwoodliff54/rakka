@@ -113,8 +113,10 @@ async function exportFromCloudflareKV() {
   if (!records) {
     records = await exportFromCloudflareKV();
   }
-  const payload = JSON.stringify({ version: 'v1', count: records.length, items: records });
+  const version = new Date().toISOString().slice(0, 10);
+  const payload = JSON.stringify({ version, count: records.length, items: records });
   const gz = zlib.gzipSync(Buffer.from(payload, 'utf8'), { level: 9 });
   fs.writeFileSync(path.join('.', 'community_catalog.json.gz'), gz);
+  fs.writeFileSync(path.join('.', 'catalog_manifest.json'), JSON.stringify({ version, count: records.length, file: 'community_catalog.json', generatedAt: new Date().toISOString() }) + '\n');
   console.log(`Done! Wrote community_catalog.json.gz (${records.length} items, ${(gz.length / 1024 / 1024).toFixed(2)} MB).`);
 })();

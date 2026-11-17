@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v199';
+const CACHE_NAME = 'rakka-v200';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
@@ -68,6 +68,12 @@ self.addEventListener('fetch', event => {
         })
         .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
     );
+    return;
+  }
+
+  // Catalog files must always be fresh (and are big), so they bypass the cache entirely.
+  if (/catalog_manifest\.json$|community_catalog\.json(\.gz)?$/.test(url.pathname)) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
 

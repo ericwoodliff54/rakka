@@ -19808,8 +19808,15 @@
                 db.createObjectStore('meta', { keyPath: 'key' });
               }
             };
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => resolve(null);
+            req.onsuccess = () => {
+              const db = req.result;
+              // If the browser closes or upgrades the database under us, reconnect on the next call instead of failing forever.
+              db.onversionchange = () => { try { db.close(); } catch (_) {} dbPromise = null; };
+              db.onclose = () => { dbPromise = null; };
+              resolve(db);
+            };
+            req.onerror = () => { dbPromise = null; resolve(null); };
+            req.onblocked = () => { /* another tab holds an old version; retry next call */ };
           } catch (_) {
             resolve(null);
           }
@@ -19850,8 +19857,10 @@
             brand: productObj.brand || 'Grocery Brand',
             ingredients: productObj.ingredients || '',
             allergens: Array.isArray(productObj.allergens) ? productObj.allergens : [],
-            additives: Array.isArray(productObj.additives) ? productObj.additives : []
+            additives: Array.isArray(productObj.additives) ? productObj.additives : [],
+            savedAt: Date.now()
           });
+          tx.onabort = () => console.warn('[Rakka IDB] Could not save product (storage full or blocked):', tx.error && tx.error.name);
         } catch (_) {}
       }
 
@@ -19867,6 +19876,7 @@
             }
             tx.oncomplete = () => resolve(true);
             tx.onerror = () => resolve(false);
+            tx.onabort = () => { console.warn('[Rakka IDB] Batch aborted:', tx.error && tx.error.name); resolve(false); };
           } catch (_) { resolve(false); }
         });
       }
@@ -19902,7 +19912,9 @@
       const clean = String(rawCode || '').replace(/\D/g, '');
       if (!clean) return syncHit || null;
       const keys = [...new Set([clean.padStart(12, '0'), clean, clean.padStart(13, '0'), clean.replace(/^0+/, '')])].filter(Boolean);
-      const idbHit = await RakkaIDB.getProduct(keys);
+      let idbHit = await RakkaIDB.getProduct(keys);
+      // Products older than 90 days are re-checked online (the saved copy is still used if the phone is offline).
+      if (idbHit && idbHit.savedAt && (Date.now() - idbHit.savedAt) > 90 * 86400000) idbHit = Object.assign({}, idbHit, { _stale: true });
       if (idbHit && (idbHit.ingredients || (idbHit.name && !idbHit.name.startsWith('Retail Grocery Item')))) {
         const merged = syncHit ? {
           ...syncHit,
@@ -19910,7 +19922,8 @@
           brand: (syncHit.brand && syncHit.brand !== 'Grocery Brand') ? syncHit.brand : idbHit.brand,
           ingredients: idbHit.ingredients || syncHit.ingredients || '',
           allergens: (Array.isArray(idbHit.allergens) && idbHit.allergens.length) ? idbHit.allergens : (syncHit.allergens || []),
-          additives: (Array.isArray(idbHit.additives) && idbHit.additives.length) ? idbHit.additives : (syncHit.additives || [])
+          additives: (Array.isArray(idbHit.additives) && idbHit.additives.length) ? idbHit.additives : (syncHit.additives || []),
+          _stale: idbHit._stale || false
         } : idbHit;
         keys.forEach(k => GLOBAL_PRODUCT_CACHE.set(k, merged));
         return merged;
@@ -19918,51 +19931,80 @@
       return syncHit || null;
     }
 
-    async function syncCommunityCatalogToIDB() {
+    // Offline catalog auto-update. A small manifest (catalog_manifest.json) says which catalog version is current.
+    // The app checks it at most once a day and downloads the new catalog only when the version changed, so
+    // catalog updates reach live app-store installs with no app update. Falls back to the bundled v1 catalog.
+    const RAKKA_CATALOG_BASE = 'https://ericwoodliff54.github.io/rakka/';
+    async function rkFetchCatalogPayload(base, file) {
+      if (typeof DecompressionStream !== 'undefined') {
+        try {
+          const gzRes = await fetch(base + file + '.gz', { cache: 'no-cache' });
+          if (gzRes.ok && gzRes.body) {
+            const text = await new Response(gzRes.body.pipeThrough(new DecompressionStream('gzip'))).text();
+            return JSON.parse(text);
+          }
+        } catch (_) {}
+      }
+      try {
+        const r = await fetch(base + file, { cache: 'no-cache' });
+        if (r.ok) return await r.json();
+      } catch (_) {}
+      return null;
+    }
+
+    async function syncCommunityCatalogToIDB(force = false) {
       try {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-        const targetVersion = 'v1';
+        const lastCheck = Number(await RakkaIDB.getMeta('catalog_checked_at')) || 0;
         const currentVer = await RakkaIDB.getMeta('catalog_version');
-        if (currentVer === targetVersion) return;
+        if (!force && currentVer && Date.now() - lastCheck < 20 * 3600000) return;
 
-        let payload = null;
-        // Try gzipped snapshot first using native browser DecompressionStream
-        if (typeof DecompressionStream !== 'undefined') {
+        // 1. Ask for the current version (tiny file). Try the hosted copy first, then the bundled one.
+        let manifest = null;
+        let base = RAKKA_CATALOG_BASE;
+        for (const b of [RAKKA_CATALOG_BASE, './']) {
           try {
-            const gzRes = await fetch('./community_catalog.json.gz', { cache: 'default' });
-            if (gzRes.ok && gzRes.body) {
-              const ds = new DecompressionStream('gzip');
-              const text = await new Response(gzRes.body.pipeThrough(ds)).text();
-              payload = JSON.parse(text);
-            }
+            const r = await fetch(b + 'catalog_manifest.json', { cache: 'no-store' });
+            if (r.ok) { manifest = await r.json(); base = b; break; }
           } catch (_) {}
         }
+        const targetVersion = (manifest && manifest.version) ? String(manifest.version) : 'v1';
+        if (currentVer === targetVersion) { await RakkaIDB.setMeta('catalog_checked_at', Date.now()); return; }
 
-        // Fallback to plain JSON snapshot if .json.gz is unavailable
-        if (!payload) {
-          try {
-            const jsonRes = await fetch('./community_catalog.json', { cache: 'default' });
-            if (jsonRes.ok) payload = await jsonRes.json();
-          } catch (_) {}
-        }
-
+        // 2. Download the catalog
+        const file = (manifest && manifest.file) ? String(manifest.file).replace(/\.gz$/, '') : 'community_catalog.json';
+        let payload = await rkFetchCatalogPayload(base, file);
+        if (!payload && base !== './') payload = await rkFetchCatalogPayload('./', file);
         const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
         if (!items || items.length === 0) return;
 
+        // 3. Import in small batches. Only mark it done if every batch was saved.
+        const stamp = Date.now();
         const BATCH_SIZE = 1000;
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
-          await RakkaIDB.putBatch(items.slice(i, i + BATCH_SIZE));
+          const chunk = items.slice(i, i + BATCH_SIZE).map(it => (it && !it.savedAt) ? Object.assign({}, it, { savedAt: stamp }) : it);
+          const ok = await RakkaIDB.putBatch(chunk);
+          if (!ok) { console.warn('[Rakka IDB] Catalog import stopped early; will retry on a later launch.'); return; }
           await new Promise(r => setTimeout(r, 25)); // Yield to keep iOS WebKit responsive
         }
-        await RakkaIDB.setMeta('catalog_version', payload.version || targetVersion);
-        console.log(`[Rakka IDB] Synced ${items.length} offline products.`);
+        await RakkaIDB.setMeta('catalog_version', targetVersion);
+        await RakkaIDB.setMeta('catalog_checked_at', Date.now());
+        console.log(`[Rakka IDB] Synced ${items.length} offline products (${targetVersion}).`);
       } catch (e) {
         console.warn('Rakka IDB background sync skipped:', e);
       }
     }
 
+    // Ask the browser to keep our data (iOS/Android may otherwise clear it after a few unused days).
+    async function rkRequestPersistentStorage() {
+      try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (_) {}
+    }
+
     if (typeof window !== 'undefined') {
-      window.addEventListener('load', () => setTimeout(syncCommunityCatalogToIDB, 4000));
+      window.addEventListener('load', () => {
+        setTimeout(() => { rkRequestPersistentStorage(); syncCommunityCatalogToIDB(); }, 4000);
+      });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => syncCommunityCatalogToIDB(), 3000); });
     }
 
     function getCatalogProduct(rawCode) {
@@ -20451,7 +20493,9 @@
 
         // 2. Multi-Tier Product Catalog Resolution (In-Memory Map + Local Cache + Multi-Cluster Food APIs)
         let cachedProduct = await getCatalogProductAsync(code);
-        if (cachedProduct) {
+        // A saved copy older than 90 days is re-checked online; it is only used as a fallback if that fails.
+        const staleCache = (cachedProduct && cachedProduct._stale && !(typeof navigator !== 'undefined' && navigator.onLine === false)) ? cachedProduct : null;
+        if (cachedProduct && !staleCache) {
           if (!productName || productName.startsWith('Retail Grocery Item')) productName = cachedProduct.name || productName;
           if (!brandName || brandName === 'Grocery Brand') brandName = cachedProduct.brand || brandName;
           if (!ingredientsSummary && cachedProduct.ingredients) ingredientsSummary = cachedProduct.ingredients;
@@ -20577,6 +20621,14 @@
                   });
                 }
               }
+            }
+
+            if (staleCache && !ingredientsSummary) {
+              if (!productName || productName.startsWith('Retail Grocery Item')) productName = staleCache.name || productName;
+              if (!brandName || brandName === 'Grocery Brand') brandName = staleCache.brand || brandName;
+              if (staleCache.ingredients) ingredientsSummary = staleCache.ingredients;
+              if (staleCache.additives && staleCache.additives.length) productAdditivesTags.push(...staleCache.additives);
+              if (staleCache.allergens && staleCache.allergens.length) detectedAllergenIds.push(...staleCache.allergens);
             }
 
             // Tertiary Tier: GS1 Manufacturer Prefix Intelligence
