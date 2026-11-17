@@ -5330,7 +5330,13 @@
         .replace(/\bnon[-_\s]*(?:gluten|wheat)\b/gi, '')
         .replace(/\bwithout\s+(?:gluten|wheat)\b/gi, '')
         .replace(/\b(?:almond|coconut|oat|rice|brown\s+rice|white\s+rice|tapioca|cassava|chickpea|garbanzo|sorghum|millet|buckwheat|quinoa|amaranth|teff|potato|corn|soy|lupin|tiger\s*nut|plantain|cauliflower|arrowroot)[-_\s]*flour\b/gi, '');
-      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pies?|pastr(?:y|ies)|turnovers?|tarts?|strudels?|croissants?|biscuits?|muffins?|scones?|danish|cobblers?|crisps?)\b/i.test(glutenClean)) {
+      // Product names that contain baked-goods words but are not gluten foods (grape/apple varieties, tart cherries, root beer)
+      const glutenText = glutenClean
+        .replace(/\b(?:autumn|honey|sweet\s*tango|cosmic|pink\s*lady)?\s*crisp\b(?=\s+(?:green\s+|red\s+|seedless\s+)*(?:grapes?|apples?|pears?|lettuce|salad|celery|cucumbers?))/gi, '')
+        .replace(/\b(?:autumn|honey|cosmic)\s*crisp\b/gi, '')
+        .replace(/\btart\s+(?:cherr(?:y|ies)|apples?|cranberr(?:y|ies)|lemon|flavor)/gi, '')
+        .replace(/\b(?:root|ginger)\s+beer\b/gi, '');
+      if (/\b(?:gluten|wheat|barley|rye|malt|flour|bread|toast|bun|bagel|cake|cookie|donut|dough|pasta|noodle|spaghetti|macaroni|semolina|spelt|farro|graham|kamut|triticale|durum|couscous|waffle|pancake|cracker|pretzel|cereal|beer|crust|pies?|pastr(?:y|ies)|turnovers?|tarts?|strudels?|croissants?|biscuits?|muffins?|scones?|danish|cobblers?|(?:apple|peach|berry|cherry|fruit|rhubarb|blueberry|pear)\s+crisps?|crisps?\s+cereal)\b/i.test(glutenText)) {
         detected.add('gluten');
       }
 

@@ -1274,6 +1274,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
+        build: '2026-11-17-matcher-v6',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',
