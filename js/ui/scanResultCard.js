@@ -101,7 +101,17 @@ export function renderVerdictCard({ verdict, screeningNote = '', lastSyncTimesta
   let detail = verdict.detail;
   if (status === 'no_match_found' && !verdict.screenedAllergens) detail = 'No active recall was found in the data on this device. Allergens were not checked.';
 
-  const chips = verdict.perProfile.filter((p) => p.screened).map(chip);
+  const screenedProfiles = verdict.perProfile.filter((p) => p.screened);
+  const noneChecked = screenedProfiles.length > 0 && screenedProfiles.every((p) => p.status === 'unverified');
+  // If nobody could be checked, say it once instead of repeating it for every profile.
+  // Only list people who need attention: flagged allergens first, otherwise anyone who could not be checked.
+  // Clear profiles are not listed one by one.
+  const flagged = screenedProfiles.filter((p) => p.status === 'allergen_match' || p.status === 'caution');
+  const needAttention = flagged.length ? flagged : screenedProfiles.filter((p) => p.status === 'unverified');
+  const allClear = screenedProfiles.length > 0 && screenedProfiles.every((p) => p.status !== 'allergen_match' && p.status !== 'caution' && p.status !== 'unverified');
+  const chips = noneChecked ? [] : needAttention.map(chip);
+  if (allClear && status === 'no_match_found') detail = 'No allergen match found for anyone in your household.';
+  if (noneChecked && status === 'unverified') detail = 'There is not enough trusted data to check this product, so allergens could not be checked for anyone in your household.';
   // For allergen/caution cards the per-person rows already say who and what, so don't repeat it in a sentence.
   const showDetail = !((status === 'allergen_match' || status === 'caution') && chips.length);
   const people = chips.length ? '<ul class="rk-people" aria-label="Results for each person">' + chips.join('') + '</ul>' : '';
