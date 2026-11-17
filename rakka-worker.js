@@ -25,7 +25,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://ericwoodliff54.github.io',
   'https://twinravensdigital.com',
   'https://privacy.twinravensdigital.com',
-  'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5500'
+  'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5500',
+  // App-store wrapper (Capacitor/Ionic) origins: iOS uses capacitor://localhost, Android uses https://localhost
+  'capacitor://localhost', 'ionic://localhost', 'https://localhost', 'http://localhost'
 ];
 function getAllowedOrigins(env, request) {
   const extra = (env && env.ALLOWED_ORIGINS) ? String(env.ALLOWED_ORIGINS).split(',').map(x => x.trim()).filter(Boolean) : [];
@@ -1284,7 +1286,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v7-lookup2',
+        build: '2026-11-17-matcher-v7-lookup2-wrap',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',

@@ -18535,28 +18535,129 @@
 
     let currentActiveProductScanData = null;
     let scanHistory = [];
-    try {
-      const saved = localStorage.getItem('rakka_history')  || localStorage.getItem('safebite_history') || localStorage.getItem('recall_radar_history');
-      if (saved) scanHistory = JSON.parse(saved);
+    // ---- Watchlist storage ----
+    // The watchlist lives in IndexedDB (no 5 MB limit). Older versions kept it in localStorage; that copy is read once
+    // so nothing is lost, moved to IndexedDB, then removed. If IndexedDB is unavailable, one localStorage key is used.
+    const RK_HISTORY_KEY = 'history_v1';
+    const RK_GUESSED_ADDITIVES = ['Calcium Propionate (E281/E282)', 'Calcium Propionate (E282)', 'DATEM / Monoglycerides (E472e)', 'Sodium Nitrite (E250)', 'Vanillin & Artificial Flavors', 'Mono- & Diglycerides (E471)', 'Sucralose & Acesulfame K', 'Citric Acid (Preservative)', 'Caramel Color (Class IV)'];
+    let rkHistoryLoaded = false, rkHistoryHalted = false, rkHistoryTimer = null, rkHistoryChain = Promise.resolve(), rkHistoryDbPromise = null, rkHistoryWarned = false;
+    function rkNormalizeHistory(arr) {
       // Earlier versions guessed additives from product names when ingredients were missing. Drop those guesses.
-      const GUESSED_ADDITIVES = ['Calcium Propionate (E281/E282)', 'Calcium Propionate (E282)', 'DATEM / Monoglycerides (E472e)', 'Sodium Nitrite (E250)', 'Vanillin & Artificial Flavors', 'Mono- & Diglycerides (E471)', 'Sucralose & Acesulfame K', 'Citric Acid (Preservative)', 'Caramel Color (Class IV)'];
-      if (Array.isArray(scanHistory)) {
-        scanHistory.forEach((it) => {
+      if (Array.isArray(arr)) {
+        arr.forEach((it) => {
           if (it && !it.ingredients && Array.isArray(it.detectedAdditives) && it.detectedAdditives.length) {
-            it.detectedAdditives = it.detectedAdditives.filter((a) => !GUESSED_ADDITIVES.includes(a && a.name));
+            it.detectedAdditives = it.detectedAdditives.filter((a) => !RK_GUESSED_ADDITIVES.includes(a && a.name));
           }
         });
       }
-    } catch (e) {}
-    function saveHistory() {
-      try {
-        localStorage.setItem('rakka_history', JSON.stringify(scanHistory));
-        localStorage.setItem('safebite_history', JSON.stringify(scanHistory));
-        localStorage.setItem('recall_radar_history', JSON.stringify(scanHistory));
-      } catch (e) {
-        console.warn("Error saving history to localStorage:", e);
-      }
+      return arr;
     }
+    function rkHistoryDb() {
+      if (rkHistoryDbPromise) return rkHistoryDbPromise;
+      if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+      rkHistoryDbPromise = new Promise((resolve) => {
+        try {
+          const req = indexedDB.open('rakka_offline_db', 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('products')) db.createObjectStore('products', { keyPath: 'upc' });
+            if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+          };
+          req.onsuccess = () => {
+            const db = req.result;
+            db.onversionchange = () => { try { db.close(); } catch (_) {} rkHistoryDbPromise = null; };
+            db.onclose = () => { rkHistoryDbPromise = null; };
+            resolve(db);
+          };
+          req.onerror = () => { rkHistoryDbPromise = null; resolve(null); };
+        } catch (_) { rkHistoryDbPromise = null; resolve(null); }
+      });
+      return rkHistoryDbPromise;
+    }
+    async function rkHistoryRead() {
+      const db = await rkHistoryDb();
+      if (!db) return undefined; // undefined = IndexedDB not usable
+      return new Promise((resolve) => {
+        try {
+          const req = db.transaction('meta', 'readonly').objectStore('meta').get(RK_HISTORY_KEY);
+          req.onsuccess = () => resolve(req.result && Array.isArray(req.result.value) ? req.result.value : null);
+          req.onerror = () => resolve(undefined);
+        } catch (_) { resolve(undefined); }
+      });
+    }
+    async function rkHistoryWrite(arr) {
+      const db = await rkHistoryDb();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction('meta', 'readwrite');
+          tx.objectStore('meta').put({ key: RK_HISTORY_KEY, value: JSON.parse(JSON.stringify(arr)) });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+          tx.onabort = () => resolve(false);
+        } catch (_) { resolve(false); }
+      });
+    }
+    function rkRemoveLegacyHistoryKeys() {
+      try { ['rakka_history', 'safebite_history', 'recall_radar_history'].forEach((k) => localStorage.removeItem(k)); } catch (_) {}
+    }
+    function rkPersistHistoryNow() {
+      if (rkHistoryHalted || !rkHistoryLoaded) return rkHistoryChain;
+      const snapshot = scanHistory;
+      rkHistoryChain = rkHistoryChain.then(async () => {
+        let ok = await rkHistoryWrite(snapshot);
+        if (ok) { rkRemoveLegacyHistoryKeys(); rkHistoryWarned = false; return; }
+        // IndexedDB failed: fall back to a single localStorage copy, and tell the person if even that fails.
+        try { localStorage.setItem('rakka_history', JSON.stringify(snapshot)); }
+        catch (e) {
+          if (!rkHistoryWarned) {
+            rkHistoryWarned = true;
+            try { showCustomizeToast('Your device storage is full, so your Watchlist could not be saved. Free up space and try again.'); } catch (_) {}
+          }
+        }
+      }).catch(() => {});
+      return rkHistoryChain;
+    }
+    function saveHistory() {
+      if (rkHistoryTimer) clearTimeout(rkHistoryTimer);
+      rkHistoryTimer = setTimeout(() => { rkHistoryTimer = null; rkPersistHistoryNow(); }, 250);
+    }
+    function rkFlushHistory() {
+      if (rkHistoryTimer) { clearTimeout(rkHistoryTimer); rkHistoryTimer = null; rkPersistHistoryNow(); }
+    }
+    function rkHaltHistoryStorage() { rkHistoryHalted = true; if (rkHistoryTimer) { clearTimeout(rkHistoryTimer); rkHistoryTimer = null; } }
+    window.addEventListener('pagehide', rkFlushHistory);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') rkFlushHistory(); });
+
+    // Load: show any older localStorage copy immediately, then settle with IndexedDB.
+    let rkLegacyHistory = null;
+    try {
+      const saved = localStorage.getItem('rakka_history') || localStorage.getItem('safebite_history') || localStorage.getItem('recall_radar_history');
+      if (saved) { const p = JSON.parse(saved); if (Array.isArray(p)) rkLegacyHistory = p; }
+    } catch (e) {}
+    if (rkLegacyHistory) scanHistory = rkNormalizeHistory(rkLegacyHistory);
+    (async () => {
+      let fromIdb;
+      try { fromIdb = await rkHistoryRead(); } catch (_) { fromIdb = undefined; }
+      if (rkLegacyHistory) {
+        // Older copy (or an emergency copy) is the newest data: keep it and move it into IndexedDB.
+        rkHistoryLoaded = true;
+        await rkPersistHistoryNow();
+      } else if (Array.isArray(fromIdb)) {
+        scanHistory = rkNormalizeHistory(fromIdb);
+        rkHistoryLoaded = true;
+        const refresh = () => {
+          try { if (typeof auditWatchlistAllergens === 'function') auditWatchlistAllergens(); } catch (_) {}
+          try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+          try { if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls(); } catch (_) {}
+          try { if (typeof updateWatchlistNavBadge === 'function') updateWatchlistNavBadge(); } catch (_) {}
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh); else refresh();
+      } else {
+        rkHistoryLoaded = true; // nothing saved yet (or IndexedDB unusable): start fresh
+      }
+      window.dispatchEvent(new Event('rakka:history-loaded'));
+    })();
     const _origSaveHistory = saveHistory;
     saveHistory = function() {
       _origSaveHistory();
@@ -20307,13 +20408,9 @@
 
       triggerHaptic([40]);
       scanHistory = [];
-      try {
-        localStorage.removeItem('rakka_history');
-        localStorage.removeItem('safebite_history');
-        localStorage.removeItem('recall_radar_history');
-        localStorage.setItem('rakka_history', JSON.stringify([]));
-        localStorage.setItem('safebite_history', JSON.stringify([]));
-      } catch (e) {}
+      rkRemoveLegacyHistoryKeys();
+      saveHistory();
+      rkFlushHistory();
       if (typeof renderHistory === 'function') {
         renderHistory();
       }
@@ -23053,6 +23150,7 @@
           confirmResetBtn.textContent = originalLabel;
         }
         // 2. Erase this device.
+        rkHaltHistoryStorage();
         try {
           localStorage.clear();
           sessionStorage.clear();
@@ -23163,10 +23261,7 @@
         }
       }
 
-      try {
-        localStorage.setItem('rakka_history', JSON.stringify(scanHistory)); 
-        localStorage.setItem('safebite_history', JSON.stringify(scanHistory));
-      } catch (e) {}
+      saveHistory();
 
       auditPantryAgainstRecalls();
       if (typeof updateWatchlistNavBadge === 'function') {
@@ -23180,10 +23275,7 @@
         if (i.upc && (i.upc === key || key.startsWith(String(i.upc)) || String(i.upc).startsWith(key))) return false;
         return true;
       });
-      try {
-        localStorage.setItem('rakka_history', JSON.stringify(scanHistory)); 
-        localStorage.setItem('safebite_history', JSON.stringify(scanHistory));
-      } catch (e) {}
+      saveHistory();
       if (typeof auditPantryAgainstRecalls === 'function') {
         auditPantryAgainstRecalls();
       }
