@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v209';
+const CACHE_NAME = 'rakka-v211';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
@@ -52,19 +52,25 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // 1. Navigation requests (HTML pages): NETWORK-FIRST with offline cache fallback!
+  // 1. Navigation requests (HTML pages): open instantly from the saved copy, then refresh the copy in the background.
+  //    (Waiting on the network first left the screen black on slow connections. The next launch gets any new version.)
   if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/rakka/') || url.pathname.endsWith('/rakka')) {
-    event.respondWith(
-      fetch(event.request, { cache: 'no-cache' })
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = (await cache.match(event.request, { ignoreSearch: true })) || (await cache.match('./index.html'));
+      const refresh = fetch(new Request(url.origin + url.pathname, { cache: 'no-cache' }))
         .then(response => {
           if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+            cache.put(event.request.mode === 'navigate' ? './index.html' : event.request, response.clone());
           }
           return response;
-        })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
-    );
+        });
+      if (cached) {
+        event.waitUntil(refresh.catch(() => {}));
+        return cached;
+      }
+      return refresh.catch(() => new Response('Offline', { status: 503 }));
+    })());
     return;
   }
 
