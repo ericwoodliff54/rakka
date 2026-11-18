@@ -2574,7 +2574,7 @@
     <div class="relative flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 max-w-lg w-full my-auto">
       <!-- Responsive Great Dane Mascot with Light Gray Canvas -->
       <div class="relative w-60 h-60 sm:w-72 sm:h-72 md:w-96 md:h-96 max-w-[88vw] max-h-[44vh] mb-2 flex items-center justify-center shrink-0">
-        <img src="./splash-mascot.png?v=18" alt="RAKKA Mascot" class="w-full h-full object-contain">
+        <img src="./splash-mascot-sm.png?v=19" alt="RAKKA Mascot" class="w-full h-full object-contain">
       </div>
       
       <!-- Brand Typography with Crisp Turquoise Gradient -->
@@ -2755,7 +2755,7 @@
             <span class="p-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0"><svg class="w-4 h-4 text-emerald-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
             <div>
               <span class="font-bold text-white block">2-person household sync</span>
-              <span class="text-xs text-slate-400">Share family profiles between two devices. Encrypted, and the key never leaves your phones.</span>
+              <span class="text-xs text-slate-400">Share family profiles and your Watchlist between two devices. Encrypted, and the key never leaves your phones.</span>
             </div>
           </div>
           <div class="flex items-start gap-2.5">
@@ -25573,10 +25573,13 @@ function renderHistory() {
       }
     }
 
-    // Keep splash on screen for ~3.8 seconds so user can see and enjoy the mascot
+    // Keep the splash on screen for ~2.4 seconds (tap to skip)
+    // Opening a household invite link skips the splash entirely so the join starts right away.
+    let rkSplashMs = 2400;
+    try { if (/[?&]join=RKA-/i.test(window.location.search)) rkSplashMs = 150; } catch (_) {}
     setTimeout(() => {
       dismissSplashScreen();
-    }, 3800);
+    }, rkSplashMs);
 
     // First install safety guard: ensure User Agreement opens after 2.5s if not yet accepted
     setTimeout(() => {
@@ -26115,6 +26118,24 @@ function renderHistory() {
       }
     }
 
+    // ---- Watchlist sync helpers ----
+    // Removals are noticed by comparing the list now with the list at the last sync, then sent along as "tombstones"
+    // so an item deleted on one phone does not come back from the other.
+    function rkHhLoadTombs() { try { return JSON.parse(localStorage.getItem('rakka_hh_tombs') || '{}') || {}; } catch (_) { return {}; } }
+    function rkHhKeysNow() { const HH = window.RakkaHousehold; return HH ? (Array.isArray(scanHistory) ? scanHistory : []).map(i => HH.itemKey(i)).filter(Boolean) : []; }
+    function rkHhRecordRemovals() {
+      const HH = window.RakkaHousehold; if (!HH) return;
+      let prev = []; try { prev = JSON.parse(localStorage.getItem('rakka_hh_keys') || '[]') || []; } catch (_) {}
+      const now = new Set(rkHhKeysNow());
+      const tombs = rkHhLoadTombs(); const stamp = Date.now();
+      prev.forEach(k => { if (!now.has(k)) tombs[k] = stamp; });
+      try { localStorage.setItem('rakka_hh_tombs', JSON.stringify(HH.cleanTombs(tombs))); localStorage.setItem('rakka_hh_keys', JSON.stringify([...now])); } catch (_) {}
+    }
+    async function rkHhBuildBlob() {
+      rkHhRecordRemovals();
+      return window.RakkaHousehold.encryptHousehold({ profiles: familyProfiles, watchlist: scanHistory, tombs: rkHhLoadTombs() }, getHouseholdKey());
+    }
+
     function applySyncedHouseholdData(data) {
       if (!data) return;
       window._suppressHouseholdPush = true;
@@ -26127,7 +26148,24 @@ function renderHistory() {
           saveFamilyProfiles();
           if (typeof renderFamilyProfilesBar === 'function') renderFamilyProfilesBar();
         }
-        // Scan history is no longer synced; it stays on each device.
+        // Watchlist: combine with the other phone's list (newer copy of an item wins; removals carry over).
+        if (Array.isArray(data.watchlist) && window.RakkaHousehold) {
+          rkHhRecordRemovals(); // catch removals made on this phone since the last sync before merging
+          const merged = window.RakkaHousehold.mergeWatchlist(scanHistory, data.watchlist, rkHhLoadTombs(), data.tombs || {});
+          const remoteKeys = new Set(data.watchlist.map(i => window.RakkaHousehold.itemKey(i)));
+          if (merged.items.some(i => !remoteKeys.has(window.RakkaHousehold.itemKey(i)))) window._hhNeedsPush = true; // this phone has items the other lacks
+          const before = rkHhKeysNow().join('|') + '#' + (scanHistory || []).length;
+          scanHistory = merged.items;
+          try { localStorage.setItem('rakka_hh_tombs', JSON.stringify(merged.tombs)); localStorage.setItem('rakka_hh_keys', JSON.stringify(rkHhKeysNow())); } catch (_) {}
+          if (typeof saveHistory === 'function') saveHistory();
+          if (rkHhKeysNow().join('|') + '#' + scanHistory.length !== before) {
+            setTimeout(() => {
+              try { if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls(); } catch (_) {}
+              try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+              try { if (typeof updateWatchlistNavBadge === 'function') updateWatchlistNavBadge(); } catch (_) {}
+            }, 0);
+          }
+        }
         if (data.plusActive && Number(data.plusUntil) > Date.now()) {
           localStorage.setItem(PLUS_HH_KEY, String(data.plusUntil));
         } else if (data.plusActive === false) {
@@ -26142,6 +26180,7 @@ function renderHistory() {
         window._suppressHouseholdPush = false;
       }
       updateHouseholdSyncUI(data.memberCount || null);
+      if (window._hhNeedsPush) { window._hhNeedsPush = false; scheduleHouseholdPush(); }
     }
 
     // ---- Encrypted household sync helpers (see js/core/householdCrypto.js) ----
@@ -26153,9 +26192,10 @@ function renderHistory() {
       if (!data || !HH) return false;
       const blob = data.blob; delete data.blob; delete data.scanHistory; delete data.familyProfiles;
       if (!blob) return true; // nothing uploaded yet
-      const profiles = await HH.decryptProfiles(blob, key || getHouseholdKey());
-      if (!profiles) return false;
-      data.familyProfiles = profiles;
+      const dec = await HH.decryptHousehold(blob, key || getHouseholdKey());
+      if (!dec) return false;
+      data.familyProfiles = dec.profiles;
+      if (Array.isArray(dec.watchlist)) { data.watchlist = dec.watchlist; data.tombs = dec.tombs || {}; }
       return true;
     }
 
@@ -26175,7 +26215,7 @@ function renderHistory() {
             deviceId: getRakkaDeviceId(),
             householdId: localStorage.getItem('rakka_household_id') || '',
             plusToken: (readPlusEntitlement() || {}).token || '',
-            blob: await HHc.encryptProfiles(familyProfiles, hhKey)
+            blob: await HHc.encryptHousehold({ profiles: familyProfiles, watchlist: scanHistory, tombs: rkHhLoadTombs() }, hhKey)
           })
         });
         const data = await res.json();
@@ -26312,6 +26352,8 @@ function renderHistory() {
           updateHouseholdSyncUI(data.memberCount || null);
           return;
         }
+        // The other phone is on an older app that does not send a Watchlist yet: send ours.
+        if (!Array.isArray(data.watchlist)) setTimeout(() => scheduleHouseholdPush(), 0);
         const localTs = parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10);
         if ((data.updatedAt || 0) > localTs || showToast) {
           applySyncedHouseholdData(data);
@@ -26341,7 +26383,7 @@ function renderHistory() {
               action: 'push',
               plusToken: (readPlusEntitlement() || {}).token || '',
               baseUpdatedAt: parseInt(localStorage.getItem('rakka_household_updated_at') || '0', 10),
-              blob: await window.RakkaHousehold.encryptProfiles(familyProfiles, getHouseholdKey())
+              blob: await rkHhBuildBlob()
             })
           });
           const data = await res.json();
@@ -26395,6 +26437,10 @@ function renderHistory() {
     window.syncHouseholdNow = syncHouseholdNow;
     window.leaveHouseholdSync = leaveHouseholdSync;
     window.scheduleHouseholdPush = scheduleHouseholdPush;
+
+    // Keep the two phones close to real time while the app is open.
+    setInterval(() => { if (document.visibilityState === 'visible' && localStorage.getItem('rakka_household_id') && getHouseholdKey()) syncHouseholdNow(false); }, 45000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && localStorage.getItem('rakka_household_id') && getHouseholdKey()) syncHouseholdNow(false); });
 
     setTimeout(() => {
       updateHouseholdSyncUI();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v206';
+const CACHE_NAME = 'rakka-v208';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
@@ -25,7 +25,7 @@ const ASSETS = [
   './favicon.png',
   './favicon.png?v=18',
   './logo-1024.png',
-  './splash-mascot.png?v=18',
+  './splash-mascot-sm.png?v=19',
   './logo-1024.png?v=18',
   './staples_catalog.json'
 ];

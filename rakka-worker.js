@@ -1286,7 +1286,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v7-wrap2',
+        build: '2026-11-17-matcher-v7-hhsync',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -2492,7 +2492,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
       };
 
       // Household sync is end-to-end encrypted by the phones. The worker only stores an opaque blob it cannot read.
-      const cleanBlob = (v) => (typeof v === 'string' && v.length <= 65536 && /^[A-Za-z0-9_-]*$/.test(v)) ? v : null;
+      const cleanBlob = (v) => (typeof v === 'string' && v.length <= 700000 && /^[A-Za-z0-9_-]*$/.test(v)) ? v : null;
 
       try {
         const body = await request.json();
