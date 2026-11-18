@@ -27,5 +27,5 @@ jobs:
         run: |
           git config user.name "rakka-bot"
           git config user.email "rakka-bot@users.noreply.github.com"
-          git add community_catalog.json.gz catalog_manifest.json
+          git add -A community_catalog.json.gz catalog_manifest.json catalog
           git diff --cached --quiet || (git commit -m "Update offline catalog" && git push)
