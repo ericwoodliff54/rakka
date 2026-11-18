@@ -198,7 +198,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy | Twin Ravens Digital LLC</title>
-  <meta name="description" content="Official Privacy Policy for RAKKA Food Safety & Recall Scanner by Twin Ravens Digital LLC. Zero tracking, offline-first local storage, and complete user privacy.">
+  <meta name="description" content="Privacy Policy and Terms for RAKKA Food Safety &amp; Recall Scanner by Twin Ravens Digital LLC. No accounts. Your data stays on your device unless you turn on an optional feature, and you can delete it all in the app.">
   <link rel="icon" type="image/png" href="/favicon.png">
   <style>
     :root {
@@ -358,6 +358,11 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
     a:hover {
       text-decoration: underline;
     }
+    table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.85rem; }
+    th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    th { color: var(--text); font-weight: 700; }
+    td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+    @media (max-width: 560px) { td:first-child { white-space: normal; } table { font-size: 0.8rem; } }
   </style>
 </head>
 <body>
@@ -366,80 +371,92 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
       <div class="badge">Official Legal Notice</div>
       <h1>Privacy Policy & Terms</h1>
       <p class="subtitle">Twin Ravens Digital LLC • RAKKA Food Safety & Recall Scanner</p>
-      <p class="policy-meta">Effective Date: November 11, 2026 • Version 1.4</p>
+      <p class="policy-meta">Effective Date: November 17, 2026 • Version 1.6</p>
     </header>
 
     <div class="summary-card">
-      <h2>Executive Summary: Zero Tracking, Offline-First</h2>
-      <p>RAKKA was built on the core principle that personal dietary and health data belongs solely to the user. We do not require accounts, we do not track your location, and we do not sell or monetize personal shopping records. All household profiles, allergen filters, and pantry lists remain stored directly on your physical device.</p>
+      <h2>In short</h2>
+      <p>RAKKA needs no account. Your scans, receipts, allergen guards and family profiles are stored on your device. They leave it only when you turn on a feature that needs the server, and section 3 lists exactly what is sent for each one. You can erase everything, on your device and on our server, with <strong>Delete my data</strong> in Settings.</p>
     </div>
 
     <section>
-      <h2>1. Information We Do Not Collect</h2>
-      <p>Unlike conventional consumer apps, RAKKA does not harvest personal identity metrics:</p>
+      <h2>1. What we do not collect</h2>
       <ul>
-        <li><strong>No Account Required:</strong> You do not register with an email, phone number, password, or social media login to scan food or receive recall alerts.</li>
-        <li><strong>No Location Tracking:</strong> We do not track, collect, or share your GPS coordinates, IP-derived physical locations, or shopping routes.</li>
-        <li><strong>No Data Monetization:</strong> We do not sell, rent, license, or disclose your dietary restrictions, household member profiles, or scan histories to data brokers, insurers, food manufacturers, or targeted advertising networks.</li>
+        <li><strong>No account.</strong> No email, phone number, password or social login is needed to use RAKKA.</li>
+        <li><strong>No location tracking.</strong> We do not collect your GPS position or your shopping routes.</li>
+        <li><strong>No advertising or data sales.</strong> We do not sell, rent or share your dietary information, household profiles, watchlist or scan history with data brokers, insurers, food makers or advertisers. RAKKA has no ad or analytics trackers.</li>
       </ul>
     </section>
 
     <section>
-      <h2>2. On-Device Local Storage</h2>
-      <p>RAKKA operates with an <strong>offline-first local architecture</strong>. The following data is written directly to your device's browser local storage (IndexedDB / LocalStorage) and is never transmitted to our servers:</p>
+      <h2>2. What stays on your device</h2>
+      <p>RAKKA works offline first. These are saved in your device's browser storage and are not sent to us unless you turn on a feature in section 3:</p>
       <ul>
-        <li><strong>Family Dietary Profiles:</strong> Custom household member names, avatars, and specific allergen alert preferences.</li>
-        <li><strong>Allergen & Additive Shields:</strong> Toggles for the 12 essential allergens and 37 scrutinized food chemicals/dyes.</li>
-        <li><strong>Pantry & Fridge Watchlist:</strong> Up to 50 items (Free tier) or 500 items (Plus tier) saved for continuous federal recall cross-referencing.</li>
+        <li><strong>Allergen guards and family profiles:</strong> names, avatars and allergen choices.</li>
+        <li><strong>Watchlist and scan history:</strong> the products you scanned or imported from receipts.</li>
+        <li><strong>Settings:</strong> theme, sound, haptics and filters.</li>
+        <li><strong>Offline product database:</strong> a copy of public product information (names, brands and ingredient text), about 30 MB, so scans are fast and work without a signal. It holds nothing about you. You can turn it off and remove it in Settings, Privacy and data.</li>
       </ul>
-      <p>You can instantly delete all local records at any time using the <strong>"Factory Reset & Clear All Data"</strong> button in the Settings menu.</p>
+      <p>The camera is used only to read barcodes. Video is processed in memory on your device and is never recorded or uploaded.</p>
     </section>
 
     <section>
-      <h2>3. Camera & Hardware Sensor Access</h2>
-      <p>RAKKA requests camera access strictly to perform optical barcode recognition:</p>
+      <h2>3. What is sent to our server, and when</h2>
+      <p>Our server is a Cloudflare Worker with Cloudflare storage. The table lists everything it keeps about you or your device.</p>
+      <table>
+        <thead><tr><th>Feature</th><th>What is sent and kept</th><th>How long</th></tr></thead>
+        <tbody>
+          <tr><td>Background recall alerts (Plus, optional)</td><td>The names, brands and barcodes of items on your watchlist, with a random device ID, a random alert key, your Plus token and, in the store app, a push notification token. Never your allergen profiles, family profiles, household, name or email.</td><td>Until you turn alerts off, your Plus access ends, or you use Delete my data. Refreshed each time the app opens; erased after 120 days without one.</td></tr>
+          <tr><td>Household sync (Plus, optional)</td><td>Your family profiles and your watchlist (product names, brands and barcodes), encrypted on your device with a key that is shared only in your invite code or QR. We cannot read them. Receipts, photos and settings are never synced.</td><td>Up to 90 days after the last sync, or until the last member leaves.</td></tr>
+          <tr><td>Receipt scanning</td><td>The receipt photo is sent over HTTPS to our Worker, which passes it to Google's Gemini service to read the items. We do not store the image or link it to you. Google handles the image under its own terms for the Gemini API.</td><td>Not stored by us.</td></tr>
+          <tr><td>Scan limits</td><td>A random device ID with a count of receipt scans, and a one-way hash of your network address as a backstop against abuse. No names or products.</td><td>Up to 35 days.</td></tr>
+          <tr><td>Plus trial and invite codes</td><td>A random device ID with the trial start time or the invite code it used, so a trial or code can only be used as intended.</td><td>The trial marker is kept so a trial cannot be repeated. It holds no personal data. A code seat is freed by Delete my data.</td></tr>
+          <tr><td>Product catalog</td><td>When a barcode is looked up, public packaging facts (product name, brand, ingredient text) may be cached for everyone. Each product also carries the date it was last looked up, which decides what is included in the offline database. This holds nothing about you or your device.</td><td>Until replaced.</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Recall alert notifications</strong> contain only a generic message such as "A recall may affect an item on your watchlist". The product name never passes through Apple's or Google's push services. The details are shown inside RAKKA when you open it.</p>
+      <p><strong>What this means for privacy:</strong> background alerts need the server to read the product names and barcodes you send, so they are not end-to-end encrypted. We use them only to check recalls for you. Household sync is end-to-end encrypted. If you prefer, leave background alerts off; RAKKA still checks your watchlist against recalls each time you open it.</p>
+    </section>
+
+    <section>
+      <h2>4. Your choices and deleting your data</h2>
       <ul>
-        <li><strong>Live Barcode Scanning:</strong> Camera video frames are evaluated in real time within device memory to decode standard GS1 UPC and EAN barcodes. Video feeds are never recorded, saved to disk, or broadcast over the internet.</li>
-        <li><strong>Instant Camera Deactivation:</strong> The camera stream automatically pauses immediately upon barcode lock and automatically halts when the app is backgrounded or screen locked to prevent background streaming and save battery.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>4. Ephemeral Receipt & Expiration Lot Audits</h2>
-      <p>When you use the Multi-Item Receipt Auditor or Packaging Date Stamp Auditor:</p>
-      <ul>
-        <li>Images snapped for receipt reading or embossed lot code inspection are transmitted via secure HTTPS (TLS 1.3) to our Cloudflare Worker proxy for optical character recognition (OCR) via Google Gemini 1.5 Flash.</li>
-        <li><strong>Zero Permanent Storage:</strong> These images are held in volatile RAM strictly for the duration of the 2-to-4 second extraction request and are immediately discarded. Images are never archived, cataloged, or linked to any user identifier.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>5. Anonymous Community Product Catalog</h2>
-      <p>When an unindexed product barcode is resolved, anonymous packaging facts (product title, brand, and manufacturer ingredient text) may be cached in our Cloudflare KV community database (<code>RAKKA_COMMUNITY_DB</code>). This catalog contains solely publicly printed package disclosures and contains zero user identifiers, photos, device IDs, or personal shopping histories.</p>
-    </section>
-
-    <section>
-      <h2>6. Third-Party Data Sources & Subscriptions</h2>
-      <p>RAKKA interfaces with reputable external services to deliver safety data:</p>
-      <ul>
-        <li><strong>Federal Public Safety APIs:</strong> Recall enforcement reports are queried directly and anonymously from official openFDA and USDA Food Safety and Inspection Service (FSIS) public databases.</li>
-        <li><strong>In-App Subscriptions:</strong> Plus tier subscriptions are billed securely through Apple In-App Purchases (iOS StoreKit), Google Play Billing, or Stripe (Web PWA). All financial transactions are processed directly by the respective platform; Twin Ravens Digital LLC never receives, processes, or stores your credit card details.</li>
+        <li><strong>Turn alerts off:</strong> Settings, Background Recall Alerts. Your watchlist copy is erased from the server.</li>
+        <li><strong>Delete my data:</strong> Settings, Delete my data. This erases your scans, receipts, profiles, settings and offline product database from your device, removes your background alert data from our server, leaves your household, and frees any invite code seat. If the server cannot be reached, nothing is deleted and you are told so, so you can try again.</li>
+        <li><strong>Questions or requests:</strong> contact us at the address in section 8. Because RAKKA has no accounts, we identify your data by the random device ID in the app, so we can only act on requests made from the app itself.</li>
       </ul>
     </section>
 
     <section>
-      <h2>7. Food Safety & Medical Disclaimer</h2>
-      <p>RAKKA is an informational assistant designed to streamline food label and federal recall awareness. It is not a clinical medical diagnostic device and does not guarantee the prevention of life-threatening allergic reactions (anaphylaxis). Label formulations, cross-contamination warnings, and manufacturer lots change rapidly. Always inspect the physical product packaging and consult a board-certified allergist for medical guidance.</p>
+      <h2>5. Third-party services</h2>
+      <ul>
+        <li><strong>Federal recall data:</strong> recalls come from the public openFDA and USDA Food Safety and Inspection Service (FSIS) feeds. The app requests them directly, and our server requests them to check alerts.</li>
+        <li><strong>Google Gemini:</strong> reads receipt photos, as described above.</li>
+        <li><strong>Cloudflare:</strong> hosts our server and storage.</li>
+        <li><strong>Apple and Google push services:</strong> deliver the generic alert in the store app.</li>
+        <li><strong>Subscriptions:</strong> while RAKKA is in testing, Plus is available by invite code or a one-time 7-day trial. When paid plans start in the Apple App Store and Google Play, payment is handled by Apple or Google and we do not receive your payment details.</li>
+      </ul>
     </section>
 
     <section>
-      <h2>8. Children's Privacy (COPPA Compliance)</h2>
-      <p>RAKKA does not knowingly collect, solicit, or maintain personal information from children under the age of 13. Household family profiles are managed locally on the parent or guardian's personal device.</p>
+      <h2>6. Terms of use</h2>
+      <ul>
+        <li><strong>Information, not a guarantee.</strong> RAKKA is an informational tool that helps you check foods against public recall notices and the allergens you select. It is not a medical device. It never tells you a food is "safe". Recall data can be incomplete or delayed, and a possible match may not be your exact product. Always read the package, check lot codes and best-by dates, and follow the instructions in the recall notice. If you have a severe allergy, do not rely on RAKKA alone.</li>
+        <li><strong>Use.</strong> Use RAKKA for your own household's personal use and do not misuse the service, attempt to bypass limits, or probe the server.</li>
+        <li><strong>Plus.</strong> Plus features, limits and prices may change. Invite codes and trials may be withdrawn.</li>
+        <li><strong>No warranty.</strong> RAKKA is provided as is. To the extent the law allows, Twin Ravens Digital LLC is not liable for losses resulting from its use.</li>
+        <li><strong>Changes.</strong> We may update this page. The effective date at the top shows the latest version, and the app asks you to accept material changes.</li>
+      </ul>
     </section>
 
     <section>
-      <h2>9. Contact & Developer Information</h2>
-      <p>For questions, privacy inquiries, or legal communications regarding RAKKA or Twin Ravens Digital LLC:</p>
+      <h2>7. Children</h2>
+      <p>RAKKA is not directed to children under 13 and does not knowingly collect personal information from them. Family profiles are created and managed by a parent or guardian on their own device.</p>
+    </section>
+
+    <section>
+      <h2>8. Contact</h2>
+      <p>For questions, privacy requests or legal communications about RAKKA or Twin Ravens Digital LLC:</p>
       <div class="contact-box">
         <strong>Twin Ravens Digital LLC</strong><br>
         Registered Agent Address: 6545 Market Ave. North, Ste 100, Canton, OH 44721<br>
