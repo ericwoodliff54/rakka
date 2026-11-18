@@ -18948,6 +18948,18 @@
 
     window.BackNav = BackNav;
 
+    // Native Android shell: system back gesture/button -> close top overlay first, exit only when nothing is open
+    try {
+      const capApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+      if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform() && capApp && capApp.addListener) {
+        capApp.addListener('backButton', () => {
+          let handled = false;
+          try { handled = BackNav.dismissTop(); } catch (_) {}
+          if (!handled) { try { capApp.minimizeApp ? capApp.minimizeApp() : capApp.exitApp(); } catch (_) {} }
+        });
+      }
+    } catch (_) {}
+
     // Listen to browser history popstate (Android gesture navigation & Chrome back button)
     window.addEventListener('popstate', (e) => {
       BackNav.dismissTop();
@@ -25701,6 +25713,7 @@ function renderHistory() {
     // Opening a household invite link skips the splash entirely so the join starts right away.
     let rkSplashMs = 2400;
     try { if (/[?&]join=RKA-/i.test(window.location.search)) rkSplashMs = 150; } catch (_) {}
+    try { if (window.rkIsNativeShell && rkSplashMs > 1400) rkSplashMs = 1400; } catch (_) {}
     setTimeout(() => {
       dismissSplashScreen();
     }, rkSplashMs);

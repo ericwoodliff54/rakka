@@ -67,3 +67,12 @@ for dirpath, _, files in os.walk(res):
         base.alpha_composite(m, ((w - side) // 2, (h - side) // 2))
         base.convert('RGB').save(target)
 print('patched', android)
+
+# --- Android 12+ system splash: dark background, no small icon (the web splash follows immediately)
+st = os.path.join(res, 'values/styles.xml')
+t = open(st).read()
+t = t.replace('<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">\n        <item name="android:background">@drawable/splash</item>',
+ '<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">\n        <item name="android:background">@drawable/splash</item>\n        <item name="windowSplashScreenBackground">#050811</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/rk_blank</item>\n        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>')
+open(st, 'w').write(t)
+open(os.path.join(res, 'drawable/rk_blank.xml'), 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#00000000"/><size android:width="1dp" android:height="1dp"/></shape>\n')
+print('splash theme patched', 'windowSplashScreenBackground' in t)
