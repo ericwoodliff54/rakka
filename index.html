@@ -26241,7 +26241,11 @@ function renderHistory() {
         return;
       }
       const HHc = window.RakkaHousehold;
-      const invite = HHc ? HHc.parseInvite(raw) : null;
+      if (!HHc) {
+        if (typeof showCustomizeToast === 'function') showCustomizeToast('Encryption is still loading. Please try again in a moment.');
+        return;
+      }
+      const invite = HHc.parseInvite(raw);
       if (!invite || !invite.key) {
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Use the full invite code, including the part after the dot, or scan the QR.');
         return;
@@ -26400,7 +26404,12 @@ function renderHistory() {
       if (joinCodeParam && joinCodeParam.trim().toUpperCase().startsWith('RKA-')) {
         const cleanUrl = `${window.location.pathname}`;
         try { window.history.replaceState({}, document.title, cleanUrl); } catch (_) {}
-        joinHouseholdByCode(`${joinCodeParam.trim().toUpperCase()}.${hashKey.toUpperCase()}`);
+        const fullInvite = `${joinCodeParam.trim().toUpperCase()}.${hashKey.toUpperCase()}`;
+        // On a first visit (nothing cached yet) the encryption module can arrive after this point, so wait for it.
+        (async () => {
+          for (let i = 0; i < 60 && !window.RakkaHousehold; i++) await new Promise(r => setTimeout(r, 250));
+          joinHouseholdByCode(fullInvite);
+        })();
       } else if (localStorage.getItem('rakka_household_id') && !getHouseholdKey()) {
         // Linked with the older, unencrypted sync: unlink so the old server copy is removed, then re-link with a new code.
         leaveHouseholdSync().then(() => {
