@@ -20068,7 +20068,13 @@
       return null;
     }
 
+    let rkCatalogSyncRunning = false;
     async function syncCommunityCatalogToIDB(force = false) {
+      if (rkCatalogSyncRunning) return;
+      rkCatalogSyncRunning = true;
+      try { await rkSyncCatalogInner(force); } finally { rkCatalogSyncRunning = false; }
+    }
+    async function rkSyncCatalogInner(force) {
       try {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         const lastCheck = Number(await RakkaIDB.getMeta('catalog_checked_at')) || 0;
@@ -20087,7 +20093,34 @@
         const targetVersion = (manifest && manifest.version) ? String(manifest.version) : 'v1';
         if (currentVer === targetVersion) { await RakkaIDB.setMeta('catalog_checked_at', Date.now()); return; }
 
-        // 2. Download the catalog
+        // 2a. Preferred: small numbered parts. Resumable, and no huge file to parse on an older phone.
+        if (manifest && Number(manifest.parts) > 0) {
+          const dir = String(manifest.dir || 'catalog').replace(/[^\w-]/g, '');
+          const progKey = 'catalog_progress_' + targetVersion;
+          let next = Number(await RakkaIDB.getMeta(progKey)) || 0;
+          const stamp = Date.now();
+          for (let i = next; i < Number(manifest.parts); i++) {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; // pick up again next time
+            let items = null;
+            try {
+              const r = await fetch(`${base}${dir}/part-${String(i).padStart(3, '0')}.json`, { cache: 'no-cache' });
+              if (r.ok) { const j = await r.json(); items = Array.isArray(j.items) ? j.items : null; }
+            } catch (_) {}
+            if (!items) return; // network hiccup: resume from this part later
+            const ok = await RakkaIDB.putBatch(items.map(it => (it && !it.savedAt) ? Object.assign({}, it, { savedAt: stamp }) : it));
+            if (!ok) { console.warn('[Rakka IDB] Catalog import stopped early; will retry on a later launch.'); return; }
+            await RakkaIDB.setMeta(progKey, i + 1);
+            await new Promise(r => setTimeout(r, 400)); // go slowly so the app stays smooth
+          }
+          await RakkaIDB.setMeta('catalog_version', targetVersion);
+          await RakkaIDB.setMeta('catalog_checked_at', Date.now());
+          console.log(`[Rakka IDB] Synced ${manifest.count} offline products (${targetVersion}).`);
+          return;
+        }
+
+        // 2b. Older single-file catalog: a very large file, so only phones with plenty of memory take it.
+        if (!force && !(navigator.deviceMemory >= 4)) return;
+        // Download the catalog
         const file = (manifest && manifest.file) ? String(manifest.file).replace(/\.gz$/, '') : 'community_catalog.json';
         let payload = await rkFetchCatalogPayload(base, file);
         if (!payload && base !== './') payload = await rkFetchCatalogPayload('./', file);
@@ -20118,9 +20151,11 @@
 
     if (typeof window !== 'undefined') {
       window.addEventListener('load', () => {
-        setTimeout(() => { rkRequestPersistentStorage(); syncCommunityCatalogToIDB(); }, 4000);
+        setTimeout(() => { rkRequestPersistentStorage(); }, 4000);
+        // The catalog downloads quietly in the background, well after the app is up.
+        setTimeout(() => syncCommunityCatalogToIDB(), 25000);
       });
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => syncCommunityCatalogToIDB(), 3000); });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => syncCommunityCatalogToIDB(), 8000); });
     }
 
     function getCatalogProduct(rawCode) {

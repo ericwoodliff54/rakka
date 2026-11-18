@@ -119,6 +119,16 @@ async function exportFromCloudflareKV() {
   const payload = JSON.stringify({ version, count: records.length, items: records });
   const gz = zlib.gzipSync(Buffer.from(payload, 'utf8'), { level: 9 });
   fs.writeFileSync(path.join('.', 'community_catalog.json.gz'), gz);
-  fs.writeFileSync(path.join('.', 'catalog_manifest.json'), JSON.stringify({ version, count: records.length, file: 'community_catalog.json', }) + '\n');
+  // Small shards (1,000 products each) so phones never have to parse one huge file, and an interrupted import can resume.
+  const PART_SIZE = 1000;
+  const dir = path.join('.', 'catalog');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  const parts = Math.ceil(records.length / PART_SIZE);
+  for (let i = 0; i < parts; i++) {
+    const chunk = records.slice(i * PART_SIZE, (i + 1) * PART_SIZE);
+    fs.writeFileSync(path.join(dir, 'part-' + String(i).padStart(3, '0') + '.json'), JSON.stringify({ items: chunk }));
+  }
+  fs.writeFileSync(path.join('.', 'catalog_manifest.json'), JSON.stringify({ version, count: records.length, file: 'community_catalog.json', dir: 'catalog', parts, partSize: PART_SIZE }) + '\n');
   console.log(`Done! Wrote community_catalog.json.gz (${records.length} items, ${(gz.length / 1024 / 1024).toFixed(2)} MB).`);
 })();

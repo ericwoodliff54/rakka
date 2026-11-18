@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakka-v208';
+const CACHE_NAME = 'rakka-v209';
 const SAFETY_ASSETS = [
   './js/rakka-safety.js',
   './js/core/text.js',
@@ -19,14 +19,11 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-192.png?v=18',
-  './icon-512.png',
   './apple-touch-icon.png',
   './apple-touch-icon.png?v=18',
   './favicon.png',
   './favicon.png?v=18',
-  './logo-1024.png',
   './splash-mascot-sm.png?v=19',
-  './logo-1024.png?v=18',
   './staples_catalog.json'
 ];
 
@@ -72,7 +69,7 @@ self.addEventListener('fetch', event => {
   }
 
   // Catalog files must always be fresh (and are big), so they bypass the cache entirely.
-  if (/catalog_manifest\.json$|community_catalog\.json(\.gz)?$/.test(url.pathname)) {
+  if (/catalog_manifest\.json$|community_catalog\.json(\.gz)?$|\/catalog\/part-\d+\.json$/.test(url.pathname)) {
     event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
