@@ -11,7 +11,7 @@ version_name = sys.argv[4] if len(sys.argv) > 4 else '1.0.0'
 mf = os.path.join(android, 'app/src/main/AndroidManifest.xml')
 s = open(mf).read()
 add = ''
-for perm in ['android.permission.CAMERA', 'android.permission.ACCESS_NETWORK_STATE']:
+for perm in ['android.permission.CAMERA', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.VIBRATE']:
     if perm not in s:
         add += f'    <uses-permission android:name="{perm}" />\n'
 if 'android.hardware.camera' not in s:
