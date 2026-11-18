@@ -26403,7 +26403,11 @@ function renderHistory() {
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Encryption is still loading. Please try again in a moment.');
         return;
       }
-      const invite = HHc.parseInvite(raw);
+      // An invite link (from the QR) becomes CODE.KEY here, so this works even if an older encryption file is still cached.
+      let rawInvite = raw;
+      const jm = /[?&]join=(RKA-[A-Z0-9]{3}-[A-Z0-9]{3})/i.exec(raw);
+      if (jm) { const km = /[#&]k=([A-Za-z2-7]+)/.exec(raw); rawInvite = jm[1] + '.' + (km ? km[1] : ''); }
+      const invite = HHc.parseInvite(rawInvite);
       if (!invite || !invite.key) {
         if (typeof showCustomizeToast === 'function') showCustomizeToast('Use the full invite code, including the part after the dot, or scan the QR.');
         return;
