@@ -40,7 +40,14 @@ export function isValidKey(key) { return typeof key === 'string' && KEY_RE.test(
 export function formatInvite(code, key) { return `${code}.${key}`; }
 
 export function parseInvite(text) {
-  const s = String(text || '').trim().toUpperCase().replace(/\s+/g, '');
+  let raw = String(text || '').trim();
+  // Also accept the whole invite link (...?join=RKA-123-456#k=KEY), so it can be pasted into the installed app.
+  const jm = /[?&]join=(RKA-[A-Z0-9]{3}-[A-Z0-9]{3})/i.exec(raw);
+  if (jm) {
+    const km = /[#&]k=([A-Za-z2-7]+)/.exec(raw);
+    raw = jm[1] + '.' + (km ? km[1] : '');
+  }
+  const s = raw.toUpperCase().replace(/\s+/g, '');
   const [code, key, ...rest] = s.split('.');
   if (rest.length || !CODE_RE.test(code || '')) return null;
   if (!isValidKey(key)) return { code, key: null };
