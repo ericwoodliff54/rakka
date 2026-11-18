@@ -5244,10 +5244,10 @@
                 </span>
               </div>
               <p class="text-xs text-slate-300 leading-normal">
-                RAKKA identified potential synthetic dyes or chemical additives in this product formulation. Unlock Plus to view the exact detected additives and activate personalized allergen guards.
+                RAKKA identified potential synthetic dyes or chemical additives in this product formulation. Unlock Plus to see exactly which additives were detected.
               </p>
               <button type="button" class="open-paywall-trigger unlock-additive-btn w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
-                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Additive & Allergen Guard</span></span>
+                <span class="flex items-center gap-1.5">${UI_ICONS.star}<span>Unlock Plus Additive Guard</span></span>
               </button>
             </div>
           `;
@@ -5256,7 +5256,7 @@
             <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
               <span class="text-slate-400 flex items-center gap-1.5">
                 <span class="text-purple-400">${UI_ICONS.lock}</span>
-                <span>Allergen & Additive Guard: <strong class="text-purple-300">Locked</strong></span>
+                <span>Additive Guard: <strong class="text-purple-300">Locked</strong></span>
               </span>
               <button type="button" class="open-paywall-trigger unlock-additive-btn px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-sm shadow-purple-950/30 transition shrink-0 cursor-pointer">
                 Unlock Plus
@@ -24500,7 +24500,7 @@ function renderHistory() {
         // Calculate family allergen matches
         const affectedMembers = [];
         if (normalizedAllergens.length > 0 && Array.isArray(familyProfiles)) {
-          for (const prof of familyProfiles) {
+          for (const prof of (isPlusActive ? familyProfiles : [getActiveProfile()].filter(Boolean))) {
             const matches = (prof.allergens || []).filter(a => normalizedAllergens.includes(a));
             if (matches.length > 0) {
               const formattedNames = matches.map(id => (typeof formatAllergenName === 'function') ? formatAllergenName(id) : id);
@@ -24538,12 +24538,8 @@ function renderHistory() {
           statusPill = `<span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 flex items-center gap-1"><span>✓</span><span>Terminated Recall</span></span>`;
         } else if (isAlert) {
           cardBorder = 'border-slate-800 bg-slate-900/90 hover:bg-slate-850 hover:border-slate-700';
-          if (isPlusActive) {
-            const memberNames = affectedMembers.length > 0 ? ` (${affectedMembers.map(m => esc(m.name)).join(', ')})` : '';
-            statusPill = `<span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert${memberNames}</span>`;
-          } else {
-            statusPill = `<button type="button" onclick="event.stopPropagation(); openPaywall();" class="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer" title="Tap to unlock RAKKA Plus allergen guard"><span>🔒 Allergen Alert • Unlock Plus</span></button>`;
-          }
+          const memberNames = affectedMembers.length > 0 ? ` (${affectedMembers.map(m => esc(m.name)).join(', ')})` : '';
+          statusPill = `<span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Allergen Alert${memberNames}</span>`;
         }
         if (!isItemRecalled && !isItemTerminated && !isAlert && (item.unverified === true || item.productUnverified === true || (!item.ingredients && /Packaged Food Item|Scanned Product/i.test(String(item.title || item.productName || ''))))) {
           statusPill = `<span class="px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-500/20 text-slate-300 border border-slate-500/40">Couldn't verify</span>`;
@@ -24661,7 +24657,7 @@ function renderHistory() {
               <!-- Allergen Breakdown -->
               <div class="space-y-1">
                 <span class="text-xs uppercase font-bold text-amber-300 tracking-wider block">Household Allergen Analysis</span>
-                ${isPlusActive ? (affectedMembers.length > 0 ? `
+                ${true ? (affectedMembers.length > 0 ? `
                   <div class="space-y-1">
                     ${affectedMembers.map(m => `
                       <div class="p-2 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between text-xs gap-2">
