@@ -4175,6 +4175,16 @@
       <div class="rk-set-group rk-collapsible rk-collapsed" id="set-privacy">
         <h3 class="rk-set-title rk-set-toggle" role="button" tabindex="0" aria-expanded="false" data-rk-group="set-privacy"><span>Privacy and data</span><svg class="rk-set-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></h3>
 
+      <!-- OFFLINE PRODUCT DATABASE -->
+      <div id="offlineDbBox" class="pt-3 border-t border-slate-800 space-y-2 text-xs">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Offline product database</h3>
+        <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
+          <p class="text-xs text-slate-300 leading-relaxed">Saves about 30 MB of product details on this phone so scans are instant and work without a signal. You can turn it off and free the space any time.</p>
+          <p id="offlineDbStatus" class="text-xs text-slate-400">Checking...</p>
+          <button type="button" id="offlineDbToggleBtn" class="w-full min-h-[44px] py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">Turn off and free space</button>
+        </div>
+      </div>
+
       <!-- LEGAL, COMPLIANCE & PRIVACY (Just Above Factory Reset) -->
       <div class="pt-3 border-t border-slate-800 space-y-2 text-xs">
         <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Legal, Compliance &amp; Privacy</h3>
@@ -4192,7 +4202,7 @@
 
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
           <p class="text-xs text-slate-300 leading-relaxed"><strong>Your data stays on your device by default.</strong> Only optional features use our server:</p>
-          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Household Sync (Plus):</strong> family profiles are encrypted, and we cannot read them.</p>
+          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Household Sync (Plus):</strong> family profiles and your watchlist are encrypted, and we cannot read them.</p>
           <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Recall Alerts (Plus):</strong> your watchlist names, brands and barcodes are stored so we can check recalls for you.</p>
           <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Receipt scans:</strong> photos go through our server to Google Gemini to be read, and we do not store them.</p>
           <p class="text-xs text-slate-300 leading-relaxed">We never sell your data. <strong>Delete my data</strong> erases it all.</p>
@@ -20017,7 +20027,20 @@
         } catch (_) {}
       }
 
-      return { getProduct, putProduct, putBatch, getMeta, setMeta, destroy };
+      async function countProducts() {
+        const db = await openDB(); if (!db) return 0;
+        return new Promise((resolve) => {
+          try { const r = db.transaction('products', 'readonly').objectStore('products').count(); r.onsuccess = () => resolve(r.result || 0); r.onerror = () => resolve(0); } catch (_) { resolve(0); }
+        });
+      }
+      async function clearProducts() {
+        const db = await openDB(); if (!db) return false;
+        return new Promise((resolve) => {
+          try { const tx = db.transaction('products', 'readwrite'); tx.objectStore('products').clear(); tx.oncomplete = () => resolve(true); tx.onerror = tx.onabort = () => resolve(false); } catch (_) { resolve(false); }
+        });
+      }
+
+      return { getProduct, putProduct, putBatch, getMeta, setMeta, destroy, countProducts, clearProducts };
     })();
 
     async function getCatalogProductAsync(rawCode) {
@@ -20068,6 +20091,7 @@
       return null;
     }
 
+    function rkOdbOff() { try { return localStorage.getItem('rakka_offline_db') === 'off'; } catch (_) { return false; } }
     let rkCatalogSyncRunning = false;
     async function syncCommunityCatalogToIDB(force = false) {
       if (rkCatalogSyncRunning) return;
@@ -20077,6 +20101,7 @@
     async function rkSyncCatalogInner(force) {
       try {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        if (rkOdbOff()) return;
         const lastCheck = Number(await RakkaIDB.getMeta('catalog_checked_at')) || 0;
         const currentVer = await RakkaIDB.getMeta('catalog_version');
         if (!force && currentVer && Date.now() - lastCheck < 20 * 3600000) return;
@@ -20101,12 +20126,15 @@
           const stamp = Date.now();
           for (let i = next; i < Number(manifest.parts); i++) {
             if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; // pick up again next time
+            if (rkOdbOff()) return;
+            window._rkCatalogProgress = { done: i, total: Number(manifest.parts) };
             let items = null;
             try {
               const r = await fetch(`${base}${dir}/part-${String(i).padStart(3, '0')}.json`, { cache: 'no-cache' });
               if (r.ok) { const j = await r.json(); items = Array.isArray(j.items) ? j.items : null; }
             } catch (_) {}
             if (!items) return; // network hiccup: resume from this part later
+            if (rkOdbOff()) return;
             const ok = await RakkaIDB.putBatch(items.map(it => (it && !it.savedAt) ? Object.assign({}, it, { savedAt: stamp }) : it));
             if (!ok) { console.warn('[Rakka IDB] Catalog import stopped early; will retry on a later launch.'); return; }
             await RakkaIDB.setMeta(progKey, i + 1);
@@ -20119,7 +20147,7 @@
         }
 
         // 2b. Older single-file catalog: a very large file, so only phones with plenty of memory take it.
-        if (!force && !(navigator.deviceMemory >= 4)) return;
+        if (!(navigator.deviceMemory >= 4)) return;
         // Download the catalog
         const file = (manifest && manifest.file) ? String(manifest.file).replace(/\.gz$/, '') : 'community_catalog.json';
         let payload = await rkFetchCatalogPayload(base, file);
@@ -20144,6 +20172,42 @@
       }
     }
 
+    // Settings > Privacy and data > Offline product database
+    async function rkOfflineDbRefresh() { try { await rkOfflineDbRefresh2(); } catch (_) {} }
+    async function rkOfflineDbRefresh2() {
+      const st = document.getElementById('offlineDbStatus'), btn = document.getElementById('offlineDbToggleBtn');
+      if (!st || !btn) return;
+      const off = rkOdbOff();
+      if (off) { st.textContent = 'Off. Product lookups use the internet.'; btn.textContent = 'Turn on (about 5 MB download)'; return; }
+      const n = await RakkaIDB.countProducts();
+      const mb = Math.max(1, Math.round(n * 0.00058));
+      const done = !!(await RakkaIDB.getMeta('catalog_version'));
+      st.textContent = (done && n > 0) ? `On. About ${mb} MB saved on this phone.` : 'On. Setting up quietly in the background.';
+      btn.textContent = 'Turn off and free space';
+    }
+    async function rkOfflineDbToggle() {
+      const btn = document.getElementById('offlineDbToggleBtn'); if (btn) btn.disabled = true;
+      try {
+        if (rkOdbOff()) {
+          try { localStorage.removeItem('rakka_offline_db'); } catch (_) {}
+          syncCommunityCatalogToIDB(true);
+        } else {
+          try { localStorage.setItem('rakka_offline_db', 'off'); } catch (_) {}
+          await new Promise(r => setTimeout(r, 700)); // let a running download notice
+          await RakkaIDB.clearProducts();
+          await RakkaIDB.setMeta('catalog_version', '');
+          window._rkCatalogProgress = null;
+          if (typeof showCustomizeToast === 'function') showCustomizeToast('Offline database removed.');
+        }
+      } finally { if (btn) btn.disabled = false; rkOfflineDbRefresh(); }
+    }
+    window.addEventListener('load', () => {
+      const btn = document.getElementById('offlineDbToggleBtn');
+      if (btn) btn.addEventListener('click', rkOfflineDbToggle);
+      rkOfflineDbRefresh();
+      setInterval(() => { if (document.visibilityState === 'visible') rkOfflineDbRefresh(); }, 2500);
+    });
+
     // Ask the browser to keep our data (iOS/Android may otherwise clear it after a few unused days).
     async function rkRequestPersistentStorage() {
       try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (_) {}
@@ -20152,8 +20216,8 @@
     if (typeof window !== 'undefined') {
       window.addEventListener('load', () => {
         setTimeout(() => { rkRequestPersistentStorage(); }, 4000);
-        // The catalog downloads quietly in the background, well after the app is up.
-        setTimeout(() => syncCommunityCatalogToIDB(), 25000);
+        // The catalog downloads quietly in small pieces right after the app is up, so first scans are already covered.
+        setTimeout(() => syncCommunityCatalogToIDB(), 6000);
       });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => syncCommunityCatalogToIDB(), 8000); });
     }

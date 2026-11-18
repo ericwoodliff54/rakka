@@ -1286,7 +1286,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v7-hhsync',
+        build: '2026-11-17-matcher-v8-popular',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -1314,11 +1314,17 @@ export default {
       // Tier 1: Check Cloudflare KV Community Cache across all normalized barcode variants (~15ms)
       if (env && env.RAKKA_COMMUNITY_DB) {
         try {
-          const kvResults = await Promise.all(
-            uniqueCodes.map(codeVar => env.RAKKA_COMMUNITY_DB.get(`upc:${codeVar}`, { type: 'json' }).catch(() => null))
+          const kvRaw = await Promise.all(
+            uniqueCodes.map(codeVar => env.RAKKA_COMMUNITY_DB.getWithMetadata(`upc:${codeVar}`, { type: 'json' }).then(r => ({ key: `upc:${codeVar}`, value: r && r.value, meta: r && r.metadata })).catch(() => null))
           );
-          const cached = kvResults.find(item => item && item.name && !item.name.startsWith('Retail Grocery Item'));
+          const hitRow = kvRaw.find(r => r && r.value && r.value.name && !r.value.name.startsWith('Retail Grocery Item'));
+          const cached = hitRow ? hitRow.value : null;
           if (cached) {
+            // Remember that this product is being scanned (at most once a week per product), so the phone catalog can favor popular items.
+            try {
+              const seen = Number(hitRow.meta && hitRow.meta.seen) || 0;
+              if (Date.now() - seen > 7 * 86400000) ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(hitRow.key, JSON.stringify(cached), { metadata: { seen: Date.now() } }).catch(() => {}));
+            } catch (_) {}
             return new Response(JSON.stringify({
               found: true,
               source: 'community_cache',
@@ -1381,8 +1387,8 @@ export default {
           if (env && env.RAKKA_COMMUNITY_DB && !name.startsWith('Retail Grocery Item')) {
             const base12 = cleanUpc.length === 13 && cleanUpc.startsWith('0') ? cleanUpc.substring(1) : cleanUpc.padStart(12, '0');
             ctx.waitUntil(Promise.all([
-              env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved)),
-              env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved))
+              env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved), { metadata: { seen: Date.now() } }),
+              env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved), { metadata: { seen: Date.now() } })
             ]));
           }
 
@@ -1422,8 +1428,8 @@ export default {
               if (env && env.RAKKA_COMMUNITY_DB) {
                 const base12 = cleanUpc.length === 13 && cleanUpc.startsWith('0') ? cleanUpc.substring(1) : cleanUpc.padStart(12, '0');
                 ctx.waitUntil(Promise.all([
-                  env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved)),
-                  env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved))
+                  env.RAKKA_COMMUNITY_DB.put(`upc:${base12}`, JSON.stringify(resolved), { metadata: { seen: Date.now() } }),
+                  env.RAKKA_COMMUNITY_DB.put(`upc:0${base12}`, JSON.stringify(resolved), { metadata: { seen: Date.now() } })
                 ]));
               }
 
@@ -1865,7 +1871,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
 
           // Cache in community DB if barcode and name exist
           if (upc && productName && env && env.RAKKA_COMMUNITY_DB) {
-            ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(`upc:${upc}`, JSON.stringify(resolvedRecord)));
+            ctx.waitUntil(env.RAKKA_COMMUNITY_DB.put(`upc:${upc}`, JSON.stringify(resolvedRecord), { metadata: { seen: Date.now() } }));
           }
 
           return new Response(JSON.stringify({

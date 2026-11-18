@@ -75,19 +75,22 @@ async function exportFromCloudflareKV() {
     const res = await fetch(url, { headers });
     const data = await res.json();
     if (!data.success) throw new Error(JSON.stringify(data.errors));
-    for (const k of data.result) keys.push(k.name);
+    for (const k of data.result) keys.push({ name: k.name, seen: Number(k.metadata && k.metadata.seen) || 0 });
     cursor = data.result_info?.cursor || '';
-  } while (cursor && keys.length < MAX_ITEMS * 2);
+  } while (cursor && keys.length < 400000);
 
   console.log(`Listed ${keys.length} keys. Deduplicating by 12-digit UPC...`);
-  const uniqueKeys = new Map();
+  // Rank by how recently each product was scanned (the worker stamps this), then keep the top MAX_ITEMS.
+  const best = new Map();
   for (const k of keys) {
-    const upc12 = k.replace(/^upc:/i, '').replace(/\D/g, '').padStart(12, '0');
-    if (upc12.length >= 8 && !uniqueKeys.has(upc12)) {
-      uniqueKeys.set(upc12, k);
-      if (uniqueKeys.size >= MAX_ITEMS) break;
-    }
+    const upc12 = k.name.replace(/^upc:/i, '').replace(/\D/g, '').padStart(12, '0');
+    if (upc12.length < 8) continue;
+    const cur = best.get(upc12);
+    if (!cur) best.set(upc12, { name: k.name, seen: k.seen });
+    else if (k.seen > cur.seen) { cur.seen = k.seen; }
   }
+  const ranked = Array.from(best.entries()).sort((x, y) => (y[1].seen - x[1].seen) || (x[0] < y[0] ? -1 : 1)).slice(0, MAX_ITEMS);
+  const uniqueKeys = new Map(ranked.map(([u, v]) => [u, v.name]));
 
   const keyList = Array.from(uniqueKeys.values());
   const records = [];
