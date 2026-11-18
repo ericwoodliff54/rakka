@@ -1,0 +1,26 @@
+# Runs on every upload to main: checks the files and clicks through the key screens in a real browser.
+# A red X on the Actions tab (and an email from GitHub) means something broke.
+name: Check app
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax check worker and service worker
+        run: |
+          node --check rakka-worker.js
+          node --check sw.js
+      - name: Install browser driver
+        run: npm install --no-save puppeteer-core
+      - name: Smoke test in a real browser
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node ci-smoke.mjs
