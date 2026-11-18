@@ -3,7 +3,12 @@
 # When it finishes, open the run and download the "rakka-android-debug" file at the bottom.
 name: Build Android test app
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Live test build: the app loads the website directly, so fixes show up without rebuilding"
+        type: boolean
+        default: false
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -29,6 +34,17 @@ jobs:
           # Only the files the app needs. The catalog is downloaded by the app itself after install.
           cp index.html app.css manifest.json favicon.png apple-touch-icon.png icon-192.png icon-512.png splash-mascot-sm.png staples_catalog.json native/www/
           cp -r js vendor native/www/
+
+      - name: Live test build (optional)
+        if: ${{ inputs.live }}
+        run: |
+          python3 - <<'PY'
+          import json
+          p = 'native/capacitor.config.json'
+          c = json.load(open(p))
+          c['server']['url'] = 'https://ericwoodliff54.github.io/rakka/'
+          json.dump(c, open(p, 'w'), indent=2)
+          PY
 
       - name: Check the app has native-app support
         run: grep -q "isNativePlatform" native/www/index.html
