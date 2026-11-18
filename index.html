@@ -19166,6 +19166,13 @@
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
       if (installGuideBtn) installGuideBtn.classList.add('hidden');
     }
+    // The store app is already installed, so hide the website install card.
+    try {
+      if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+        document.querySelectorAll('.rk-install-card').forEach(el => el.classList.add('hidden'));
+        if (installGuideBtn) installGuideBtn.classList.add('hidden');
+      }
+    } catch (_) {}
 
     if (closeInstallHelpBtn) {
       closeInstallHelpBtn.addEventListener('click', () => installHelpModal.classList.add('hidden'));
@@ -25640,7 +25647,10 @@ function renderHistory() {
 
     setTimeout(initEdgeSettingsInputs, 200);
 
-    if ('serviceWorker' in navigator) {
+    // Inside the store (native) app the files ship with the app, so the website service worker is not used.
+    const rkIsNativeShell = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    window.rkIsNativeShell = rkIsNativeShell;
+    if ('serviceWorker' in navigator && !rkIsNativeShell) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js?v=100')
           .then(reg => {

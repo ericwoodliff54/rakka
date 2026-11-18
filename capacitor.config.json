@@ -1,0 +1,9 @@
+{
+  "appId": "com.twinravensdigital.rakka",
+  "appName": "Rakka",
+  "webDir": "www",
+  "backgroundColor": "#050811",
+  "server": {
+    "androidScheme": "https"
+  }
+}
