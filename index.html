@@ -20558,8 +20558,9 @@
         if (!isRecalled && cachedFDARecalls && cachedFDARecalls.length > 0) {
           // Check locally cached FDA wire records (works with ZERO cell reception)
           const match = cachedFDARecalls.find(item => {
-            if (item.upcs && item.upcs.includes(code)) return true;
-            if (item.raw && item.raw.includes(code)) return true;
+            const cc = String(code || '').replace(/\D/g, '');
+            if (item.upcs && rkIsProductCode(cc) && item.upcs.includes(code)) return true;
+            if (rkRawHasCode(item.raw, cc)) return true;
             return false;
           });
 
@@ -21223,8 +21224,10 @@
         detectedAllergenIds = resolvedAllergens;
 
         // Screen against household profiles (normalize both sides so 'dairy', 'Dairy', 'en:milk', 'Milk' always align perfectly)
-        if (isPlusActive) {
-          for (const prof of familyProfiles) {
+        {
+          // Plus screens every household profile; the free plan screens the active profile.
+          const screenProfiles = isPlusActive ? familyProfiles : [getActiveProfile()].filter(Boolean);
+          for (const prof of screenProfiles) {
             const profAllergens = (prof.allergens || []).map(normalizeAllergenId).filter(Boolean);
             const matches = profAllergens.filter(a => detectedAllergenIds.includes(a));
             if (matches.length > 0) {
@@ -21437,7 +21440,7 @@
       if (/^Retail Grocery Item/i.test(String(data.productName || ''))) notes += '<p class="rk-note">Product details were not found. Try scanning again, or check your connection.</p>';
       try {
         if (window.RakkaSafety && window.RakkaSafety.extraNotesFor) {
-          notes = window.RakkaSafety.extraNotesFor(data, { recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) }) || '';
+          notes += window.RakkaSafety.extraNotesFor(data, { recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) }) || '';
         }
       } catch (_) {}
       if (notes) out.push(`<div class="rk-sec rk-sec-note">${notes}</div>`);
@@ -21450,7 +21453,7 @@
         out.push(`<div class="rk-sec rk-sec-recall">
           <div class="rk-sec-h">Recall</div>
           <div class="rk-sec-main">${e(rkShortHazard(rr))}</div>
-          ${meta ? `<div class="rk-sec-sub">${e(meta)}</div>` : ''}${maybe}
+          ${meta ? `<div class="rk-sec-sub">${e(meta)}</div>` : ''}${rr.title ? `<div class="rk-sec-sub">Notice: ${e(String(rr.title).slice(0, 140))}</div>` : ''}${maybe}
           <div class="rk-sec-btns">
             <button type="button" onclick="openLotAuditorForCurrentProduct()" class="rk-btn-audit">Audit lot code</button>
             <button type="button" onclick="${shareClick}" class="rk-btn-share">Share alert</button>
@@ -21462,10 +21465,10 @@
 
       // ALLERGENS (amber)
       let aBody = '';
-      if (typeof isPlusActive === 'undefined' || !isPlusActive) {
-        aBody = `<div class="rk-sec-sub">Allergen screening is a RAKKA Plus feature.</div><button type="button" onclick="openPaywall()" class="rk-btn-link">See Plus</button>`;
-      } else {
-        const profs = Array.isArray(familyProfiles) ? familyProfiles : [];
+      {
+        const plusOn = (typeof isPlusActive !== 'undefined' && isPlusActive);
+        const allProfs = Array.isArray(familyProfiles) ? familyProfiles : [];
+        const profs = plusOn ? allProfs : [(typeof getActiveProfile === 'function' ? getActiveProfile() : allProfs[0])].filter(Boolean);
         const anySelected = profs.some(p => (p.allergens || []).length);
         const fam = Array.isArray(data.familyMatches) ? data.familyMatches : [];
         if (!anySelected) aBody = `<div class="rk-sec-sub">No allergens are selected in Allergen Guard.</div>`;
@@ -23650,6 +23653,18 @@
     })();
 
 
+    // Only real product barcodes (8, 12, 13 or 14 digits) are allowed to match a recall by number.
+    // A short or odd-length code (for example a 6-digit receipt code) can appear inside unrelated numbers in a notice.
+    function rkIsProductCode(cleanCode) {
+      return /^\d+$/.test(cleanCode) && [8, 12, 13, 14].includes(cleanCode.length);
+    }
+    function rkRawHasCode(raw, cleanCode) {
+      if (!raw || !rkIsProductCode(cleanCode)) return false;
+      const bare = cleanCode.replace(/^0+/, '');
+      if (bare.length < 7) return false;
+      return new RegExp('(?<!\\d)0*' + bare + '(?!\\d)').test(String(raw));
+    }
+
     function auditPantryAgainstRecalls() {
       if (!scanHistory || scanHistory.length === 0) {
         updatePantryAlertBanner([]);
@@ -23670,7 +23685,9 @@
         // an item that was clear when scanned is checked again, because a recall may have been issued since.
 
         // 0. If item was already verified & flagged as recalled (by camera scan, upload, or receipt AI audit), PRESERVE IT!
-        if ((item.status === 'recalled' || item.isRecalled) && item.activeRecallHazard) {
+        // (An item whose code is not a real product barcode is checked again instead of trusted.)
+        const rkCodeUsable = !cleanCode || rkIsProductCode(cleanCode);
+        if (rkCodeUsable && (item.status === 'recalled' || item.isRecalled) && item.activeRecallHazard) {
           item.recalledNow = true;
           item.status = 'recalled';
           item.isRecalled = true;
@@ -23689,7 +23706,7 @@
 
         // 1. Check verified NATIONAL_BULLETINS
         let match = NATIONAL_BULLETINS.find(b => {
-          if (b.upcs && (b.upcs.includes(code) || b.upcs.includes(cleanCode) || b.upcs.includes(cleanCode.replace(/^0+/, '')))) return true;
+          if (b.upcs && rkIsProductCode(cleanCode) && (b.upcs.includes(code) || b.upcs.includes(cleanCode) || b.upcs.includes(cleanCode.replace(/^0+/, '')))) return true;
           // Matching by words alone is only used for recent bulletins; older ones match by barcode only.
           const bTime = Date.parse(b.date || '');
           if (!isNaN(bTime) && (Date.now() - bTime) > 180 * 86400000) return false;
@@ -23737,8 +23754,8 @@
         // 4. Check cached live openFDA federal wire records
         if (!match && cachedFDARecalls && cachedFDARecalls.length > 0) {
           match = cachedFDARecalls.find(r => {
-            if (r.upcs && (r.upcs.includes(code) || r.upcs.includes(cleanCode))) return true;
-            if (r.raw && (r.raw.includes(code) || r.raw.includes(cleanCode))) return true;
+            if (r.upcs && rkIsProductCode(cleanCode) && (r.upcs.includes(code) || r.upcs.includes(cleanCode))) return true;
+            if (rkRawHasCode(r.raw, cleanCode)) return true;
             if (r.brand && brandLower && r.brand.toLowerCase() === brandLower) {
               const prodDesc = (r.product || '').toLowerCase();
               if (titleLower && (prodDesc.includes(titleLower) || titleLower.includes(prodDesc))) return true;
@@ -23763,6 +23780,7 @@
           item.recallAgency = match.agency || 'FDA / USDA';
           item.recallDate = match.recallDate || match.date || 'Recent';
           item.recallSeverity = match.severity || 'Class I Recall';
+          item.recallTitle = match.product || match.title || '';
           recalledMatches.push({ item: item, recall: match });
           if (typeof dispatchRecallAlertNotification === 'function') {
             dispatchRecallAlertNotification(item);
@@ -23776,6 +23794,7 @@
             delete item.recallAgency;
             delete item.recallSeverity;
             delete item.recallDate;
+            delete item.recallTitle;
             historyNeedsSave = true;
           }
         }
@@ -23992,7 +24011,7 @@
             if (hits.length) fam.push({ name: prof.name, icon: prof.icon || 'user', photo: prof.photo || null, allergens: hits.map(id => (typeof formatAllergenName === 'function') ? formatAllergenName(id) : id) });
           });
           const isRec = Boolean(item.recalledNow || item.status === 'recalled' || item.status === 'recall_notice' || item.isRecalled || (item.activeRecallHazard && String(item.activeRecallHazard).trim()));
-          const recRec = item.recallRecord || (isRec ? { isRecalled: true, product: item.productName || item.title, brand: item.brand, hazard: item.activeRecallHazard, severity: item.recallSeverity, agency: item.recallAgency, action: item.recallAction } : null);
+          const recRec = item.recallRecord || (isRec ? { isRecalled: true, product: item.productName || item.title, brand: item.brand, hazard: item.activeRecallHazard, severity: item.recallSeverity, agency: item.recallAgency, action: item.recallAction, title: item.recallTitle, recallDate: item.recallDate } : null);
           const data = {
             upc: item.upc || '', source: 'watchlist', status: item.status || 'clear',
             productName: item.productName || item.title || item.product || 'Watchlist item',
