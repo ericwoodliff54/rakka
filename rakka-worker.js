@@ -1286,10 +1286,10 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v7-lookup2-wrap',
+        build: '2026-11-17-matcher-v7-wrap2',
         ai_vision_key_configured: hasKey,
         key_source: source,
-        key_preview: hasKey ? `${key.slice(0, 6)}...` : 'NONE',
+        key_preview: hasKey ? 'configured' : 'NONE',
         rate_limiting: {
           enabled: true,
           window_seconds: 60,
@@ -1564,7 +1564,6 @@ export default {
         '039978': "Bob's Red Mill",
         '071012': 'King Arthur Baking Co.',
         '018000': 'Pillsbury / General Mills',
-        '852697': 'KIND Snacks',
         '722252': 'Clif Bar',
         '857777': 'RXBAR',
         // Pantry, Pasta, Sauces, Soups & Condiments

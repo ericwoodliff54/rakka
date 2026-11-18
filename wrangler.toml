@@ -1,0 +1,11 @@
+name = "rakka-edge"
+main = "rakka-worker.js"
+compatibility_date = "2025-01-01"
+keep_vars = true
+
+kv_namespaces = [
+  { binding = "RAKKA_COMMUNITY_DB", id = "13e138ca5e594e778782a18c622b2781" }
+]
+
+[triggers]
+crons = ["*/10 * * * *"]
