@@ -22,7 +22,8 @@ const MAX_ITEMS = 55000;
 function normalizeRecord(rawKey, val) {
   const clean = String(rawKey || '').replace(/^upc:/i, '').replace(/\D/g, '');
   if (!clean || clean.length < 8) return null;
-  const upc = clean.padStart(12, '0');
+  // One record per product: stored under the 13-digit form, which the app finds for both 12-digit (UPC-A) and 13-digit (EAN-13) scans.
+  const upc = clean.replace(/^0+/, '').padStart(13, '0');
   const obj = typeof val === 'string' ? JSON.parse(val) : val;
   if (!obj || (!obj.name && !obj.n) || String(obj.name || obj.n).startsWith('Retail Grocery Item')) {
     return null;
@@ -83,8 +84,10 @@ async function exportFromCloudflareKV() {
   // Rank by how recently each product was scanned (the worker stamps this), then keep the top MAX_ITEMS.
   const best = new Map();
   for (const k of keys) {
-    const upc12 = k.name.replace(/^upc:/i, '').replace(/\D/g, '').padStart(12, '0');
-    if (upc12.length < 8) continue;
+    const digits = k.name.replace(/^upc:/i, '').replace(/\D/g, '');
+    if (digits.length < 8) continue;
+    const upc12 = digits.replace(/^0+/, '');
+    if (!upc12) continue;
     const cur = best.get(upc12);
     if (!cur) best.set(upc12, { name: k.name, seen: k.seen });
     else if (k.seen > cur.seen) { cur.seen = k.seen; }
