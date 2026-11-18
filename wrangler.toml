@@ -9,3 +9,20 @@ kv_namespaces = [
 
 [triggers]
 crons = ["*/10 * * * *"]
+
+# Edge rate limits for the AI (Gemini) endpoints. Limits are per Cloudflare location, per 60 seconds.
+[[ratelimits]]
+name = "RL_AI_IP"
+namespace_id = "7101"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "RL_AI_ALL"
+namespace_id = "7102"
+
+  [ratelimits.simple]
+  limit = 600
+  period = 60

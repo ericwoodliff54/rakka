@@ -118,6 +118,26 @@ function getClientIp(request) {
   );
 }
 
+// Cloudflare-side backstop for the AI endpoints. Counters live at the edge (shared by every isolate in a location),
+// so they hold up under load, unlike the in-memory counters above. Missing bindings are simply skipped.
+async function aiGuard(env, request, corsHeaders) {
+  try {
+    const ip = getClientIp(request) || 'unknown';
+    const checks = [];
+    if (env && env.RL_AI_IP) checks.push(env.RL_AI_IP.limit({ key: ip }));
+    if (env && env.RL_AI_ALL) checks.push(env.RL_AI_ALL.limit({ key: 'ai' }));
+    const res = await Promise.all(checks);
+    if (res.some(r => r && r.success === false)) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'RAKKA is busy right now. Please try again in a minute.',
+        retryAfterSeconds: 60
+      }), { status: 429, headers: { ...corsHeaders, 'Retry-After': '60', 'Cache-Control': 'no-store' } });
+    }
+  } catch (_) { /* never block users because the limiter itself had a problem */ }
+  return null;
+}
+
 function checkEdgeRateLimit(request, endpointBucket) {
   const maxRequests = RATE_LIMIT_CONFIG[endpointBucket] || 15;
   const clientIp = getClientIp(request);
@@ -1286,7 +1306,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v8-popular',
+        build: '2026-11-17-matcher-v9-limits',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -1669,7 +1689,8 @@ export default {
 
         // Optional: If an image was submitted, enforce per-IP OCR rate limit before calling Gemini 1.5 Flash
         if (body.imageBase64 && apiKey && String(body.imageBase64).length <= 6000000 && !ingredients) {
-          const rlContribute = checkEdgeRateLimit(request, 'contribute-ocr');
+          { const aiBlocked = await aiGuard(env, request, corsHeaders); if (aiBlocked) return aiBlocked; }
+      const rlContribute = checkEdgeRateLimit(request, 'contribute-ocr');
           if (!rlContribute.allowed) {
             return new Response(JSON.stringify({
               error: `OCR rate limit exceeded (${rlContribute.limit} requests/min). Please wait ${rlContribute.retryAfterSec}s before trying again.`,
@@ -1762,6 +1783,7 @@ export default {
 
     // 5. POST /detect-package: Multimodal AI Vision for whole-package photos
     if (request.method === 'POST' && (url.pathname === '/detect-package' || url.pathname === '/api/detect-package')) {
+      { const aiBlocked = await aiGuard(env, request, corsHeaders); if (aiBlocked) return aiBlocked; }
       const rlPackage = checkEdgeRateLimit(request, 'detect-package');
       if (!rlPackage.allowed) {
         return new Response(JSON.stringify({
@@ -1890,6 +1912,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
 
     // 6. POST /audit-lot-code: AI Lot & Best-By Date Auditor
     if (request.method === 'POST' && (url.pathname === '/audit-lot-code' || url.pathname === '/api/audit-lot-code')) {
+      { const aiBlocked = await aiGuard(env, request, corsHeaders); if (aiBlocked) return aiBlocked; }
       const rlLot = checkEdgeRateLimit(request, 'audit-lot-code');
       if (!rlLot.allowed) {
         return new Response(JSON.stringify({
@@ -2112,6 +2135,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 
     // 7. POST /audit-receipt: AI Multi-Item Shopping Receipt Auditor
     if (request.method === 'POST' && (url.pathname === '/audit-receipt' || url.pathname === '/api/audit-receipt')) {
+      { const aiBlocked = await aiGuard(env, request, corsHeaders); if (aiBlocked) return aiBlocked; }
       const rlReceipt = checkEdgeRateLimit(request, 'audit-receipt');
       if (!rlReceipt.allowed) {
         return new Response(JSON.stringify({
