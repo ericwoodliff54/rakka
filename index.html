@@ -3893,6 +3893,7 @@
 
       <div id="bulletinFeedList" class="space-y-2.5"></div>
     </section>
+    <script>try { window.__rkJoinLink = /[?&]join=RKA-/i.test(window.location.search); } catch (_) {}</script>
     <script>
       (function () {
         var tgl = document.getElementById('recallFilterToggle'), bar = document.getElementById('recallFilterBar');
@@ -4025,11 +4026,12 @@
           >
             <span>Create 2-Person Invite Code</span>
           </button>
+          <button type="button" id="scanPartnerQrBtn" onclick="rkScanPartnerQr()" class="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs border border-slate-700 transition active:scale-[0.98]">Scan partner's QR code</button>
           <div class="flex items-center gap-2">
             <input
               type="text"
               id="householdJoinCodeInput"
-              placeholder="Enter partner code (RKA-...)"
+              placeholder="Paste partner code or link"
               maxlength="16"
               class="flex-1 min-w-0 min-h-[44px] px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 text-base sm:text-xs font-mono uppercase focus:outline-none focus:border-cyan-500"
             />
@@ -19413,6 +19415,12 @@
       });
     }
 
+    window.rkScanPartnerQr = function () {
+      try { setNavTab('barcodes'); } catch (_) {}
+      setTimeout(() => { try { if (!isCameraRunning) startCamera(); } catch (_) {} }, 250);
+      if (typeof showCustomizeToast === 'function') showCustomizeToast("Point the camera at your partner's QR code.");
+    };
+
     toggleCameraBtn.addEventListener('click', () => {
       triggerHaptic([40]);
       if (isCameraRunning && isCameraPaused) {
@@ -20217,7 +20225,8 @@
       window.addEventListener('load', () => {
         setTimeout(() => { rkRequestPersistentStorage(); }, 4000);
         // The catalog downloads quietly in small pieces right after the app is up, so first scans are already covered.
-        setTimeout(() => syncCommunityCatalogToIDB(), 6000);
+        // A household link opened in a fresh browser tab should finish joining first; the catalog waits until the next visit.
+        if (!window.__rkJoinLink) setTimeout(() => syncCommunityCatalogToIDB(), 6000);
       });
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => syncCommunityCatalogToIDB(), 8000); });
     }
@@ -20275,6 +20284,16 @@
     }
 
     async function onBarcodeDetected(code) {
+      // A partner's household QR (an invite link) scanned with the in-app camera: join right here, no browser needed.
+      if (/join=RKA-[A-Z0-9]{3}-[A-Z0-9]{3}/i.test(String(code || ''))) {
+        if (window._rkQrJoining) return;
+        window._rkQrJoining = true;
+        triggerHaptic([80, 40, 80]);
+        try { await stopCamera(); } catch (_) {}
+        try { setNavTab('customize'); } catch (_) {}
+        try { await joinHouseholdByCode(String(code)); } finally { setTimeout(() => { window._rkQrJoining = false; }, 3000); }
+        return;
+      }
       const now = Date.now();
       const cleanDigits = String(code || '').replace(/\D/g, '');
 
