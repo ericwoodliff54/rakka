@@ -1,0 +1,45 @@
+# Weekly recall accuracy audit. Checks the live FDA/USDA feeds against the same matching code the worker runs,
+# lists anything that looks wrong, and emails contact@twinravensdigital.com.
+# Run it by hand any time: Actions tab -> "Recall accuracy audit" -> Run workflow.
+name: Recall accuracy audit
+on:
+  schedule:
+    - cron: '41 12 * * 1,4'   # Mondays and Thursdays, about 7:41 AM Eastern
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the audit
+        env:
+          OPENFDA_API_KEY: ${{ secrets.OPENFDA_API_KEY }}
+        run: node recall_audit.mjs
+      - name: Email the report
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: python3 send_report.py
+      - name: Keep a copy of the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recall-audit-report
+          path: |
+            audit_report.html
+            audit_report.txt
+            audit_result.json
+          if-no-files-found: ignore
+      - name: Email that the audit itself failed
+        if: failure()
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: python3 send_report.py crashed
+
