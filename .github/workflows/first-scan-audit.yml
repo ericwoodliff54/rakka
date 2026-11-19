@@ -1,0 +1,31 @@
+# Weekly first-scan audit: do brand-new users get a real product name and ingredients on their first scan?
+# Run it by hand any time: Actions tab -> "First-scan audit" -> Run workflow, then open the Summary tab.
+name: First-scan audit
+on:
+  schedule:
+    - cron: '23 13 * * 2'   # Tuesdays, about 8:23 AM Eastern
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the audit
+        run: node scan_audit.mjs
+      - name: Keep a copy of the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-scan-report
+          path: |
+            scan_report.txt
+            scan_report.html
+            scan_result.json
+          if-no-files-found: ignore
+
