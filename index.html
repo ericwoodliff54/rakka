@@ -2567,6 +2567,7 @@
 
   <script type="module" src="./js/rakka-safety.js"></script>
   <script type="module" src="./js/rakka-household.js"></script>
+<style id="rk-nomedia-controls">#reader video::-webkit-media-controls,#reader video::-webkit-media-controls-enclosure,#reader video::-webkit-media-controls-panel,#reader video::-webkit-media-controls-overlay-play-button,#reader video::-webkit-media-controls-start-playback-button{display:none!important;opacity:0!important;-webkit-appearance:none!important}#reader video{pointer-events:none}</style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
     <!-- RAKKA BRAND SPLASH SCREEN (Mascot with responsive mobile layout and guaranteed text visibility) -->
@@ -19568,6 +19569,8 @@
             v.setAttribute('webkit-playsinline', 'true');
             v.setAttribute('muted', 'true');
             v.setAttribute('autoplay', 'true');
+            v.removeAttribute('controls'); v.controls = false;
+            v.setAttribute('disablepictureinpicture', 'true'); v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback');
             v.muted = true;
             v.playsInline = true;
             v.autoplay = true;
@@ -20546,14 +20549,11 @@
       triggerHaptic([40]);
       scanHistory = [];
       rkRemoveLegacyHistoryKeys();
-      saveHistory();
-      rkFlushHistory();
-      if (typeof renderHistory === 'function') {
-        renderHistory();
-      }
-      if (typeof auditPantryAgainstRecalls === 'function') {
-        auditPantryAgainstRecalls();
-      }
+      try { saveHistory(); } catch (_) {}
+      try { rkFlushHistory(); } catch (_) {}
+      try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+      try { if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls(); } catch (_) {}
+      try { if (typeof updateWatchlistNavBadge === 'function') updateWatchlistNavBadge(); } catch (_) {}
       showCustomizeToast("Watchlist cleared completely.");
     });
 
@@ -23445,16 +23445,11 @@
         if (i.upc && (i.upc === key || key.startsWith(String(i.upc)) || String(i.upc).startsWith(key))) return false;
         return true;
       });
-      saveHistory();
-      if (typeof auditPantryAgainstRecalls === 'function') {
-        auditPantryAgainstRecalls();
-      }
-      if (typeof updateWatchlistNavBadge === 'function') {
-        updateWatchlistNavBadge();
-      }
-      if (typeof renderHistory === 'function') {
-        renderHistory();
-      }
+      // Redraw the list first, and guard each step, so one failing step can never leave a deleted item on screen.
+      try { saveHistory(); } catch (_) {}
+      try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+      try { if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls(); } catch (_) {}
+      try { if (typeof updateWatchlistNavBadge === 'function') updateWatchlistNavBadge(); } catch (_) {}
     }
     window.removeGuardedItem = removeGuardedItem;
 
@@ -24086,16 +24081,10 @@
       scanHistory = scanHistory.filter(i => getGroupKey(i) !== receiptKey);
 
       delete collapsedReceiptGroups[receiptKey];
-      saveHistory();
-      if (typeof auditPantryAgainstRecalls === 'function') {
-        auditPantryAgainstRecalls();
-      }
-      if (typeof updateWatchlistNavBadge === 'function') {
-        updateWatchlistNavBadge();
-      }
-      if (typeof renderHistory === 'function') {
-        renderHistory();
-      }
+      try { saveHistory(); } catch (_) {}
+      try { if (typeof renderHistory === 'function') renderHistory(); } catch (_) {}
+      try { if (typeof auditPantryAgainstRecalls === 'function') auditPantryAgainstRecalls(); } catch (_) {}
+      try { if (typeof updateWatchlistNavBadge === 'function') updateWatchlistNavBadge(); } catch (_) {}
       showCustomizeToast(`Removed ${groupName} (${count} items)`);
     }
     window.deleteReceiptGroup = deleteReceiptGroup;
@@ -27255,7 +27244,7 @@ function renderHistory() {
     // Helper: Single segment fetcher
     async function fetchReceiptSegment(hookUrl, sliceDataUrl, mimeType, activeAllergens, clientApiKey, segmentLabel) {
       const receiptCtrl = new AbortController();
-      const receiptTimer = setTimeout(() => receiptCtrl.abort(), 25000);
+      const receiptTimer = setTimeout(() => receiptCtrl.abort(), 45000);
       let res;
       try {
         res = await fetch(`${hookUrl.replace(/\/+$/, '')}/audit-receipt`, {

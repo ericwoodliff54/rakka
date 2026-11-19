@@ -1431,7 +1431,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-18-v14-fda-rss-list',
+        build: '2026-11-19-v15-receipt-speed',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -2119,9 +2119,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         // Exact 1:1 Implementation Model of the Battle-Tested Receipt Scanner
         // Uses identical candidate hierarchy ('gemini-flash-latest'), payload structure, and discovery fallback
         const candidateModels = [
-          'gemini-flash-latest',
-          'gemini-1.5-flash',
-          'gemini-2.5-flash'
+          'gemini-2.5-flash',
+          'gemini-flash-latest'
         ];
 
         let geminiRes = null;
@@ -2138,6 +2137,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
               },
+              signal: AbortSignal.timeout(30000),
               body: JSON.stringify({
                 contents: [{
                   parts: [
@@ -2161,6 +2161,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                   'Content-Type': 'application/json',
                   'x-goog-api-key': apiKey
                 },
+                signal: AbortSignal.timeout(30000),
                 body: JSON.stringify({
                   contents: [{
                     parts: [
@@ -2419,6 +2420,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
               },
+              signal: AbortSignal.timeout(30000),
               body: JSON.stringify({
                 contents: [{
                   parts: [
@@ -2442,6 +2444,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
                   'Content-Type': 'application/json',
                   'x-goog-api-key': apiKey
                 },
+                signal: AbortSignal.timeout(30000),
                 body: JSON.stringify({
                   contents: [{
                     parts: [
