@@ -25820,14 +25820,8 @@ function renderHistory() {
     }
 
     async function openCameraOrFallback(title, onCaptureFile, fallbackInputEl) {
-      if (isMobileCameraDevice() || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-         // Android app: the system only opens the camera for a photo if the camera permission was already granted. Ask for it first, so "Snap" does not fall back to the file picker.
-         if (window.rkIsNativeShell && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-           try {
-             const probe = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-             probe.getTracks().forEach(t => t.stop());
-           } catch (_) { /* denied: the file picker is the fallback */ }
-         }
+      // In the Android app the system photo camera is not reliably started from a web page, so use the in-app camera (the same one the barcode scanner uses).
+      if ((isMobileCameraDevice() && !window.rkIsNativeShell) || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         if (fallbackInputEl) {
           fallbackInputEl.value = '';
           fallbackInputEl.click();
@@ -25850,10 +25844,19 @@ function renderHistory() {
 
       try {
         activeWebcamStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: window.rkIsNativeShell
+            ? { facingMode: { ideal: 'environment' }, width: { ideal: 1080 }, height: { ideal: 1920 } }
+            : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false
         });
         vid.srcObject = activeWebcamStream;
+        if (window.rkIsNativeShell) {
+          // Phone in portrait: a tall preview shows the whole receipt instead of a cropped wide strip.
+          const box = vid.parentElement;
+          if (box) { box.classList.remove('aspect-video'); box.style.aspectRatio = '3 / 4'; box.style.maxHeight = '62vh'; }
+          vid.classList.remove('object-cover'); vid.classList.add('object-contain');
+          try { vid.play(); } catch (_) {}
+        }
         modal.classList.remove('hidden');
       } catch (err) {
         console.warn('Desktop webcam unavailable, falling back to file picker:', err);
