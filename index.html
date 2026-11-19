@@ -25890,6 +25890,21 @@ function renderHistory() {
           const vid = document.getElementById('desktopWebcamVideo');
           const handler = webcamCaptureHandler;
           if (!vid || !vid.videoWidth || !vid.videoHeight) return;
+          // Android app: take a full-resolution still (it comes out the way the phone is held) instead of a wide video frame.
+          if (window.rkIsNativeShell && typeof ImageCapture !== 'undefined' && activeWebcamStream) {
+            const track = activeWebcamStream.getVideoTracks()[0];
+            if (track) {
+              new ImageCapture(track).takePhoto().then(async (blob) => {
+                if (!blob || !blob.size) { grabVideoFrame(); return; }
+                stopDesktopWebcam();
+                if (typeof handler === 'function') await handler(new File([blob], 'camera-capture.jpg', { type: blob.type || 'image/jpeg' }));
+              }, () => { grabVideoFrame(); });
+              return;
+            }
+          }
+          grabVideoFrame();
+          return;
+          function grabVideoFrame() {
           const canvas = document.createElement('canvas');
           canvas.width = vid.videoWidth;
           canvas.height = vid.videoHeight;
@@ -25902,6 +25917,7 @@ function renderHistory() {
               await handler(file);
             }
           }, 'image/jpeg', 0.92);
+          }
         });
       }
 
