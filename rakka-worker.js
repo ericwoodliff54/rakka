@@ -1368,7 +1368,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-18-matcher-v10-recallcheck',
+        build: '2026-11-18-v11-gentle-off',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -1423,20 +1423,40 @@ export default {
       const offDiag = [];   // why Open Food Facts gave nothing (shown only when no registry had the product)
 
       try {
-        const fetchPromises = uniqueCodes.map(q => {
-          return fetch(`https://world.openfoodfacts.org/api/v0/product/${q}.json`, {
-            headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (https://rakka.app)' },
-            signal: AbortSignal.timeout(9000)
-          })
-          .then(r => { if (!r.ok) offDiag.push('HTTP ' + r.status); return r.ok ? r.json() : null; })
-          .then(data => {
+        // One careful request at a time instead of four at once: Open Food Facts limits how many requests each address may send,
+        // and Cloudflare shares addresses between many apps. Most-likely form first (13 digits), then at most two other forms.
+        const offOrder = [cleanUpc.length <= 13 ? cleanUpc.padStart(13, '0') : cleanUpc, ...uniqueCodes]
+          .filter((c, i, a) => a.indexOf(c) === i).slice(0, 3);
+        const offStart = Date.now();
+        const offOne = async (q) => {
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${q}.json`, {
+              headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (contact@twinravensdigital.com)' },
+              signal: AbortSignal.timeout(7000)
+            });
+            if (r.status === 429 && attempt === 0 && Date.now() - offStart < 5000) {   // asked to slow down: wait a moment, try once more
+              offDiag.push('HTTP 429');
+              await new Promise((res) => setTimeout(res, 500 + Math.floor(Math.random() * 500)));
+              continue;
+            }
+            if (!r.ok) { offDiag.push('HTTP ' + r.status); return r.status === 429 ? 'limited' : null; }
+            const data = await r.json();
             if (data && data.status === 1 && data.product) return data.product;
             if (data) offDiag.push('status ' + data.status);
-            throw new Error('Not found');
-          })
-          .catch(err => { if (!/Not found/.test(String(err && err.message))) offDiag.push(String((err && err.name) || 'error')); throw err; });
-        });
-        const offAny = Promise.any(fetchPromises);
+            return null;
+          }
+          return null;
+        };
+        const offAny = (async () => {
+          for (const q of offOrder) {
+            if (Date.now() - offStart > 9000) break;
+            let prod = null;
+            try { prod = await offOne(q); } catch (err) { offDiag.push(String((err && err.name) || 'error')); }
+            if (prod === 'limited') break;   // Open Food Facts is refusing us: do not keep hammering it
+            if (prod) return prod;
+          }
+          throw new Error('Not found');
+        })();
         // Keep going and cache the result even if the phone gave up waiting (slow first lookup), so the next scan is instant.
         ctx.waitUntil(offAny.then(async (prod) => {
           const nm = prod.product_name || prod.product_name_en || prod.generic_name;

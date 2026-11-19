@@ -21,7 +21,7 @@ async function lookup(upc) {
     const j = await r.json();
     const p = j && j.product;
     const name = p && p.name ? String(p.name) : '';
-    const good = !!(j && j.found && name && !/^retail grocery item/i.test(name));
+    const good = !!(j && j.found && name && !/^retail grocery item/i.test(name) && j.source !== 'gs1_prefix');
     return { ok: true, found: good, ms, name, brand: p && p.brand, hasIngredients: !!(p && p.ingredients && String(p.ingredients).trim().length > 3), source: j && j.source };
   } catch (e) { return { ok: false, ms: Date.now() - t0, err: String(e.message || e) }; }
 }
@@ -63,7 +63,7 @@ for (const u of offUrls) {
       const r = await fetch(u, { signal: AbortSignal.timeout(40000), headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
       if (!r.ok) { offWhy.push(`HTTP ${r.status}`); await sleep(4000); continue; }
       const j = await r.json();
-      offList = (j.products || []).filter((p) => p.code && /^\d{8,14}$/.test(String(p.code)) && p.product_name);
+      offList = (j.products || []).filter((p) => p.code && /^(0\d{12}|\d{12})$/.test(String(p.code)) && p.product_name);   // US/Canada barcodes only
       if (!offList.length) offWhy.push('empty list');
     } catch (e) { offWhy.push(String(e.message || e).slice(0, 40)); await sleep(4000); }
   }
