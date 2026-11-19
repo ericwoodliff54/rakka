@@ -9,9 +9,9 @@ import fs from 'node:fs';
 import zlib from 'node:zlib';
 
 const src = fs.readFileSync('rakka-worker.js', 'utf8').replace(/export\s+default\s*\{/, 'const __default = {');
-fs.writeFileSync('.worker-under-test.mjs', src + '\nexport { alMakeRecall, alPrepItem, alMatchPrepared, alBuildIndex, alRecallActive, alBarcodeKeys };\n');
+fs.writeFileSync('.worker-under-test.mjs', src + '\nexport { alMakeRecall, alPrepItem, alMatchPrepared, alBuildIndex, alRecallActive, alBarcodeKeys, alReceiptMatch };\n');
 const W = await import(process.cwd() + '/.worker-under-test.mjs');
-const { alMakeRecall, alPrepItem, alMatchPrepared, alBuildIndex } = W;
+const { alMakeRecall, alPrepItem, alMatchPrepared, alBuildIndex, alReceiptMatch } = W;
 
 const DAYS = 45;
 const out = { checks: [], flags: [], stats: {} };
@@ -190,6 +190,56 @@ for (const it of items) {
     if (m) hits[m.confidence].push({ item: `${it.b ? it.b + ' ' : ''}${it.n || ''}`.slice(0, 100), upc: it.u, recall: r.id, agency: r.agency, recallProduct: r.product.slice(0, 110), firm: r.firm.slice(0, 50), why: m.why });
   }
 }
+// ---- 4b. Receipt-style check: lines with a name and brand but NO barcode, the way a register prints them
+// Uses the worker's own receipt matcher (alReceiptMatch), so this tests exactly what receipt scans use.
+const rcptPos = [], rcptAbbrMiss = [];
+const SUFFIX = /\b(inc|llc|l\.l\.c|co|corp|corporation|company|ltd|foods?|brands?|farms?|dba)\b\.?/gi;
+const cleanBrand = (f) => String(f || '').replace(SUFFIX, ' ').replace(/[^A-Za-z0-9&' ]/g, ' ').replace(/\s+/g, ' ').trim();
+const rcptCands = active.filter((r) => r.gtins.size === 0 && r.agency === 'FDA' && r.firm && r.product && cleanBrand(r.firm).length >= 3);
+let rcptTested = 0, rcptFound = 0, abbrTested = 0, abbrFound = 0;
+for (const r of rcptCands.slice(0, 80)) {
+  const brand = cleanBrand(r.firm).split(' ').slice(0, 3).join(' ');
+  // Product words after the brand name, trimmed to what a receipt line would show.
+  let words = String(r.product).replace(/\([^)]*\)/g, ' ').split(/[\s,;:]+/).filter(Boolean);
+  const bw = brand.toLowerCase().split(' ');
+  while (words.length && bw.includes(words[0].toLowerCase())) words.shift();
+  words = words.filter((x) => /[A-Za-z]/.test(x)).slice(0, 4);
+  if (words.length < 2) continue;
+  rcptTested++;
+  const hit = alReceiptMatch(index, { u: '', n: `${brand} ${words.join(' ')}`, b: brand });
+  if (hit) rcptFound++; else rcptPos.push({ id: r.id, line: `${brand} ${words.join(' ')}`, brand, recall: r.product.slice(0, 100) });
+  // Register shorthand: long words cut to 4-5 letters.
+  const abbr = words.map((x) => x.length > 7 ? x.slice(0, 5) : x).join(' ');
+  abbrTested++;
+  if (alReceiptMatch(index, { u: '', n: `${brand} ${abbr}`, b: brand })) abbrFound++; else rcptAbbrMiss.push({ id: r.id, line: `${brand} ${abbr}`, brand, recall: r.product.slice(0, 100) });
+}
+out.stats.receiptTested = rcptTested; out.stats.receiptFound = rcptFound; out.stats.abbrTested = abbrTested; out.stats.abbrFound = abbrFound;
+if (rcptTested) {
+  const pct = Math.round(100 * rcptFound / rcptTested);
+  out.checks.push({ name: 'Receipt lines (name + brand, no barcode) find their recall', ok: pct >= 85, detail: `${rcptFound} of ${rcptTested} (${pct}%)` });
+  if (pct < 85) flag('bad', `Only ${pct}% of real recalls were found when written as a receipt line (name and brand, no barcode). Receipt scans could miss recalls (see table).`);
+  else if (pct < 95) flag('warn', `${100 - pct}% of real recalls were not found as a plain receipt line (see table).`);
+  const ap = abbrTested ? Math.round(100 * abbrFound / abbrTested) : 0;
+  out.checks.push({ name: 'Abbreviated receipt lines still match (information only)', ok: true, detail: `${abbrFound} of ${abbrTested} (${ap}%)` });
+  if (ap < 60) flag('info', `Register-style shorthand matched only ${ap}% of the time. That is expected, because shorthand cannot always be matched, and scanning the barcode is the exact check.`);
+} else {
+  out.checks.push({ name: 'Receipt lines (name + brand, no barcode) find their recall', ok: true, detail: 'no suitable recalls this week' });
+}
+// Ordinary products that are NOT recalled must stay clear, and a name with no brand must never be flagged.
+const FALSE_ALARM = [
+  ['Eggo Homestyle Waffles', 'Eggo'], ['Meijer Frozen Homestyle Waffles', 'Meijer'], ['Kellogg\'s Eggo Buttermilk Waffles', 'Kellogg\'s'],
+  ['Aldi Large Eggs', 'Aldi'], ['Hamburger Buns', ''], ['White Bread', ''], ['Frozen Waffles', ''], ['Baby Spinach', ''], ['Peanut Butter', ''],
+  ['Sweet Bagels', ''], ['Drinkable Yogurt', ''], ['Original Pork Sausage', ''], ['Texas Toast', ''], ['Chicken Patties', ''], ['Sour Cream', ''],
+];
+const rcptFalse = [];
+for (const [n, b] of FALSE_ALARM) {
+  const hit = alReceiptMatch(index, { u: '', n, b });
+  if (hit) rcptFalse.push({ line: `${b ? b + ' ' : ''}${n}`, brand: b || '(none)', recall: `${hit.r.id}: ${hit.r.product.slice(0, 100)}`, conf: hit.m.confidence });
+}
+out.checks.push({ name: 'Ordinary receipt lines are not falsely flagged', ok: rcptFalse.filter((x) => x.brand === '(none)').length === 0, detail: `${FALSE_ALARM.length - rcptFalse.length} of ${FALSE_ALARM.length} clear` });
+if (rcptFalse.some((x) => x.brand === '(none)')) flag('bad', 'A receipt line with NO brand was flagged as a recall. That should never happen (see table).');
+if (rcptFalse.some((x) => x.brand !== '(none)')) flag('warn', 'An ordinary branded receipt line matched a recall. It may be a real recall this week, or a false alarm: please check the table.');
+out.rcptPos = rcptPos.slice(0, 25); out.rcptAbbrMiss = rcptAbbrMiss.slice(0, 15); out.rcptFalse = rcptFalse;
 out.stats.catalogItems = items.length;
 out.stats.hits = { exact: hits.exact.length, near: hits.near.length, possible: hits.possible.length, related: hits.related.length };
 out.review = { exact: hits.exact.slice(0, 30), near: hits.near.slice(0, 20), possible: hits.possible.slice(0, 40) };
@@ -212,6 +262,9 @@ html += '<h3>Recalls the app\'s live barcode query missed</h3>' + tbl(out.liveMi
 html += '<h3>Recalls the worker /recall-check missed</h3>' + tbl(out.wkMiss, [['Recall', 'id'], ['Barcode', 'code'], ['Product', 'product']]);
 const rv = [['Exact barcode matches in the catalog (real products on recall: confirm)', out.review.exact], ['Near-barcode matches (check)', out.review.near], ['Name-based matches (look for false positives)', out.review.possible]];
 for (const [title, rows] of rv) html += `<h3>${title}</h3>` + tbl(rows, [['Catalog product', 'item'], ['Recall', 'recall'], ['Recall says', 'recallProduct'], ['Firm', 'firm']]);
+html += '<h3>Real recalls the receipt matcher did NOT find (as a name + brand line)</h3>' + tbl(out.rcptPos, [['Recall', 'id'], ['Receipt line tried', 'line'], ['Recall says', 'recall']]);
+html += '<h3>Ordinary receipt lines that matched a recall (check)</h3>' + tbl(out.rcptFalse, [['Receipt line', 'line'], ['Matched', 'recall'], ['Confidence', 'conf']]);
+html += '<h3>Shorthand lines that did not match (information)</h3>' + tbl(out.rcptAbbrMiss, [['Recall', 'id'], ['Shorthand line', 'line'], ['Recall says', 'recall']]);
 html += '</div>';
 fs.writeFileSync('audit_report.html', html);
 const txt = `RAKKA recall audit: ${level}\n\n` + out.flags.map((f) => `- [${f.level}] ${f.text}`).join('\n') + '\n\n' + out.checks.map((c) => `${c.ok ? 'PASS' : 'FAIL'} ${c.name} (${c.detail})`).join('\n') + '\n\nFDA announcements feed probe:\n' + out.rss.map((x) => `  ${x.url} -> HTTP ${x.status}, ${x.items} items\n    ${x.newest.join('\n    ')}`).join('\n') + '\n\nOpen audit_report.html for the full tables.\n';

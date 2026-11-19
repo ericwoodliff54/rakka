@@ -855,6 +855,26 @@ function alFdaUrl(skip) {
   return `https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+report_date:[${ymd(from)}+TO+${ymd(to)}]&limit=1000&skip=${skip}&sort=report_date:desc`;
 }
 
+/** Receipt line check: same matcher as the barcode check, with two receipt-only rules (a name with no brand is never flagged; "related" is ignored). */
+function alReceiptMatch(index, item) {
+  const raw = String((item && item.u) || '').replace(/\D/g, '');
+  const pi = alPrepItem({ u: raw.length >= 8 ? raw : '', n: String((item && item.n) || '').slice(0, 160), b: String((item && item.b) || '').slice(0, 80) });
+  const cands = new Set();
+  for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
+  for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
+  for (const z of pi.keys.pfx) (index.byPfx.get(z.slice(0, 11)) || []).forEach((r) => cands.add(r));
+  for (const t of pi.nameTokens) for (const wd of [t, t + 's', t + 'es']) (index.byWord.get(wd) || []).forEach((r) => cands.add(r));
+  const order = { exact: 0, near: 1, possible: 2 };
+  let best = null;
+  for (const r of cands) {
+    const m = alMatchPrepared(pi, r);
+    if (!m || !(m.confidence in order)) continue;
+    if (m.confidence === 'possible' && !pi.brand) continue;
+    if (!best || order[m.confidence] < order[best.m.confidence]) best = { m, r };
+  }
+  return best;
+}
+
 let AL_RSS_MEMO = { at: 0, items: null };
 const AL_FDA_RSS = 'https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml';
 function alXmlText(x) {
@@ -1431,7 +1451,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-19-v17-receipt-cuts',
+        build: '2026-11-19-v18-receipt-match',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -2541,20 +2561,8 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
           for (const it of parsed.items) {
             if (!it || typeof it !== 'object') continue;
             it.status = 'clear'; it.isRecalled = false; it.warning = ''; it.recallAgency = null; it.recallSeverity = null;
-            const raw = String(it.upc || it.itemCode || (String(it.rawLine || '').match(/\b\d{8,14}\b/) || [''])[0] || '').replace(/\D/g, '');
-            const pi = alPrepItem({ u: raw.length >= 8 ? raw : '', n: String(it.cleanName || it.rawLine || '').slice(0, 160), b: String(it.brand || '').slice(0, 80) });
-            const cands = new Set();
-            for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
-            for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
-            for (const z of pi.keys.pfx) (index.byPfx.get(z.slice(0, 11)) || []).forEach((r) => cands.add(r));
-            for (const t of pi.nameTokens) for (const wd of [t, t + 's', t + 'es']) (index.byWord.get(wd) || []).forEach((r) => cands.add(r));
-            let best = null;
-            for (const r of cands) {
-              const m = alMatchPrepared(pi, r);
-              if (!m || !(m.confidence in order)) continue;
-              if (m.confidence === 'possible' && !pi.brand) continue;   // a name with no brand is too loose to flag from a receipt
-              if (!best || order[m.confidence] < order[best.m.confidence]) best = { m, r };
-            }
+            const hit = alReceiptMatch(index, { u: String(it.upc || it.itemCode || (String(it.rawLine || '').match(/\b\d{8,14}\b/) || [''])[0] || ''), n: String(it.cleanName || it.rawLine || ''), b: String(it.brand || '') });
+            const best = hit;
             if (best) {
               recalledTotal++;
               it.status = 'recalled'; it.isRecalled = true; it.recallVerified = true;
