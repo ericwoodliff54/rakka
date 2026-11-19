@@ -63,6 +63,24 @@ if (newestFda) {
   if (age > 21) flag('warn', `The newest FDA enforcement report is ${Math.round(age)} days old (${newestFda}). openFDA may be stale.`);
 }
 
+// Announcement lag: FDA posts company recall announcements on its recalls page days to weeks BEFORE they reach the enforcement
+// database that openFDA serves. Probe FDA's own recall RSS feeds so we can see whether they are reachable and how fresh they are.
+const rssCandidates = [
+  'https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml',
+  'https://www.fda.gov/AboutFDA/ContactFDA/StayInformed/RSSFeeds/Recalls/rss.xml',
+];
+out.rss = [];
+for (const u of rssCandidates) {
+  try {
+    const r = await fetch(u, { signal: AbortSignal.timeout(30000), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; rakka-audit/1.0; contact@twinravensdigital.com)', Accept: 'application/rss+xml, application/xml, text/xml' } });
+    const txt = await r.text();
+    const titles = [...txt.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?(?:<pubDate>([\s\S]*?)<\/pubDate>)?/g)].slice(0, 5).map((m) => `${(m[2] || '').trim()} | ${m[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim().slice(0, 90)}`);
+    out.rss.push({ url: u, status: r.status, items: (txt.match(/<item>/g) || []).length, newest: titles });
+  } catch (e) { out.rss.push({ url: u, status: 'error', items: 0, newest: [String(e.message || e).slice(0, 60)] }); }
+}
+const rssOk = out.rss.find((x) => x.status === 200 && x.items > 0);
+out.checks.push({ name: 'FDA recall announcements feed (RSS) reachable', ok: !!rssOk, detail: rssOk ? `${rssOk.items} items` : 'not reachable from GitHub (the app cannot see company announcements until they reach openFDA)' });
+
 // Worker health
 try {
   const h = await getJson('https://rakka-edge.ericwoodliff.workers.dev/health');
@@ -188,6 +206,7 @@ let html = `<div style="font-family:Arial,sans-serif;max-width:760px"><h2>RAKKA 
 html += out.flags.length ? '<h3>Findings</h3><ul>' + out.flags.map((f) => `<li style="color:${colour[f.level]}">${esc(f.text)}</li>`).join('') + '</ul>' : '<p>No findings.</p>';
 html += '<h3>Checks</h3><ul>' + out.checks.map((c) => `<li>${c.ok ? 'PASS' : 'FAIL'}: ${esc(c.name)} (${esc(c.detail)})</li>`).join('') + '</ul>';
 html += `<h3>Numbers</h3><ul><li>Recalls in the window: ${out.stats.recallsInWindow} (active ${out.stats.activeRecalls})</li><li>FDA recalls that print a barcode: ${out.stats.fdaWithBarcode} of ${out.stats.fdaTotal} (${out.stats.barcodeCoveragePct}%)</li><li>Class I/II recalls with no barcode: ${out.stats.seriousNoBarcode}</li><li>Catalog products checked: ${out.stats.catalogItems}</li><li>Catalog matches: exact ${out.stats.hits.exact}, near ${out.stats.hits.near}, possible ${out.stats.hits.possible}, related ${out.stats.hits.related}</li></ul>`;
+html += '<h3>FDA announcements feed probe</h3>' + out.rss.map((x) => `<p>${esc(x.url)}<br>HTTP ${esc(x.status)}, ${x.items} items<br>${x.newest.map(esc).join('<br>')}</p>`).join('');
 html += '<h3>Barcode recalls the matcher did not match exactly</h3>' + tbl(out.selfFail, [['Recall', 'id'], ['Barcode', 'gtin'], ['Result', 'got'], ['Product', 'product']]);
 html += '<h3>Recalls the app\'s live barcode query missed</h3>' + tbl(out.liveMiss, [['Recall', 'id'], ['Barcode', 'code'], ['Product', 'product']]);
 html += '<h3>Recalls the worker /recall-check missed</h3>' + tbl(out.wkMiss, [['Recall', 'id'], ['Barcode', 'code'], ['Product', 'product']]);
@@ -195,7 +214,7 @@ const rv = [['Exact barcode matches in the catalog (real products on recall: con
 for (const [title, rows] of rv) html += `<h3>${title}</h3>` + tbl(rows, [['Catalog product', 'item'], ['Recall', 'recall'], ['Recall says', 'recallProduct'], ['Firm', 'firm']]);
 html += '</div>';
 fs.writeFileSync('audit_report.html', html);
-const txt = `RAKKA recall audit: ${level}\n\n` + out.flags.map((f) => `- [${f.level}] ${f.text}`).join('\n') + '\n\n' + out.checks.map((c) => `${c.ok ? 'PASS' : 'FAIL'} ${c.name} (${c.detail})`).join('\n') + '\n\nOpen audit_report.html for the full tables.\n';
+const txt = `RAKKA recall audit: ${level}\n\n` + out.flags.map((f) => `- [${f.level}] ${f.text}`).join('\n') + '\n\n' + out.checks.map((c) => `${c.ok ? 'PASS' : 'FAIL'} ${c.name} (${c.detail})`).join('\n') + '\n\nFDA announcements feed probe:\n' + out.rss.map((x) => `  ${x.url} -> HTTP ${x.status}, ${x.items} items\n    ${x.newest.join('\n    ')}`).join('\n') + '\n\nOpen audit_report.html for the full tables.\n';
 fs.writeFileSync('audit_report.txt', txt);
 fs.writeFileSync('audit_result.json', JSON.stringify({ level: out.level, flags: out.flags, stats: out.stats }, null, 2));
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, txt + '\n' + html + '\n');

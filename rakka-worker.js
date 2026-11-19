@@ -803,6 +803,21 @@ function alMatchPrepared(p, rec) {
 // Fields use the app's recall shape. `expires` (YYYY-MM-DD) is optional; after that date the entry drops out by itself.
 const AL_PINNED = [
   {
+    id: 'ALDI-PRIANO-TORTELLONI-2026-11-18',
+    agency: 'FDA',
+    product: 'ALDI Priano Protein Carbonara Tortelloni (9 oz) and Priano Protein Herb & Cheese Tortelloni (9 oz) — Lot T9101926, Best If Used By Dec 18, 2026. Sold in Alabama, Georgia, North Carolina and South Carolina, in stores and online.',
+    brand: 'ALDI Inc.',
+    reason: 'Possible Clostridium botulinum contamination (botulism risk): the products may not have been stored, distributed or sold at appropriate temperatures. Do not prepare or eat them. Discard, or return to ALDI for a full refund. ALDI: (844) 484-0332. Company announcement posted by the FDA.',
+    severity: 'Company announcement (FDA-posted)',
+    date: '11/18/2026',
+    status: 'Ongoing',
+    upcs: [],
+    lotCodes: ['T9101926'],
+    keywords: ['priano', 'protein tortelloni', 'carbonara tortelloni', 'herb and cheese tortelloni', 'herb & cheese tortelloni'],
+    raw: 'aldi priano protein carbonara tortelloni herb cheese tortelloni t9101926 clostridium botulinum botulism alabama georgia north carolina south carolina',
+    expires: '2027-02-18',
+  },
+  {
     id: 'USDA-PHA-2026-M3177',
     agency: 'USDA FSIS',
     product: 'Betterballen Foods 6-piece Bami Rolls (Pork), 10-piece Saté Kroketten (Chicken), and 12-piece Bitterballen (Beef) — Best By Oct 2027 (EST. M3177 / P3177)',
@@ -1368,7 +1383,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-18-v11-gentle-off',
+        build: '2026-11-18-v12-pinned-priano',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
