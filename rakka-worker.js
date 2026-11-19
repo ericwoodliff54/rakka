@@ -855,6 +855,7 @@ function alFdaUrl(skip) {
   return `https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+report_date:[${ymd(from)}+TO+${ymd(to)}]&limit=1000&skip=${skip}&sort=report_date:desc`;
 }
 
+let AL_RSS_MEMO = { at: 0, items: null };
 const AL_FDA_RSS = 'https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml';
 function alXmlText(x) {
   return String(x || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]*>/g, ' ')
@@ -1372,7 +1373,19 @@ export default {
       if (!rlPin.allowed) {
         return new Response(JSON.stringify({ success: false, error: 'Too many requests.' }), { status: 429, headers: { ...corsHeaders, ...rlPin.headers } });
       }
-      return new Response(JSON.stringify({ success: true, at: Date.now(), items: alPinnedActive().map(({ expires, ...p }) => ({ ...p, pinned: true })) }),
+      // FDA company announcements ride along with the pinned list so the app's recall list shows them right away (they reach openFDA days later).
+      let rssItems = [];
+      try {
+        if (!AL_RSS_MEMO.items || Date.now() - AL_RSS_MEMO.at > 600000) {
+          const rr = await fetch(AL_FDA_RSS, { signal: AbortSignal.timeout(6000), headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (contact@twinravensdigital.com)' } });
+          if (rr.ok) { const tmp = []; alRssRecords(await rr.text(), tmp); AL_RSS_MEMO = { at: Date.now(), items: tmp }; }
+        }
+        rssItems = (AL_RSS_MEMO.items || []).map((r) => ({
+          id: r.id, agency: 'FDA', product: r.product, brand: r.firm, reason: r.reason || 'FDA-posted company announcement. See the FDA recall page for details.',
+          severity: r.classification, date: r.date, status: 'Ongoing', upcs: [], lotCodes: [], keywords: [], raw: alNorm(`${r.product} ${r.firm} ${r.extra || ''}`), pinned: true,
+        }));
+      } catch (_) { /* pinned list still returned */ }
+      return new Response(JSON.stringify({ success: true, at: Date.now(), items: [...alPinnedActive().map(({ expires, ...p }) => ({ ...p, pinned: true })), ...rssItems] }),
         { headers: { ...corsHeaders, 'Cache-Control': 'public, max-age=300' } });
     }
 
@@ -1418,7 +1431,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-18-v13-fda-rss',
+        build: '2026-11-18-v14-fda-rss-list',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
