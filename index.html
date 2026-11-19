@@ -25820,8 +25820,8 @@ function renderHistory() {
     }
 
     async function openCameraOrFallback(title, onCaptureFile, fallbackInputEl) {
-      // In the Android app the system photo camera is not reliably started from a web page, so use the in-app camera (the same one the barcode scanner uses).
-      if ((isMobileCameraDevice() && !window.rkIsNativeShell) || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      // Phones (including the Android app, whose build now allows it) open the phone's own camera app directly.
+      if (isMobileCameraDevice() || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         if (fallbackInputEl) {
           fallbackInputEl.value = '';
           fallbackInputEl.click();
