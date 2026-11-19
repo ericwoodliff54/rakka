@@ -68,14 +68,29 @@ for (const u of offUrls) {
     } catch (e) { offWhy.push(String(e.message || e).slice(0, 40)); await sleep(4000); }
   }
 }
-if (!offList.length) flag('warn', `The Open Food Facts popular-product list could not be loaded (${offWhy.join(', ')}), so the real-world check was skipped this run. Run it again later.`);
+if (!offList.length) flag('info', `The Open Food Facts popular-product list could not be loaded (${offWhy.join(', ')}), so the built-in list of popular products was used instead.`);
+// Built-in list of well-known US grocery barcodes (a safety net for when the Open Food Facts search is down).
+// Any code that Open Food Facts does not actually know is dropped below, so a wrong code here is harmless.
+const BUILT_IN = ['049000028911','049000028904','049000006346','012000001291','012000161551','078000113464','016000275683','016000275287','016000264601','038000138416','038000845004','028400064057','028400090513','044000032029','044000011307','030000010204','037600106252','051000012616','051500255162','013000006408','041500000084','070470003153','072250026701','073416000391','021130126026','041220576906','041498130046','011110038364','078742370231','078742028259','085239032096','099482434373','096619146205','020000103020','021000615988','014100085478','014100072034','041331124034','041196910063','041780022151','030000315002','016000141278','016000124646','038000199899','038000391003','040000422688','040000496108','722252100016','722252601155','857777004101','075720001552','074873000001','024000163343','024000163183','052000338263','052000043100','012000130113','012000809842','049000042566','049000050929','078000082111','021908476138','688267001123','036000241457','036000291452','037000127420','037000972198','073420000014','070847811169','087692000151','070200530234','051000025517','051000254306','055000004702','031200024013','042272003521','041303003056'];
+const have = new Set(offList.map((p) => String(p.code)));
+const extra = BUILT_IN.filter((c) => !have.has(c));
+let verified = 0;
+for (const c of extra) {
+  if (offList.length >= 100) break;
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${c}.json`, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
+    if (r.ok) { const j = await r.json(); const nm = j && j.product && (j.product.product_name || j.product.generic_name); if (j && j.status === 1 && nm) { offList.push({ code: c, product_name: nm, brands: j.product.brands || '', offVerified: true }); verified++; } }
+  } catch (_) {}
+  await sleep(800);
+}
+B.sourceNote = `${offList.length - verified} from the Open Food Facts popular list, ${verified} from the built-in list (verified in Open Food Facts)`;
 for (const p of offList.slice(0, 100)) {
   const r = await lookup(p.code);
   B.total++;
   if (!r.ok) { B.errs++; B.errKinds[r.err] = (B.errKinds[r.err] || 0) + 1; continue; }
   B.ms.push(r.ms);
   if (r.found) { B.found++; if (r.hasIngredients) B.ingr++; } else B.miss.push({ upc: p.code, name: `${p.brands || ''} ${p.product_name}`.trim(), diag: r.diag, ms: r.ms });
-  await sleep(250);
+  await sleep(700);
 }
 const bPct = pct(B.found, B.total - B.errs);
 // For popular products the worker could not find: does Open Food Facts itself have them? If yes, the worker is failing to reach it.
@@ -96,6 +111,7 @@ if (A.total - A.errs >= 30 && aPct < 90) flag('bad', `Only ${aPct}% of products 
 if (B.total - B.errs >= 30 && bPct < 75) flag('warn', `Only ${bPct}% of the most-scanned US products returned a real name. New users would see "Retail Grocery Item" for the rest.`);
 if (A.ms.length && median(A.ms) > 1500) flag('warn', `Median lookup time for known products was ${median(A.ms)} ms. It should be well under a second.`);
 if (!A.total) flag('warn', 'No catalog products were tested.');
+if (!B.total) flag('warn', 'No popular US products could be verified in Open Food Facts this run, so the real-world check was skipped. Run it again later.');
 if (B.total && B.errs / B.total > 0.2) flag('warn', `${B.errs} of ${B.total} popular-product lookups failed outright (${JSON.stringify(B.errKinds)}).`);
 if (offChecked >= 5 && offHas / offChecked > 0.4) flag('bad', `${offHas} of ${offChecked} popular products the worker could NOT find are in Open Food Facts. The worker is probably being blocked or timing out when it asks Open Food Facts. New users would see "Retail Grocery Item" for products that have real data.`);
 const aIngr = pct(A.ingr, A.found), bIngr = pct(B.ingr, B.found);
@@ -107,6 +123,7 @@ const lines = [
   ...flags.map((f) => `- [${f.level}] ${f.text}`), '',
   `A. Products already in the catalog: ${A.found}/${A.total - A.errs} found (${aPct}%), ingredients on ${aIngr}% of those, median ${median(A.ms)} ms, ${A.errs} errors`,
   `B. Most-scanned US products: ${B.found}/${B.total - B.errs} found (${bPct}%), ingredients on ${bIngr}% of those, median ${median(B.ms)} ms, ${B.errs} request errors ${JSON.stringify(B.errKinds)}`,
+  `   Sample: ${B.sourceNote || ''}`,
   `   Of the ${B.miss.length} popular products NOT found by the worker, Open Food Facts itself has ${offHas} of the ${offChecked} checked.`, '',
 ];
 if (B.miss.length) lines.push('Popular products NOT found (these would show "Retail Grocery Item" to a new user):', ...B.miss.slice(0, 40).map((m) => `  ${m.upc}  ${m.name}${m.offHas ? '   [Open Food Facts HAS this]' : ''}  worker said: ${m.diag || '-'} (${m.ms} ms)`), '');
