@@ -50,11 +50,25 @@ const aPct = pct(A.found, A.total - A.errs);
 // ---- B. Most-scanned US products on Open Food Facts (a fair picture of what new users will scan)
 const B = { total: 0, found: 0, ingr: 0, errs: 0, ms: [], miss: [], errKinds: {} };
 let offList = [];
-try {
-  const u = 'https://world.openfoodfacts.org/api/v2/search?countries_tags_en=united-states&sort_by=unique_scans_n&page_size=120&fields=code,product_name,brands';
-  const r = await fetch(u, { signal: AbortSignal.timeout(40000), headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
-  if (r.ok) offList = ((await r.json()).products || []).filter((p) => p.code && /^\d{8,14}$/.test(p.code) && p.product_name);
-} catch (e) { flag('warn', 'Open Food Facts popular-product list could not be fetched: ' + e.message); }
+const offUrls = [
+  'https://world.openfoodfacts.org/api/v2/search?countries_tags_en=united-states&sort_by=unique_scans_n&page_size=120&fields=code,product_name,brands',
+  'https://us.openfoodfacts.org/api/v2/search?sort_by=unique_scans_n&page_size=120&fields=code,product_name,brands',
+  'https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&tagtype_0=countries&tag_contains_0=contains&tag_0=united-states&sort_by=unique_scans_n&page_size=120&fields=code,product_name,brands',
+];
+const offWhy = [];
+for (const u of offUrls) {
+  if (offList.length) break;
+  for (let attempt = 0; attempt < 2 && !offList.length; attempt++) {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(40000), headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
+      if (!r.ok) { offWhy.push(`HTTP ${r.status}`); await sleep(4000); continue; }
+      const j = await r.json();
+      offList = (j.products || []).filter((p) => p.code && /^\d{8,14}$/.test(String(p.code)) && p.product_name);
+      if (!offList.length) offWhy.push('empty list');
+    } catch (e) { offWhy.push(String(e.message || e).slice(0, 40)); await sleep(4000); }
+  }
+}
+if (!offList.length) flag('warn', `The Open Food Facts popular-product list could not be loaded (${offWhy.join(', ')}), so the real-world check was skipped this run. Run it again later.`);
 for (const p of offList.slice(0, 100)) {
   const r = await lookup(p.code);
   B.total++;
