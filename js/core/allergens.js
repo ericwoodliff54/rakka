@@ -24,7 +24,7 @@ export const ALLERGENS = {
     contains: ['dairy','milk','milk powder','milk solids','milk fat','milkfat','butterfat','butter','buttermilk','cream','heavy cream','sour cream','half and half','cheese','cheddar','mozzarella','parmesan','romano','gouda','swiss','provolone','brie','feta','ricotta','mascarpone','curd','curds','ghee','whey','casein','caseinate','lactose','lactalbumin','lactoglobulin','yogurt','yoghurt','kefir','custard','ice cream','gelato','paneer','quark','milk protein','whey protein','evaporated milk','condensed milk'],
     possible: ['creamer','nougat','caramel'],
     nameHints: [],
-    exclusions: [...PLANT_MILKS, ...FREE('dairy'), ...FREE('milk'), ...FREE('lactose'), 'cocoa butter','shea butter','peanut butter','almond butter','cashew butter','sunflower seed butter','sunflower butter','nut butter','seed butter','apple butter','butter bean','butter beans','cream of tartar','non dairy'],
+    exclusions: ['romano bean','romano beans','romano green bean','romano green beans','romano pole bean', ...PLANT_MILKS, ...FREE('dairy'), ...FREE('milk'), ...FREE('lactose'), 'cocoa butter','shea butter','peanut butter','almond butter','cashew butter','sunflower seed butter','sunflower butter','nut butter','seed butter','apple butter','butter bean','butter beans','cream of tartar','non dairy'],
   },
   peanuts: {
     label: 'Peanuts',
@@ -67,7 +67,7 @@ export const ALLERGENS = {
     contains: ['shrimp','prawn','crab','lobster','crawfish','crayfish','krill','langoustine','crustacean','shellfish','clam','mussel','oyster','scallop','squid','calamari','octopus','abalone','escargot','cockle','whelk','conch','oyster sauce'],
     possible: ['seafood'],
     nameHints: [],
-    exclusions: ['crab apple','crabapple','oyster cracker','oyster crackers', ...FREE('shellfish')],
+    exclusions: ['crab apple','crabapple','oyster cracker','oyster crackers','oyster mushroom','oyster mushrooms','king oyster','crab mushroom', ...FREE('shellfish')],
   },
   sesame: {
     label: 'Sesame',
