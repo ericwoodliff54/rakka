@@ -25821,6 +25821,13 @@ function renderHistory() {
 
     async function openCameraOrFallback(title, onCaptureFile, fallbackInputEl) {
       if (isMobileCameraDevice() || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+         // Android app: the system only opens the camera for a photo if the camera permission was already granted. Ask for it first, so "Snap" does not fall back to the file picker.
+         if (window.rkIsNativeShell && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+           try {
+             const probe = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+             probe.getTracks().forEach(t => t.stop());
+           } catch (_) { /* denied: the file picker is the fallback */ }
+         }
         if (fallbackInputEl) {
           fallbackInputEl.value = '';
           fallbackInputEl.click();
