@@ -1,0 +1,36 @@
+# Weekly allergen detection audit: tricky ingredient lists with known answers, plus the whole catalog compared with
+# the allergens manufacturers declare. Fails (and GitHub emails you) only if a must-catch allergen case is missed.
+# Run by hand any time: Actions tab -> "Allergen audit" -> Run workflow, then open the Summary tab.
+name: Allergen audit
+on:
+  schedule:
+    - cron: '37 13 * * 3'   # Wednesdays, about 8:37 AM Eastern
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'js/core/allergens.js'
+      - 'js/core/text.js'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the audit
+        run: node allergen_audit.mjs
+      - name: Keep a copy of the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allergen-report
+          path: |
+            allergen_report.txt
+            allergen_report.html
+            allergen_result.json
+          if-no-files-found: ignore
+
