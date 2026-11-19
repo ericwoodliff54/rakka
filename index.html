@@ -21604,7 +21604,7 @@
 
       // Notes under the product (wrong-length code, same-brand recall). Never marks the item recalled.
       let notes = '';
-      if (/^Retail Grocery Item/i.test(String(data.productName || ''))) notes += '<p class="rk-note">Product details were not found. Try scanning again, or check your connection.</p>';
+      if (/^Retail Grocery Item/i.test(String(data.productName || ''))) notes += '<p class="rk-note">We don\'t have the ingredient list for this one yet, so we can\'t check it for your allergens. The recall check still ran on the barcode. Read the package label, or scan again in a moment.</p>';
       try {
         if (window.RakkaSafety && window.RakkaSafety.extraNotesFor) {
           notes += window.RakkaSafety.extraNotesFor(data, { recalls: (typeof cachedFDARecalls !== 'undefined' ? cachedFDARecalls : []) }) || '';
@@ -21716,7 +21716,7 @@
               ${''}
             </div>
             <div class="min-w-0">
-              <h3 class="font-display text-base sm:text-lg font-bold text-white leading-snug">${escHtml(data.productName)}</h3>
+              <h3 class="font-display text-base sm:text-lg font-bold text-white leading-snug">${escHtml(/^Retail Grocery Item/i.test(String(data.productName || '')) ? String(data.productName).replace(/^Retail Grocery Item/i, 'Product not yet in our database') : data.productName)}</h3>
               <p class="text-xs text-slate-300 mt-0.5">${escHtml(data.brand)} • <span class="font-mono text-slate-400">UPC: ${escHtml(data.upc)}</span></p>
               ${fromWatchlist ? '' : `<div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 shadow-sm whitespace-nowrap">
                 <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
