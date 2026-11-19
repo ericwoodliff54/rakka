@@ -42,4 +42,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: python3 send_report.py crashed
+      - name: Flag the run as failed when action is needed (GitHub then emails you)
+        run: |
+          node -e "const r=JSON.parse(require('fs').readFileSync('audit_result.json','utf8'));console.log('Audit level:',r.level);if(r.level==='ACTION NEEDED'){console.error('ACTION NEEDED: open the run summary for details.');process.exit(1)}"
 
