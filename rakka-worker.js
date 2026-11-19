@@ -1431,7 +1431,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-19-v15-receipt-speed',
+        build: '2026-11-19-v16-receipt-recalls',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -2331,7 +2331,6 @@ CRITICAL RECEIPT SOURCE & FORMAT INSTRUCTIONS:
      * DO NOT extract items from instructional text boxes, testing cards, or notes labeled '[TESTING KEY — DO NOT SCAN AS RECEIPT]' or 'Expected RAKKA Outcome'.
      * DO NOT mistake register metadata, transaction barcodes (e.g. 'STORE #624', 'TRAN 3190', '*00624...*'), or store slogans like 'NEIGHBORHOOD GROCERY STORE' for grocery items!
      * Each purchased grocery item corresponds to exactly ONE line. NEVER duplicate items (e.g. do not emit two spinach items for a single receipt line).
-     * Trader Joe's Mandarin Orange Chicken is not on the active recall list. Never flag it as recalled.
    - Support common register line layouts and store formats:
      * Walmart: Register shorthand followed by 12-digit barcode and price (e.g., "NIGHT HAWK 004170901935 F 2.78", "HEALTHCHOICE 007265545445 F 2.98", "MANGO YOGURT 005360000026 F 0.50", "BANAN YOGURT 005360000030 F 0.50", "POTATOES 089286700194 F 2.94", "SUGAR GRANU 007874237117 F 4.98", "BULK LEMONS 000000004958KF 0.48").
      * Giant Eagle / Kroger / Meijer / Regional Grocers: Item description with price and tax flags (e.g., "GALILEO SALAME 2.99 F", "COLE SLAW 4.99 F", "PICNIC CHICKEN AC 9.99 F", "BE NATURAL MASHED 2.99 F", "TIC TAC ORANGE BOT 4.19 F").
@@ -2342,24 +2341,7 @@ CRITICAL RECEIPT SOURCE & FORMAT INSTRUCTIONS:
    - NEVER return an empty items list if food names appear on the receipt!
 4. For each food item:
    - Expand truncated or abbreviated register item names into clear consumer product names (e.g., "Texas Toast" -> "L'Oven Fresh Texas Toast", "Pumpkin Loaf Cake" -> "Bake Shop Pumpkin Sliced Loaf Cake", "ChknAlfrdoMtblMar" -> "Chicken Alfredo / Meatball Marinara", "Polska Kielbasa" -> "Parkview Polska Kielbasa", "Hneycrsp Tote LRW" -> "Honeycrisp Apples", "Autumn Crisp Grape" -> "Autumn Crisp Green Seedless Grapes").
-      - INTELLIGENT FOOD RECALL & SAFETY DETECTION (TOP PRIORITY):
-      * Actively cross-reference each purchased item against active and historical FDA and USDA Class I and Class II recall bulletins, outbreak investigations, and food contamination advisories.
-      * Proactively flag recognized food recall categories and products:
-        - Packaged Baby Spinach & Organic Leafy Greens (FDA Class I alerts: Listeria monocytogenes / Salmonella risk in pre-packaged greens from Whole Foods 365, Dole, Fresh Express, etc.)
-        - Baby Lettuce Salad Greens & Spring Mix (FDA Class I alerts: Listeria monocytogenes contamination risk in retail salad clamshells)
-        - Sweet Potato Spirals & Fresh Cut Veggie Spirals (FDA Class I alerts: Listeria monocytogenes / microbial pathogens in pre-cut sweet potato spirals)
-        - Organic Whole & Baby Carrots (FDA Class I recall: E. Coli O121 risk in multi-pound retail bags across Grimmway, SunVale, 365, Cal-Organic, Trader Joe's)
-        - Frozen Buttermilk & Homestyle Waffles (FDA Class I recall: Listeria monocytogenes in TreeHouse / store brands)
-        - Ready-to-Eat Poultry, Liverwurst & Sliced Deli Cuts (USDA-FSIS Class I recall: Listeria monocytogenes in BrucePac, Boar's Head, DeliPrime)
-        - Peanut Butter & Nut Butters (FDA Class II: Salmonella / metal fragment contamination)
-        - Soft Cheeses / Queso Fresco / Cotija (Listeria monocytogenes)
-        - Simulated or mock food recall tests matching public health alerts
-      * If an item matches an active food safety recall notice, public health alert, or recognized contamination risk:
-        - Set status to "recalled"
-        - In the 'warning' field, provide the clear pathogen/hazard directive (e.g. "FDA Class I Recall: Risk of Listeria monocytogenes contamination in packaged baby spinach/greens", or "FDA Class I Recall: Potential Listeria risk in pre-cut sweet potato spirals")
-        - In the 'recallAgency' field, specify "FDA" or "USDA-FSIS"
-        - In the 'recallSeverity' field, specify "Class I High Risk" or "Class II Alert"
-      * If the product has no recall notices on record, evaluate for household allergens; if no allergens, set status to "clear".
+      - RECALLS: Do NOT judge whether a product is recalled. RAKKA checks the real FDA and USDA recall notices separately after you answer. Always set "status" to "clear", "warning" to "", "recallAgency" to null and "recallSeverity" to null.
    - Flag all common food allergens in this product (e.g. gluten, wheat, milk, dairy, soy, peanuts, tree_nuts, eggs, fish, shellfish, sesame, corn, sulfites, yeast).
    - CRITICAL ADDITIVE SCREENING: Identify all scrutinized food additives, preservatives, emulsifiers, synthetic dyes, or dough conditioners commonly used in this commercial formulation.
      Examples:
@@ -2546,6 +2528,43 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         if (!Array.isArray(parsed.items)) {
           parsed.items = [];
         }
+
+        // Recall flags come only from the real FDA / USDA notices (same matcher as the barcode check), never from the AI's guess.
+        let recallsChecked = false, recalledTotal = 0;
+        try {
+          const feed = await alLoadFeedMemo(env);
+          const index = alIndexFor(feed);
+          recallsChecked = !!(feed.fdaOk || feed.usdaOk);
+          const order = { exact: 0, near: 1, possible: 2 };
+          for (const it of parsed.items) {
+            if (!it || typeof it !== 'object') continue;
+            it.status = 'clear'; it.isRecalled = false; it.warning = ''; it.recallAgency = null; it.recallSeverity = null;
+            const raw = String(it.upc || it.itemCode || (String(it.rawLine || '').match(/\b\d{8,14}\b/) || [''])[0] || '').replace(/\D/g, '');
+            const pi = alPrepItem({ u: raw.length >= 8 ? raw : '', n: String(it.cleanName || it.rawLine || '').slice(0, 160), b: String(it.brand || '').slice(0, 80) });
+            const cands = new Set();
+            for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
+            for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
+            for (const z of pi.keys.pfx) (index.byPfx.get(z.slice(0, 11)) || []).forEach((r) => cands.add(r));
+            for (const t of pi.nameTokens) for (const wd of [t, t + 's', t + 'es']) (index.byWord.get(wd) || []).forEach((r) => cands.add(r));
+            let best = null;
+            for (const r of cands) {
+              const m = alMatchPrepared(pi, r);
+              if (!m || !(m.confidence in order)) continue;
+              if (m.confidence === 'possible' && !pi.brand) continue;   // a name with no brand is too loose to flag from a receipt
+              if (!best || order[m.confidence] < order[best.m.confidence]) best = { m, r };
+            }
+            if (best) {
+              recalledTotal++;
+              it.status = 'recalled'; it.isRecalled = true; it.recallVerified = true;
+              it.warning = `${best.r.agency} recall: ${best.r.reason || best.r.product}${best.m.confidence === 'exact' ? '' : ' (' + best.m.why + ')'}`.slice(0, 400);
+              it.recallAgency = best.r.agency === 'USDA FSIS' ? 'USDA-FSIS' : 'FDA';
+              it.recallSeverity = best.m.confidence === 'exact' ? (best.r.classification || 'Recall') : 'Possible match: check the package';
+              it.recallRef = best.r.id;
+            }
+          }
+        } catch (_) { /* recall check unavailable: items stay unflagged, and the app's own recall list still runs */ }
+        parsed.recalledCount = recalledTotal;
+        parsed.recallsChecked = recallsChecked;
 
         return new Response(JSON.stringify({
           success: true,

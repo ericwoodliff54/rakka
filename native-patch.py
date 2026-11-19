@@ -16,6 +16,9 @@ for perm in ['android.permission.CAMERA', 'android.permission.ACCESS_NETWORK_STA
         add += f'    <uses-permission android:name="{perm}" />\n'
 if 'android.hardware.camera' not in s:
     add += '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n'
+# Android 11+ hides other apps from this one unless listed here. Without it the phone's own camera app cannot be started to take a photo.
+if 'android.media.action.IMAGE_CAPTURE' not in s:
+    add += '    <queries>\n        <intent>\n            <action android:name="android.media.action.IMAGE_CAPTURE" />\n        </intent>\n    </queries>\n'
 s = s.replace('</manifest>', add + '</manifest>')
 open(mf, 'w').write(s)
 

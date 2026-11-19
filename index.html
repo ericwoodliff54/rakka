@@ -25851,6 +25851,11 @@ function renderHistory() {
         });
         vid.srcObject = activeWebcamStream;
         if (window.rkIsNativeShell) {
+          // The second button opens the phone's own camera app (needs the camera-app permission in the Android build).
+          const alt = document.getElementById('fallbackDesktopUploadBtn');
+          if (alt) alt.textContent = "Use Phone's Camera App";
+        }
+        if (window.rkIsNativeShell) {
           // Phone in portrait: a tall preview shows the whole receipt instead of a cropped wide strip.
           const box = vid.parentElement;
           if (box) { box.classList.remove('aspect-video'); box.style.aspectRatio = '3 / 4'; box.style.maxHeight = '62vh'; }
@@ -27689,7 +27694,8 @@ function renderHistory() {
         const normalizedAllergens = Array.from(new Set(rawAllergens.map(normalizeAllergenId).filter(Boolean)));
 
         // RECALL CROSS-CHECK INTELLIGENCE
-        let isRecalledItem = item.status === 'recalled' || Boolean(item.isRecalled);
+        // Only a recall the server verified against the real FDA/USDA notices counts. An AI guess on the receipt never does.
+        let isRecalledItem = (item.status === 'recalled' || Boolean(item.isRecalled)) && item.recallVerified === true;
         let hazardText = item.warning || item.hazard || '';
         let recallAgencyText = item.recallAgency || 'FDA';
         let recallSeverityText = item.recallSeverity || 'Class I High Risk';
