@@ -153,7 +153,17 @@ if (A.ms.length && median(A.ms) > 1500) flag('warn', `Median lookup time for kno
 if (!A.total) flag('warn', 'No catalog products were tested.');
 if (!B.total) flag('warn', 'No popular US products could be verified in Open Food Facts this run, so the real-world check was skipped. Run it again later.');
 if (B.total && B.errs / B.total > 0.2) flag('warn', `${B.errs} of ${B.total} popular-product lookups failed outright (${JSON.stringify(B.errKinds)}).`);
-if (offChecked >= 5 && offHas / offChecked > 0.4) flag('bad', `${offHas} of ${offChecked} popular products the worker could NOT find are in Open Food Facts. The worker is probably being blocked or timing out when it asks Open Food Facts. New users would see "Retail Grocery Item" for products that have real data.`);
+if (offChecked >= 5 && offHas / offChecked > 0.4) {
+  const msg = `${offHas} of ${offChecked} products the worker could NOT find are in Open Food Facts (the worker was told "too many requests" and gave up). The phone app asks Open Food Facts directly as a second try, so users usually still get a name, but the worker alone found ${bPct}%.`;
+  if (bPct < 70) flag('bad', msg); else flag('info', msg);
+}
+// Which lookup sources does the worker have configured?
+try {
+  const h = await (await fetch(`${WORKER}/health`, { signal: AbortSignal.timeout(15000) })).json();
+  const keys = h.detected_env_keys || [];
+  B.usdaKey = keys.includes('USDA_API_KEY');
+  if (!B.usdaKey) flag('warn', 'The worker does not report a USDA_API_KEY, so its USDA backup lookup for products Open Food Facts misses is switched off.');
+} catch (_) {}
 const aIngr = pct(A.ingr, A.found), bIngr = pct(B.ingr, B.found);
 if (B.found >= 20 && bIngr < 60) flag('info', `Only ${bIngr}% of found popular products include an ingredient list. Allergen checks need ingredients, so the app shows "not checked" for the rest.`);
 const level = level0();
@@ -164,6 +174,7 @@ const lines = [
   `A. Products already in the catalog: ${A.found}/${A.total - A.errs} found (${aPct}%), ingredients on ${aIngr}% of those, median ${median(A.ms)} ms, ${A.errs} errors`,
   `B. Most-scanned US products: ${B.found}/${B.total - B.errs} found (${bPct}%), ingredients on ${bIngr}% of those, median ${median(B.ms)} ms, ${B.errs} request errors ${JSON.stringify(B.errKinds)}`,
   `   Sample: ${B.sourceNote || ''}`,
+  `   Worker USDA backup lookup configured: ${B.usdaKey === undefined ? 'unknown' : B.usdaKey ? 'yes' : 'NO'}`,
   `   Of the ${B.miss.length} popular products NOT found by the worker, Open Food Facts itself has ${offHas} of the ${offChecked} checked.`, '',
 ];
 if (B.miss.length) lines.push('Popular products NOT found (these would show "Retail Grocery Item" to a new user):', ...B.miss.slice(0, 40).map((m) => `  ${m.upc}  ${m.name}${m.offHas ? '   [Open Food Facts HAS this]' : ''}  worker said: ${m.diag || '-'} (${m.ms} ms)`), '');
