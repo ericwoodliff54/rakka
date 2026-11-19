@@ -1431,7 +1431,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-19-v16-receipt-recalls',
+        build: '2026-11-19-v17-receipt-cuts',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
@@ -2331,6 +2331,8 @@ CRITICAL RECEIPT SOURCE & FORMAT INSTRUCTIONS:
      * DO NOT extract items from instructional text boxes, testing cards, or notes labeled '[TESTING KEY — DO NOT SCAN AS RECEIPT]' or 'Expected RAKKA Outcome'.
      * DO NOT mistake register metadata, transaction barcodes (e.g. 'STORE #624', 'TRAN 3190', '*00624...*'), or store slogans like 'NEIGHBORHOOD GROCERY STORE' for grocery items!
      * Each purchased grocery item corresponds to exactly ONE line. NEVER duplicate items (e.g. do not emit two spinach items for a single receipt line).
+     * BUT when the same product is printed on several separate lines (for example four identical 'Drinkable Yogurt' lines), return one entry for EACH printed line. Never merge separate printed lines.
+     * The image may be one piece of a longer receipt and may start or end between lines; only extract complete lines you can see. A line with only a weight or price detail, such as '(N) 3.49 lb x 1.69/lb', belongs to the item above it and is not a new item.
    - Support common register line layouts and store formats:
      * Walmart: Register shorthand followed by 12-digit barcode and price (e.g., "NIGHT HAWK 004170901935 F 2.78", "HEALTHCHOICE 007265545445 F 2.98", "MANGO YOGURT 005360000026 F 0.50", "BANAN YOGURT 005360000030 F 0.50", "POTATOES 089286700194 F 2.94", "SUGAR GRANU 007874237117 F 4.98", "BULK LEMONS 000000004958KF 0.48").
      * Giant Eagle / Kroger / Meijer / Regional Grocers: Item description with price and tax flags (e.g., "GALILEO SALAME 2.99 F", "COLE SLAW 4.99 F", "PICNIC CHICKEN AC 9.99 F", "BE NATURAL MASHED 2.99 F", "TIC TAC ORANGE BOT 4.19 F").
