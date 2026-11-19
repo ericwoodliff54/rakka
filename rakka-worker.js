@@ -56,6 +56,7 @@ const RATE_LIMIT_CONFIG = {
   'plus': 10,            // Plus code redemption / status checks
   'alerts': 40,          // background alert sync, queue reads and data deletion
   'pinned': 30,          // public pinned-recall list (small and cacheable)
+  'recall-check': 60,    // barcode scans checked against the live recall feed
   'contribute': 10       // community catalog submissions
 };
 
@@ -777,10 +778,9 @@ function alMatchPrepared(p, rec) {
     }
     return null;
   }
-  // A brand was given but is not in the notice: a different product unless the name is very specific.
-  if (brand && nameTokens.length < 4) return null;
-  // Even a long name does not identify a product when its words are everyday food words ("vanilla ice cream sandwiches").
-  if (brand && nameTokens.filter((t) => !AL_GENERIC_FOOD.has(t)).length < 2) return null;
+  // A brand was given but is not in the notice: the notice is about another company's product ("Kroger extra virgin olive oil" is not
+  // "Kofinas garlic extra virgin olive oil"). Products with this brand are matched by barcode above, never by name alone.
+  if (brand) return null;
   // No brand on the item. A short name ("baby carrots") only counts when its two words appear next to each other in the notice.
   if (!brand && nameTokens.length === 2 && nameTokens[0].length >= 4 && nameTokens[1].length >= 4) {
     const phrase = nameTokens.join(' ');
@@ -911,6 +911,16 @@ async function alLoadFeed(env, { force = false } = {}) {
       }
     } catch (_) {}
   }
+  return feed;
+}
+
+
+// Short in-memory copy of the recall feed so a burst of scans does not read storage every time.
+let AL_MEMO = { at: 0, feed: null };
+async function alLoadFeedMemo(env) {
+  if (AL_MEMO.feed && Date.now() - AL_MEMO.at < 60000) return AL_MEMO.feed;
+  const feed = await alLoadFeed(env);
+  AL_MEMO = { at: Date.now(), feed };
   return feed;
 }
 
@@ -1316,6 +1326,41 @@ export default {
         { headers: { ...corsHeaders, 'Cache-Control': 'public, max-age=300' } });
     }
 
+    // Is this barcode (or product) on an active FDA/USDA recall? Uses the same matcher as the background alerts,
+    // so barcodes printed with spaces or hyphens in the notice are found too.
+    if (request.method === 'GET' && url.pathname === '/recall-check') {
+      const rlRc = checkEdgeRateLimit(request, 'recall-check');
+      if (!rlRc.allowed) {
+        return new Response(JSON.stringify({ success: false, error: 'Too many requests.' }), { status: 429, headers: { ...corsHeaders, ...rlRc.headers } });
+      }
+      const upc = String(url.searchParams.get('upc') || '').replace(/\D/g, '').slice(0, 14);
+      const nm = String(url.searchParams.get('name') || '').slice(0, 160);
+      const br = String(url.searchParams.get('brand') || '').slice(0, 80);
+      if (upc.length < 8 && !nm) {
+        return new Response(JSON.stringify({ success: false, error: 'Send a barcode.' }), { status: 400, headers: corsHeaders });
+      }
+      try {
+        const feed = await alLoadFeedMemo(env);
+        const index = alIndexFor(feed);
+        const pi = alPrepItem({ u: upc, n: nm, b: br });
+        const cands = new Set();
+        for (const g of pi.keys.gtins) (index.byGtin.get(g) || []).forEach((r) => cands.add(r));
+        for (const st of pi.keys.stems) (index.byStem.get(st) || []).forEach((r) => cands.add(r));
+        for (const z of pi.keys.pfx) (index.byPfx.get(z.slice(0, 11)) || []).forEach((r) => cands.add(r));
+        const order = { exact: 0, near: 1, possible: 2, related: 3 };
+        const matches = [];
+        for (const r of cands) {
+          const m = alMatchPrepared(pi, r);
+          if (m) matches.push({ confidence: m.confidence, why: m.why, id: r.id, product: r.product, firm: r.firm, reason: r.reason, classification: r.classification, agency: r.agency, date: r.date, status: r.status });
+        }
+        matches.sort((a, b) => order[a.confidence] - order[b.confidence]);
+        return new Response(JSON.stringify({ success: true, feedOk: !!(feed.fdaOk || feed.usdaOk), checkedAt: feed.at || Date.now(), matches: matches.slice(0, 3) }),
+          { headers: { ...corsHeaders, 'Cache-Control': 'no-store' } });
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: 'Recall check unavailable.' }), { status: 503, headers: corsHeaders });
+      }
+    }
+
     if (url.pathname === '/' || url.pathname === '/health') {
       const { key, source } = resolveGeminiApiKey(env);
       const hasKey = Boolean(key && key.length > 0);
@@ -1323,7 +1368,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-17-matcher-v9-limits',
+        build: '2026-11-18-matcher-v10-recallcheck',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',

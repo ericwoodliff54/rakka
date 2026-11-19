@@ -21171,6 +21171,36 @@
           }
         }
 
+        // 3b. Ask our server whether this barcode is on an active recall. It reads barcodes printed with spaces or hyphens
+        // in the notice (which a plain openFDA text search misses). Failing or slow: the checks below still run.
+        if (!isDeviceOffline && !isRecalled && !terminatedNotice && String(code || '').replace(/\D/g, '').length >= 8) {
+          try {
+            const rcBase = (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim().replace(/\/+$/, '');
+            const rcCtrl = new AbortController();
+            const rcTimer = setTimeout(() => rcCtrl.abort(), 2500);
+            let rcJson = null;
+            try {
+              const rcRes = await fetch(`${rcBase}/recall-check?upc=${encodeURIComponent(String(code).replace(/\D/g, ''))}`, { signal: rcCtrl.signal, cache: 'no-store' });
+              if (rcRes.ok) rcJson = await rcRes.json();
+            } finally { clearTimeout(rcTimer); }
+            const rcHit = rcJson && Array.isArray(rcJson.matches) ? rcJson.matches.find(m => m.confidence === 'exact') : null;
+            if (rcHit) {
+              isRecalled = true;
+              recallRecord = {
+                product: (rcHit.product || productName || '').slice(0, 110),
+                brand: rcHit.firm || brandName,
+                hazard: rcHit.reason || 'Active public health notice issued.',
+                severity: (rcHit.classification || 'Class I') + ' ALERT',
+                agency: rcHit.agency === 'FDA' ? 'FDA Food Enforcement' : (rcHit.agency || 'FDA Food Enforcement'),
+                recallDate: rcHit.date || 'Federal Notice',
+                action: 'Do not consume. Active federal recall on record. Check the lot code and best-by date, and discard if it matches.',
+                tag: rcHit.classification || 'Class I Alert',
+                stores: ['Nationwide Distribution']
+              };
+            }
+          } catch (rcErr) { console.warn('recall-check fallback:', rcErr); }
+        }
+
         // 4. Query Official Live openFDA Food Enforcement API (Archived Recalls 2004–Present)
         if (!isDeviceOffline && !isRecalled && !terminatedNotice) {
           try {

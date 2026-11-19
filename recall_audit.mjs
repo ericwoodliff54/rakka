@@ -125,8 +125,30 @@ for (const r of sample) {
   await sleep(300);
 }
 out.checks.push({ name: 'App barcode search finds recent recalls', ok: liveMiss.length === 0, detail: `${liveChecked - liveMiss.length} of ${liveChecked} sampled recalls found by the same openFDA query the app runs` });
-if (liveMiss.length) flag('warn', `${liveMiss.length} sampled recall(s) were NOT returned by the app's openFDA barcode query. The worker's feed matcher still covers them, but the in-app live check would miss them.`);
+if (liveMiss.length) flag('info', `${liveMiss.length} sampled recall(s) were not returned by the plain openFDA barcode search (the app now asks the worker first, which reads spaced barcodes).`);
 out.liveMiss = liveMiss;
+
+// ---- 3b. The same barcodes through the worker's /recall-check endpoint (what the app now asks first)
+const wkMiss = [];
+let wkChecked = 0, wkMissing = false;
+for (const r of sample) {
+  const code = [...r.gtins][0].replace(/^0+/, '');
+  const up = code.length === 13 ? code : code.padStart(12, '0');
+  try {
+    const j = await getJson(`https://rakka-edge.ericwoodliff.workers.dev/recall-check?upc=${up}`, 2);
+    if (j && j.__notfound) { wkMissing = true; break; }
+    wkChecked++;
+    const hit = j && Array.isArray(j.matches) && j.matches.some((m) => m.confidence === 'exact' && m.id === r.id);
+    if (!hit) wkMiss.push({ id: r.id, code: up, product: r.product.slice(0, 90) });
+  } catch (e) { /* hiccup */ }
+  await sleep(150);
+}
+if (wkMissing) { out.checks.push({ name: 'Worker /recall-check finds recent recalls', ok: false, detail: 'endpoint not deployed yet' }); flag('warn', 'The worker has no /recall-check endpoint yet (stage 65 not deployed).'); }
+else {
+  out.checks.push({ name: 'Worker /recall-check finds recent recalls', ok: wkMiss.length === 0, detail: `${wkChecked - wkMiss.length} of ${wkChecked} sampled recalls found` });
+  if (wkMiss.length) flag('bad', `${wkMiss.length} sampled recall(s) were NOT found by the worker's /recall-check (see table). The feed may be missing them (the feed holds ongoing recalls from the last 12 months).`);
+}
+out.wkMiss = wkMiss;
 
 // ---- 4. False-positive review against the catalog
 let items = [];
@@ -167,6 +189,7 @@ html += '<h3>Checks</h3><ul>' + out.checks.map((c) => `<li>${c.ok ? 'PASS' : 'FA
 html += `<h3>Numbers</h3><ul><li>Recalls in the window: ${out.stats.recallsInWindow} (active ${out.stats.activeRecalls})</li><li>FDA recalls that print a barcode: ${out.stats.fdaWithBarcode} of ${out.stats.fdaTotal} (${out.stats.barcodeCoveragePct}%)</li><li>Class I/II recalls with no barcode: ${out.stats.seriousNoBarcode}</li><li>Catalog products checked: ${out.stats.catalogItems}</li><li>Catalog matches: exact ${out.stats.hits.exact}, near ${out.stats.hits.near}, possible ${out.stats.hits.possible}, related ${out.stats.hits.related}</li></ul>`;
 html += '<h3>Barcode recalls the matcher did not match exactly</h3>' + tbl(out.selfFail, [['Recall', 'id'], ['Barcode', 'gtin'], ['Result', 'got'], ['Product', 'product']]);
 html += '<h3>Recalls the app\'s live barcode query missed</h3>' + tbl(out.liveMiss, [['Recall', 'id'], ['Barcode', 'code'], ['Product', 'product']]);
+html += '<h3>Recalls the worker /recall-check missed</h3>' + tbl(out.wkMiss, [['Recall', 'id'], ['Barcode', 'code'], ['Product', 'product']]);
 const rv = [['Exact barcode matches in the catalog (real products on recall: confirm)', out.review.exact], ['Near-barcode matches (check)', out.review.near], ['Name-based matches (look for false positives)', out.review.possible]];
 for (const [title, rows] of rv) html += `<h3>${title}</h3>` + tbl(rows, [['Catalog product', 'item'], ['Recall', 'recall'], ['Recall says', 'recallProduct'], ['Firm', 'firm']]);
 html += '</div>';
