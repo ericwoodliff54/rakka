@@ -1420,6 +1420,7 @@ export default {
 
       // Tier 2: Multi-Cluster Open Food Facts Query (World + US Mirror)
       let offProduct = null;
+      const offDiag = [];   // why Open Food Facts gave nothing (shown only when no registry had the product)
 
       try {
         const fetchPromises = uniqueCodes.map(q => {
@@ -1427,11 +1428,13 @@ export default {
             headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (https://rakka.app)' },
             signal: AbortSignal.timeout(9000)
           })
-          .then(r => r.ok ? r.json() : null)
+          .then(r => { if (!r.ok) offDiag.push('HTTP ' + r.status); return r.ok ? r.json() : null; })
           .then(data => {
             if (data && data.status === 1 && data.product) return data.product;
+            if (data) offDiag.push('status ' + data.status);
             throw new Error('Not found');
-          });
+          })
+          .catch(err => { if (!/Not found/.test(String(err && err.message))) offDiag.push(String((err && err.name) || 'error')); throw err; });
         });
         const offAny = Promise.any(fetchPromises);
         // Keep going and cache the result even if the phone gave up waiting (slow first lookup), so the next scan is instant.
@@ -1729,7 +1732,8 @@ export default {
       return new Response(JSON.stringify({
         found: false,
         upc: cleanUpc,
-        message: 'Product not yet indexed in public food registries'
+        message: 'Product not yet indexed in public food registries',
+        diag: { off: [...new Set(offDiag)].slice(0, 6) }
       }), { status: 404, headers: corsHeaders });
     }
 
