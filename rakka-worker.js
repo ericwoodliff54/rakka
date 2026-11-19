@@ -855,6 +855,36 @@ function alFdaUrl(skip) {
   return `https://api.fda.gov/food/enforcement.json?search=status:%22Ongoing%22+AND+report_date:[${ymd(from)}+TO+${ymd(to)}]&limit=1000&skip=${skip}&sort=report_date:desc`;
 }
 
+const AL_FDA_RSS = 'https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml';
+function alXmlText(x) {
+  return String(x || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/\s+/g, ' ').trim();
+}
+/** Turn FDA recall RSS items into recall records (name and brand matching only: these notices carry no barcodes). */
+function alRssRecords(xml, records) {
+  const pinnedWords = alPinnedActive().flatMap((p) => p.keywords || []).map((k) => alNorm(k));
+  const items = String(xml || '').match(/<item[\s>][\s\S]*?<\/item>/g) || [];
+  for (const it of items.slice(0, 40)) {
+    const tag = (n) => { const m = it.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</${n}>`, 'i')); return m ? alXmlText(m[1]) : ''; };
+    const title = tag('title'), link = tag('link'), desc = tag('description'), pub = tag('pubDate');
+    if (!title) continue;
+    const when = Date.parse(pub);
+    if (!isNaN(when) && Date.now() - when > 75 * 86400000) continue;
+    const nt = alNorm(title);
+    if (pinnedWords.some((k) => k && nt.includes(k))) continue;   // already covered by a pinned notice
+    const firm = (title.match(/^(.+?)\s+(?:Recalls?|Issues?|Expands?|Announces?|Voluntarily)\b/i) || [])[1] || '';
+    const d = isNaN(when) ? '' : new Date(when);
+    records.push({
+      id: 'FDA-RSS-' + (link.split('/').filter(Boolean).pop() || title).slice(0, 80),
+      product: title, firm, reason: desc.slice(0, 400), classification: 'Company announcement (FDA-posted)',
+      status: 'Ongoing', agency: 'FDA',
+      date: d ? `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}/${d.getUTCFullYear()}` : '',
+      codesText: '', extra: desc.slice(0, 600),
+    });
+  }
+}
+
 async function alLoadFeed(env, { force = false } = {}) {
   const kv = env.RAKKA_COMMUNITY_DB;
   if (!force) {
@@ -868,9 +898,10 @@ async function alLoadFeed(env, { force = false } = {}) {
   const timer = setTimeout(() => ctl.abort(), 12000);
   let fdaOk = false, usdaOk = false;
   try {
-    const [fdaRes, usdaRes] = await Promise.allSettled([
+    const [fdaRes, usdaRes, rssRes] = await Promise.allSettled([
       fetch(alFdaUrl(0), { signal: ctl.signal }),
       fetch('https://www.fsis.usda.gov/fsis/api/recall/v/1', { signal: ctl.signal }),
+      fetch(AL_FDA_RSS, { signal: ctl.signal, headers: { 'User-Agent': 'RAKKA-FoodSafetyApp/1.0 (contact@twinravensdigital.com)' } }),
     ]);
     if (fdaRes.status === 'fulfilled' && fdaRes.value.ok) {
       const j = await fdaRes.value.json();
@@ -911,6 +942,10 @@ async function alLoadFeed(env, { force = false } = {}) {
         }
         usdaOk = true;
       }
+    }
+    // FDA company announcements (the same notices as fda.gov "Recalls, Market Withdrawals & Safety Alerts"). They appear days to weeks before openFDA enforcement reports.
+    if (rssRes.status === 'fulfilled' && rssRes.value.ok) {
+      try { alRssRecords(await rssRes.value.text(), records); } catch (_) { /* keep the rest */ }
     }
   } catch (_) { /* fall through with whatever loaded */ } finally { clearTimeout(timer); }
   const feed = { at: Date.now(), fdaOk, usdaOk, records: records.filter((r, i) => records.findIndex((x) => x.id === r.id) === i) };
@@ -1383,7 +1418,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-18-v12-pinned-priano',
+        build: '2026-11-18-v13-fda-rss',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
