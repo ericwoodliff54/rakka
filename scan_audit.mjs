@@ -68,11 +68,43 @@ for (const u of offUrls) {
     } catch (e) { offWhy.push(String(e.message || e).slice(0, 40)); await sleep(4000); }
   }
 }
-if (!offList.length) flag('info', `The Open Food Facts popular-product list could not be loaded (${offWhy.join(', ')}), so the built-in list of popular products was used instead.`);
+const have = new Set(offList.map((p) => String(p.code)));
+// Preferred sample: US products from the Open Food Facts data dump that are NOT in our catalog yet (so they are not cached).
+// This is the honest test of "what does a brand-new product look like to a first-time scanner".
+import readline from 'node:readline';
+import { Readable } from 'node:stream';
+const knownCodes = new Set(items.map((it) => String(it.upc || '').replace(/^0+/, '')));
+const DUMP_URL = process.env.OFF_DUMP_URL || 'https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz';
+let fromDump = 0;
+try {
+  const ctl = new AbortController();
+  const killer = setTimeout(() => ctl.abort(), 240000);   // never spend more than 4 minutes on this
+  const res = await fetch(DUMP_URL, { signal: ctl.signal, headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const gunzip = zlib.createGunzip();
+  Readable.fromWeb(res.body).pipe(gunzip);
+  const rl = readline.createInterface({ input: gunzip, crlfDelay: Infinity });
+  rl.on('error', () => {}); gunzip.on('error', () => {});
+  try {
+    for await (const line of rl) {
+      let p; try { p = JSON.parse(line); } catch (_) { continue; }
+      const code = String(p.code || '');
+      if (!/^(0\d{12}|\d{12})$/.test(code)) continue;
+      if (!(p.countries_tags || []).includes('en:united-states')) continue;
+      const nm = p.product_name || p.generic_name;
+      if (!nm || (Number(p.unique_scans_n) || 0) < 3) continue;
+      if (knownCodes.has(code.replace(/^0+/, ''))) continue;
+      if (have.has(code)) continue;
+      offList.push({ code, product_name: nm, brands: p.brands || '' }); have.add(code); fromDump++;
+      if (fromDump >= 100) { ctl.abort(); break; }
+    }
+  } catch (_) { /* aborted on purpose or the stream ended */ }
+  clearTimeout(killer);
+} catch (e) { offWhy.push('dump: ' + String(e.message || e).slice(0, 40)); }
+
 // Built-in list of well-known US grocery barcodes (a safety net for when the Open Food Facts search is down).
 // Any code that Open Food Facts does not actually know is dropped below, so a wrong code here is harmless.
-const BUILT_IN = ['049000028911','049000028904','049000006346','012000001291','012000161551','078000113464','016000275683','016000275287','016000264601','038000138416','038000845004','028400064057','028400090513','044000032029','044000011307','030000010204','037600106252','051000012616','051500255162','013000006408','041500000084','070470003153','072250026701','073416000391','021130126026','041220576906','041498130046','011110038364','078742370231','078742028259','085239032096','099482434373','096619146205','020000103020','021000615988','014100085478','014100072034','041331124034','041196910063','041780022151','030000315002','016000141278','016000124646','038000199899','038000391003','040000422688','040000496108','722252100016','722252601155','857777004101','075720001552','074873000001','024000163343','024000163183','052000338263','052000043100','012000130113','012000809842','049000042566','049000050929','078000082111','021908476138','688267001123','036000241457','036000291452','037000127420','037000972198','073420000014','070847811169','087692000151','070200530234','051000025517','051000254306','055000004702','031200024013','042272003521','041303003056'];
-const have = new Set(offList.map((p) => String(p.code)));
+const BUILT_IN = fromDump >= 60 ? [] : ['049000028911','049000028904','049000006346','012000001291','012000161551','078000113464','016000275683','016000275287','016000264601','038000138416','038000845004','028400064057','028400090513','044000032029','044000011307','030000010204','037600106252','051000012616','051500255162','013000006408','041500000084','070470003153','072250026701','073416000391','021130126026','041220576906','041498130046','011110038364','078742370231','078742028259','085239032096','099482434373','096619146205','020000103020','021000615988','014100085478','014100072034','041331124034','041196910063','041780022151','030000315002','016000141278','016000124646','038000199899','038000391003','040000422688','040000496108','722252100016','722252601155','857777004101','075720001552','074873000001','024000163343','024000163183','052000338263','052000043100','012000130113','012000809842','049000042566','049000050929','078000082111','021908476138','688267001123','036000241457','036000291452','037000127420','037000972198','073420000014','070847811169','087692000151','070200530234','051000025517','051000254306','055000004702','031200024013','042272003521','041303003056'];
 const extra = BUILT_IN.filter((c) => !have.has(c));
 let verified = 0;
 for (const c of extra) {
@@ -83,7 +115,8 @@ for (const c of extra) {
   } catch (_) {}
   await sleep(800);
 }
-B.sourceNote = `${offList.length - verified} from the Open Food Facts popular list, ${verified} from the built-in list (verified in Open Food Facts)`;
+if (fromDump < 60) flag('info', `The Open Food Facts data dump gave only ${fromDump} new US products (${offWhy.join(', ') || 'no error'}), so older fallbacks were also used.`);
+B.sourceNote = `${fromDump} US products from the Open Food Facts data dump that are not in our catalog (true first-scan test), ${offList.length - verified - fromDump} from the popular-products search, ${verified} from the built-in list`;
 for (const p of offList.slice(0, 100)) {
   const r = await lookup(p.code);
   B.total++;
