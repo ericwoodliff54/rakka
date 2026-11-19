@@ -109,7 +109,8 @@ out.stats.seriousNoBarcode = noCode;
 if (serious.length && noCode / serious.length > 0.7) flag('info', `${noCode} of ${serious.length} Class I/II recalls print no barcode at all. Those can only be matched by brand and product name, so they are the main place a miss could hide.`);
 
 // ---- 3. Live lookup the way the app does it (openFDA search by barcode)
-const sample = withCodes.filter((r) => /^class (i|ii)\b/i.test(r.classification)).slice(0, 25);
+// Only recalls that are still active: the app and worker deliberately ignore terminated or completed ones.
+const sample = withCodes.filter((r) => W.alRecallActive(r) && /^class (i|ii)\b/i.test(r.classification)).slice(0, 25);
 const liveMiss = [];
 let liveChecked = 0;
 for (const r of sample) {
