@@ -6,6 +6,8 @@
 import fs from 'node:fs';
 import zlib from 'node:zlib';
 
+process.on('uncaughtException', (e) => console.warn('ignored stray error:', e && e.name));
+process.on('unhandledRejection', (e) => console.warn('ignored stray rejection:', e && e.name));
 const WORKER = (process.env.WORKER_URL || 'https://rakka-edge.ericwoodliff.workers.dev').replace(/\/+$/, '');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const flags = [];
@@ -82,7 +84,9 @@ try {
   const res = await fetch(DUMP_URL, { signal: ctl.signal, headers: { 'User-Agent': 'RAKKA-audit/1.0 (contact@twinravensdigital.com)' } });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const gunzip = zlib.createGunzip();
-  Readable.fromWeb(res.body).pipe(gunzip);
+  const srcStream = Readable.fromWeb(res.body);
+  srcStream.on('error', () => {});   // an intentional abort must not crash the audit
+  srcStream.pipe(gunzip);
   const rl = readline.createInterface({ input: gunzip, crlfDelay: Infinity });
   rl.on('error', () => {}); gunzip.on('error', () => {});
   try {
@@ -96,10 +100,13 @@ try {
       if (knownCodes.has(code.replace(/^0+/, ''))) continue;
       if (have.has(code)) continue;
       offList.push({ code, product_name: nm, brands: p.brands || '' }); have.add(code); fromDump++;
-      if (fromDump >= 100) { ctl.abort(); break; }
+      if (fromDump >= 100) break;
     }
   } catch (_) { /* aborted on purpose or the stream ended */ }
   clearTimeout(killer);
+  try { rl.close(); } catch (_) {}
+  try { srcStream.destroy(); gunzip.destroy(); } catch (_) {}
+  try { ctl.abort(); } catch (_) {}
 } catch (e) { offWhy.push('dump: ' + String(e.message || e).slice(0, 40)); }
 
 // Built-in list of well-known US grocery barcodes (a safety net for when the Open Food Facts search is down).
