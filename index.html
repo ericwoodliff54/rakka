@@ -23828,6 +23828,45 @@
       return new RegExp('(?<!\\d)0*' + bare + '(?!\\d)').test(String(raw));
     }
 
+    // Loose fresh produce (a head of lettuce, a cantaloupe, fresh cilantro) has no barcode and often no brand on a receipt, so it can never be
+    // flagged as "recalled". Instead, when a recent FDA/USDA notice names the same produce, the item gets a softer "check this" advisory.
+    const RK_PRODUCE_TERMS = [
+      ['romaine', 'romaine lettuce'], ['lettuce', 'lettuce'], ['spinach', 'spinach'], ['cilantro', 'cilantro'], ['parsley', 'parsley'], ['basil', 'basil'],
+      ['kale', 'kale'], ['arugula', 'arugula'], ['cabbage', 'cabbage'], ['celery', 'celery'], ['cucumber', 'cucumbers'], ['tomato', 'tomatoes'],
+      ['jalapeno|jalapeño', 'jalapeños'], ['pepper', 'peppers'], ['scallion|green onion', 'green onions'], ['onion', 'onions'], ['mushroom', 'mushrooms'],
+      ['carrot', 'carrots'], ['potato', 'potatoes'], ['cantaloupe', 'cantaloupe'], ['honeydew', 'honeydew'], ['watermelon', 'watermelon'], ['melon', 'melon'],
+      ['strawberr(?:y|ies)', 'strawberries'], ['blueberr(?:y|ies)', 'blueberries'], ['raspberr(?:y|ies)', 'raspberries'], ['blackberr(?:y|ies)', 'blackberries'],
+      ['grape', 'grapes'], ['apple', 'apples'], ['peach', 'peaches'], ['nectarine', 'nectarines'], ['plum', 'plums'], ['cherr(?:y|ies)', 'cherries'],
+      ['mango', 'mangoes'], ['papaya', 'papaya'], ['avocado', 'avocados'], ['lemon', 'lemons'], ['lime', 'limes'], ['orange', 'oranges'],
+      ['sprout', 'sprouts'], ['broccoli', 'broccoli'], ['cauliflower', 'cauliflower'], ['squash', 'squash'], ['zucchini', 'zucchini'],
+      ['green bean|string bean', 'green beans'], ['peas?', 'peas'], ['sweet corn|corn on the cob', 'sweet corn'], ['leek', 'leeks'], ['radish', 'radishes'],
+      ['beet', 'beets'], ['mint', 'mint'], ['dill', 'dill'], ['herb', 'fresh herbs'], ['pear', 'pears'], ['pineapple', 'pineapple'], ['peaches', 'peaches']
+    ].map(([src, label]) => ({ re: new RegExp('(?<![a-z])(?:' + src + ')(?:s|es)?(?![a-z])', 'i'), label }));
+    const RK_PROCESSED = /\b(juice|sauce|dip|salsa|pie|cake|loaf|bar|chip|chips|snack|jam|jelly|soup|dressing|pizza|bread|yogurt|cookie|cereal|drink|tea|smoothie|puree|canned|sqze|squeeze|pouch|soda|candy|granola|bagel|muffin|ice cream|sausage|kielbasa|seasoning|flavored|flavour|chicken|beef|pork|cheese|chocolate|seltzer|water|sparkling|dr pepper|gum|toothpaste)\b/i;
+    function rkProduceAdvisoryFor(item) {
+      try {
+        if (!item || item.isRecalled || item.status === 'recalled') return null;
+        const name = String(item.productName || item.product || '');
+        if (!name || RK_PROCESSED.test(name)) return null;
+        const code = String(item.upc || '').replace(/\D/g, '');
+        const loose = item.source === 'receipt' || item.source === 'manual' || !rkIsProductCode(code);
+        if (!loose) return null;
+        const hit = RK_PRODUCE_TERMS.find(t => t.re.test(name));
+        if (!hit) return null;
+        const now = Date.now();
+        for (const r of (cachedFDARecalls || [])) {
+          if (!r || typeof r !== 'object') continue;
+          if (/terminat|complet|closed|ended/i.test(String(r.status || ''))) continue;
+          const when = Date.parse(r.date || '');
+          if (isNaN(when) || now - when > 45 * 86400000) continue;
+          const prod = String(r.product || '');
+          if (!hit.re.test(prod) || RK_PROCESSED.test(prod)) continue;
+          return { id: r.id || '', term: hit.label, title: prod.slice(0, 160), agency: r.agency || 'FDA', date: r.date || '', reason: String(r.reason || r.hazard || '').slice(0, 260), brand: String(r.brand || '').slice(0, 80) };
+        }
+      } catch (_) {}
+      return null;
+    }
+
     function auditPantryAgainstRecalls() {
       if (!scanHistory || scanHistory.length === 0) {
         updatePantryAlertBanner([]);
@@ -23917,6 +23956,7 @@
         // 4. Check cached live openFDA federal wire records
         if (!match && cachedFDARecalls && cachedFDARecalls.length > 0) {
           match = cachedFDARecalls.find(r => {
+            if (/terminat|complet|closed|ended/i.test(String(r.status || ''))) return false;
             if (r.upcs && rkIsProductCode(cleanCode) && (r.upcs.includes(code) || r.upcs.includes(cleanCode))) return true;
             if (rkRawHasCode(r.raw, cleanCode)) return true;
             if (r.brand && brandLower && r.brand.toLowerCase() === brandLower) {
@@ -23935,6 +23975,7 @@
         }
 
         if (match) {
+          delete item.produceAdvisory;
           delete item.terminatedNotice;
           item.recalledNow = true;
           item.status = 'recalled';
@@ -23950,6 +23991,7 @@
           }
         } else {
           item.recalledNow = false;
+          { const adv = rkProduceAdvisoryFor(item); if (adv) item.produceAdvisory = adv; else delete item.produceAdvisory; }
           if (item.status === 'recalled') {
             item.status = 'clear';
             item.isRecalled = false;
@@ -24634,6 +24676,7 @@ function renderHistory() {
               <h4 class="font-display font-bold text-slate-100 text-sm sm:text-base leading-snug">
                 ${esc(item.productName || item.product || item.upc)}${Number(item.quantity) > 1 ? ` <span class="font-semibold text-cyan-300">&times;${Number(item.quantity)}</span>` : ''}
               </h4>
+              ${(!isItemRecalled && item.produceAdvisory) ? `<p class="text-xs font-semibold text-amber-300">Check this: a recent recall involves ${esc(item.produceAdvisory.term)}</p>` : ''}
 
               <div class="flex items-center justify-between text-xs text-slate-400 font-mono flex-wrap gap-x-2 gap-y-0.5 pt-0.5 border-t border-slate-800/60">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -24649,6 +24692,17 @@ function renderHistory() {
             <div id="watchlist-drawer-${cardKey}" class="hidden px-3.5 pb-3.5 pt-2.5 border-t border-slate-800/80 bg-slate-950 space-y-2.5 text-xs">
 
               <!-- Recall Section (Clean, non-flashing) -->
+              ${(!isItemRecalled && item.produceAdvisory) ? `
+                <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/30 space-y-1.5 text-xs">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="font-bold text-amber-300 text-xs">Check this: recent ${esc(item.produceAdvisory.agency)} recall involving ${esc(item.produceAdvisory.term)}</span>
+                    <span class="text-slate-400">${esc(item.produceAdvisory.date)}</span>
+                  </div>
+                  <p class="text-xs text-amber-100/90 leading-relaxed">${esc(item.produceAdvisory.title)}${item.produceAdvisory.brand ? ' (' + esc(item.produceAdvisory.brand) + ')' : ''}</p>
+                  ${item.produceAdvisory.reason ? `<p class="text-xs text-amber-100/80 leading-relaxed">${esc(item.produceAdvisory.reason)}</p>` : ''}
+                  <p class="text-xs text-slate-300 leading-relaxed">Loose produce has no barcode, so we cannot tell whether yours is affected. Compare the brand or grower on the sticker or bag, the date, and where you bought it with the notice.</p>
+                </div>
+              ` : ''}
               ${isItemRecalled ? `
                 <div class="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 space-y-2 text-xs">
                   <div class="flex items-center justify-between">
@@ -24989,6 +25043,7 @@ function renderHistory() {
       if (Array.isArray(cachedFDARecalls) && cachedFDARecalls.length > 0) {
         fdaFiltered = cachedFDARecalls.filter(item => {
           if (!item || typeof item !== 'object') return false;
+          if (/terminat|complet|closed|ended/i.test(String(item.status || ''))) return false;
           const rawLower = String(item.raw || '').toLowerCase();
           const firmLower = String(item.firm || item.brand || '').toLowerCase();
           const prodLower = String(item.product || '').toLowerCase();
