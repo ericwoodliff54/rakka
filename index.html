@@ -4004,7 +4004,7 @@
           <span id="householdSyncBadge" class="text-xs text-slate-400 font-semibold">Not Linked</span>
         </div>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Link up to 2 devices to share Family Allergen Profiles with zero accounts. Profiles are end-to-end encrypted, so our server can't read them. Scan history and your watchlist stay on each device.
+          Link up to 2 devices with zero accounts to share your family profiles and watchlist. They are end-to-end encrypted, so our server can't read them. Scan history, receipts and settings stay on each device.
         </p>
 
         <!-- Invite Code Display (shown after generating) -->
@@ -4183,7 +4183,7 @@
       <div id="offlineDbBox" class="pt-3 border-t border-slate-800 space-y-2 text-xs">
         <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Offline product database</h3>
         <div class="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
-          <p class="text-xs text-slate-300 leading-relaxed">Saves about 15 MB of product details on this phone so scans are instant and work without a signal. You can turn it off and free the space any time.</p>
+          <p class="text-xs text-slate-300 leading-relaxed">Saves up to about 30 MB of product details on this phone so scans are instant and work without a signal. You can turn it off and free the space any time.</p>
           <p id="offlineDbStatus" class="text-xs text-slate-400">Checking...</p>
           <button type="button" id="offlineDbToggleBtn" class="w-full min-h-[44px] py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">Turn off and free space</button>
         </div>
@@ -20209,7 +20209,7 @@
       const st = document.getElementById('offlineDbStatus'), btn = document.getElementById('offlineDbToggleBtn');
       if (!st || !btn) return;
       const off = rkOdbOff();
-      if (off) { st.textContent = 'Off. Product lookups use the internet.'; btn.textContent = 'Turn on (about 15 MB download)'; return; }
+      if (off) { st.textContent = 'Off. Product lookups use the internet.'; btn.textContent = 'Turn on (up to about 30 MB download)'; return; }
       const n = await RakkaIDB.countProducts();
       const mb = Math.max(1, Math.round(n * 0.00058));
       const done = !!(await RakkaIDB.getMeta('catalog_version'));
