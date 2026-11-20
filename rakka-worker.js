@@ -1282,6 +1282,22 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     return reply({ success: true, remaining: rec.pending.length });
   }
 
+  if (path === '/alerts/test') {
+    // Plus testers: sends one generic test push to this device so push delivery can be checked without waiting for a recall.
+    const rec = await kv.get(key, { type: 'json' });
+    if (!alSecretOk(rec, secret)) return reply({ success: false, error: 'Not registered.' }, 403);
+    const plus = await checkPlus(env, b.plusToken, deviceId);
+    if (!plus) return reply({ success: false, error: 'Plus required.', needsPlus: true }, 403);
+    if (Date.now() - (rec.tst || 0) < 30000) return reply({ success: false, result: 'wait', error: 'Please wait a few seconds between tests.' }, 429);
+    if (!rec.pt) return reply({ success: true, result: 'no-token' });
+    if (!env.FCM_SERVICE_ACCOUNT) return reply({ success: true, result: 'no-server-key' });
+    rec.tst = Date.now();
+    await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
+    const result = await alSendPush(env, rec.pt, 1);
+    console.log('alerts/test push result: ' + result);
+    return reply({ success: true, result });
+  }
+
   if (path === '/alerts/unregister') {
     const rec = await kv.get(key, { type: 'json' });
     if (rec && !alSecretOk(rec, secret)) return reply({ success: false, error: 'Not authorised.' }, 403);
@@ -1451,7 +1467,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-19-v18-receipt-match',
+        build: '2026-11-20-v19-test-alert',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
