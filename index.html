@@ -23807,6 +23807,12 @@
           showCustomizeToast('Notifications are off for RAKKA, so alerts will only show when you open the app. You can turn them on in your phone settings.');
           return;
         }
+        // A high-importance channel makes recall alerts pop up on screen and make a sound, instead of landing silently in the shade.
+        try {
+          if (PN.createChannel && (!window.Capacitor.getPlatform || window.Capacitor.getPlatform() === 'android')) {
+            await PN.createChannel({ id: 'recall_alerts', name: 'Recall alerts', description: 'Notices that a recall may affect your watchlist', importance: 5, visibility: 1, vibration: true });
+          }
+        } catch (_) {}
         if (!rkPushWired) {
           rkPushWired = true;
           PN.addListener('registration', (t) => {
