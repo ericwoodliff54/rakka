@@ -2557,6 +2557,7 @@
     html.theme-light .rk-set-group h3.uppercase { color: #1e293b !important; }
     #set-alerts .rounded-2xl.bg-slate-950 { background: transparent !important; border: none !important; box-shadow: none !important; padding: 6px 0 !important; }
     html.theme-light #set-alerts .rounded-2xl { background: transparent !important; border: none !important; box-shadow: none !important; }
+    #set-alerts #serverAlertsRow, html.theme-light #set-alerts #serverAlertsRow { border-top: none !important; padding-top: 6px !important; }
     #set-alerts > div > .rounded-2xl + .rounded-2xl { border-top: 1px solid rgba(148,163,184,.2) !important; padding-top: 12px !important; }
     html.theme-light #set-alerts > div > .rounded-2xl + .rounded-2xl { border-top-color: #e2e8f0 !important; }
     html body .theme-toggle-btn.rk-seg-on { background: var(--rk-teal) !important; color: #fff !important; box-shadow: 0 2px 8px rgba(14,138,150,.30) !important; }
@@ -4015,7 +4016,7 @@
 
       <!-- HOMOGENOUS ALERTS, AUDIO & VIBRATION STACK (No Section Titles) -->
       <div class="pt-3 border-t border-slate-800 space-y-2.5 text-xs">
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
+        <div class="hidden flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm" id="recallNotifRow" style="display:none">
           <div class="min-w-0 flex-1 space-y-0.5">
             <div class="flex items-center gap-2">
               <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Recall Notifications</span>
@@ -4040,7 +4041,7 @@
                 <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Background Recall Alerts</span>
                 <span id="serverAlertsBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Plus</span>
               </div>
-              <span id="serverAlertsStatus" class="text-xs text-slate-400 block leading-tight">Keeps checking your watchlist while RAKKA is closed, so you are notified without opening the app. Works together with Recall Notifications above.</span>
+              <span id="serverAlertsStatus" class="text-xs text-slate-400 block leading-tight">Get a notification when a recall matches your watchlist, even when RAKKA is closed. Without Plus, matches are still flagged in your watchlist whenever you open RAKKA.</span>
             </div>
             <button type="button" id="toggleServerAlertsBtn" class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shrink-0">Turn On</button>
           </div>
@@ -23681,7 +23682,7 @@
         badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
         btn.textContent = isPlusActive ? 'Turn On' : 'See Plus';
         btn.className = 'min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shrink-0';
-        if (status) status.textContent = 'Keeps checking your watchlist while RAKKA is closed, so you are notified without opening the app. Works together with Recall Notifications above.';
+        if (status) status.textContent = 'Get a notification when a recall matches your watchlist, even when RAKKA is closed. Without Plus, matches are still flagged in your watchlist whenever you open RAKKA.';
       }
     }
 
@@ -23767,6 +23768,35 @@
     }
     window.serverAlertsTick = serverAlertsTick;
 
+    // Android/iPhone store app: ask for notification permission, get the Firebase push token and give it to the server alerts.
+    let rkPushWired = false;
+    async function rkNativePushSetup() {
+      try {
+        if (!window.rkIsNativeShell) return;
+        const PN = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+        if (!PN) return;
+        let perm = await PN.checkPermissions();
+        if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PN.requestPermissions();
+        if (perm.receive !== 'granted') {
+          showCustomizeToast('Notifications are off for RAKKA, so alerts will only show when you open the app. You can turn them on in your phone settings.');
+          return;
+        }
+        if (!rkPushWired) {
+          rkPushWired = true;
+          PN.addListener('registration', (t) => {
+            const plat = (window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || 'android';
+            if (t && t.value) window.RakkaPush.setToken(t.value, plat);
+          });
+          PN.addListener('registrationError', () => {});
+          PN.addListener('pushNotificationActionPerformed', () => {
+            try { setNavTab('watchlist'); } catch (_) {}
+            serverAlertsLastTick = 0; serverAlertsTick(true);
+          });
+        }
+        await PN.register();
+      } catch (_) {}
+    }
+
     async function toggleServerAlerts() {
       triggerHaptic([30]);
       if (!isPlusActive) {
@@ -23798,6 +23828,7 @@
       }
       sound.playClearChime();
       updateServerAlertsUI();
+      rkNativePushSetup();
       showCustomizeToast(`Background recall alerts are on. Watching ${reg.watching} item${reg.watching === 1 ? '' : 's'}.`);
       serverAlertsLastTick = 0;
       serverAlertsTick(true);
@@ -23823,6 +23854,7 @@
       const open = document.getElementById('serverAlertsOpenBtn');
       if (open) open.addEventListener('click', async () => { await closeServerAlertsModal(false); setNavTab('watchlist'); });
       updateServerAlertsUI();
+      if (serverAlertsOn()) setTimeout(rkNativePushSetup, 2500);
       setTimeout(() => serverAlertsTick(true), 4000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') serverAlertsTick(false); });
       // Keep the server's copy of the watchlist current after changes (debounced).
