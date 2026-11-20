@@ -3433,7 +3433,7 @@
               <span id="receiptPurchaseDate" class="text-xs text-slate-400 block font-mono mt-0.5">Date</span>
             </div>
             <div class="flex items-center gap-1.5">
-              <span id="receiptClearedBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"></span>
+              <span id="receiptClearedBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-700/60 text-slate-200 border border-slate-500/50"></span>
               <span id="receiptAlertBadge" class="hidden text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30"></span>
             </div>
           </div>
@@ -3646,7 +3646,7 @@
             <span class="rk-disc-title">How allergen screening works</span>
             <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
           </summary>
-          <p class="rk-disc-body">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened directly from FDA-mandated bold allergen disclosures. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</p>
+          <p class="rk-disc-body">Milk, Eggs, Peanuts, Tree Nuts, Fish, Crustacean Shellfish, Wheat, Soy & Sesame are screened from the allergen declarations that FDA requires on food labels. <strong>Corn, Sulfites & Yeast</strong> are screened via deep text parsing of standard ingredient statements and derived additive synonyms.</p>
         </details>
         <details id="allergenMedicalNotice" class="rk-disc">
           <summary>
@@ -3654,7 +3654,7 @@
             <span class="rk-disc-title">Medical &amp; food safety notice<span class="rk-disc-sub">Informational only. Always read the package label.</span></span>
             <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
           </summary>
-          <p class="rk-disc-body">RAKKA is an informational grocery safety assistant based on FDA, USDA, and manufacturer product label disclosures. It does not replace professional medical advice, emergency allergy treatment, or clinical diagnostics for severe food allergies or anaphylaxis. Always verify physical packaging labels before consuming.</p>
+          <p class="rk-disc-body">RAKKA is an informational grocery safety assistant based on FDA, USDA, and manufacturer product label disclosures. It does not replace professional medical advice, emergency allergy treatment, or clinical diagnostics for severe food allergies or anaphylaxis. Always verify physical packaging labels before consuming. RAKKA checks the allergen and &ldquo;may contain&rdquo; information in the data it has. That data can be missing or out of date, and RAKKA cannot know about cross-contact unless it is printed on the label. If someone has a severe allergy, read the package yourself every time.</p>
         </details>
       </div>
 
@@ -4141,7 +4141,7 @@
               <span class="rk-disc-title">What gets sent to our server</span>
               <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
             </summary>
-            <p class="rk-disc-body" style="padding-left:14px">To do this, RAKKA sends the <strong>names, brands and barcodes</strong> of items on your watchlist to our server, with a random device ID. Your allergen profiles, family profiles and household never leave your device. Turn this off, or use Delete my data, to erase it.</p>
+            <p class="rk-disc-body" style="padding-left:14px">To do this, RAKKA sends the <strong>names, brands and barcodes</strong> of items on your watchlist to our server, with a random device ID. This feature never sends your allergen profiles or family profiles. Turn this off, or use Delete my data, to erase it.</p>
           </details>
         </div>
 
@@ -21823,7 +21823,7 @@
         recallBadgeClass = 'px-2 py-0.5 rounded-md text-xs font-bold bg-teal-500/25 text-teal-200 border border-teal-500/40';
         recallBadgeText = 'FDA Completed';
         recallSubtextClass = 'text-teal-300';
-        recallSummaryText = 'Past Recall Terminated & Resolved • Current Inventory Cleared';
+        recallSummaryText = 'Past Recall Terminated & Resolved • Current Inventory Not Affected';
 
         recallDrawerContent = `
           <div class="space-y-2 text-xs bg-slate-950/80 rounded-xl p-3 border border-teal-900/40">
@@ -21882,7 +21882,7 @@
       let allergenIconBgClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
       let allergenIcon = UI_ICONS.shieldCheck;
       let allergenBadgeClass = 'px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-      let allergenBadgeText = 'Cleared';
+      let allergenBadgeText = 'No match';
       let allergenSubtextClass = 'text-emerald-300';
       let allergenSummaryText = `0 Listed Conflicts • No Profile Matches (${familyProfiles.length} Screened)`;
       let allergenDrawerContent = '';
@@ -21928,7 +21928,7 @@
             <div class="space-y-2.5 bg-slate-950/80 rounded-xl p-3 border border-emerald-900/40 text-xs">
               <div>
                 <span class="text-xs uppercase tracking-wider font-bold text-emerald-300 block mb-1.5">
-                  Screened & Cleared (${familyProfiles.length} Member${familyProfiles.length > 1 ? 's' : ''}):
+                  Screened, no match (${familyProfiles.length} Member${familyProfiles.length > 1 ? 's' : ''}):
                 </span>
                 <div class="flex flex-wrap gap-1.5">
                   ${familyProfiles.map(p => `
@@ -22244,7 +22244,7 @@
             <span>Food Safety Clearance vs. Nutritional Health</span>
           </div>
           <p class="text-slate-400 leading-relaxed">
-            RAKKA audits freedom from active federal recalls and screens for household allergens and scrutinized chemical additives. A green recall clearance confirms the item is free from dangerous pathogen, biological, or foreign material recalls on federal record, but does not indicate whether a commercial treat or snack is a whole-food nutritional choice.
+            RAKKA audits freedom from active federal recalls and screens for household allergens and scrutinized chemical additives. A "no recall found" result only means we found no matching recall in the federal data we checked. It is not a guarantee that a product is safe, and it says nothing about whether a food is a healthy choice.
           </p>
         </div>
       `;
@@ -22254,7 +22254,7 @@
           <p id="productSafetyNoticeText" class="product-safety-notice text-xs sm:text-[13px] font-medium leading-normal flex items-center justify-center gap-1.5 flex-wrap">
             <span class="product-safety-notice-icon inline-flex items-center shrink-0">${UI_ICONS.alertCircle}</span>
             <strong class="font-bold">Safety Notice:</strong>
-            <span>Recall data comes from public FDA and USDA notices and can lag behind the news. Formulations and lot batches change, so always verify printed packaging labels before consuming. Not affiliated with FDA or USDA.</span>
+            <span>Recall data comes from public FDA and USDA notices and can lag behind the news. Formulations and lot batches change, so always verify printed packaging labels before consuming. RAKKA cannot see cross-contact warnings that are not in its data. Not affiliated with FDA or USDA.</span>
           </p>
         </div>
       `;
@@ -24740,7 +24740,7 @@ function renderHistory() {
                 <div class="p-3 rounded-xl bg-teal-950/40 border border-teal-500/40 space-y-1 text-xs">
                   <div class="flex items-center justify-between">
                     <span class="font-bold text-teal-300 text-xs">FDA Terminated & Resolved Notice</span>
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-300 border border-teal-500/30">Cleared Inventory</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-300 border border-teal-500/30">Recall Closed</span>
                   </div>
                   <p class="text-xs text-teal-200/90 leading-relaxed font-medium">${esc((item.terminatedNotice && item.terminatedNotice.reason) || (item.recallRecord && item.recallRecord.terminatedNotice && item.recallRecord.terminatedNotice.reason) || (cardDirectRec && cardDirectRec.terminatedNotice && cardDirectRec.terminatedNotice.reason) || 'Past voluntary recall officially closed and terminated by the FDA. Current store inventory is unaffected and cleared.')}</p>
                   <p class="text-xs text-slate-400 pt-1 border-t border-teal-900/40">Verified: Official FDA records confirm this historical notice is closed out and outside active enforcement windows.</p>
@@ -24886,7 +24886,7 @@ function renderHistory() {
           return 0;
         });
 
-        let statusPill = `<span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Cleared</span>`;
+        let statusPill = `<span class="px-2 py-0.5 text-xs font-bold rounded-lg bg-slate-700/60 text-slate-200 border border-slate-500/50">No recall found</span>`;
 
         if (hasRecalls) {
           const recallCount = rcpt.items.filter(i => Boolean(i.recalledNow || i.status === 'recalled' || i.status === 'recall_notice' || i.isRecalled || (i.activeRecallHazard && String(i.activeRecallHazard).trim().length > 0))).length;
@@ -25738,6 +25738,9 @@ function renderHistory() {
     try { if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) { const st = document.createElement('style'); st.textContent = 'body{padding-top:var(--safe-area-inset-top,0px)!important;padding-bottom:var(--safe-area-inset-bottom,0px)!important}html body .sticky-nav-wrapper{top:var(--safe-area-inset-top,0px)!important;padding-top:0.375rem!important}.rk-wd-bar{padding-top:calc(var(--safe-area-inset-top,0px) + 10px)!important}body::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-area-inset-top,0px);background:#050811;z-index:9999;pointer-events:none}html.theme-light body::before{background:#f8fafc}'; document.head.appendChild(st); } } catch (_) {}
     const rkIsNativeShell = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
     window.rkIsNativeShell = rkIsNativeShell;
+    // Set to false before submitting to the Apple App Store / Google Play: hides the tester code field (paid features must use store purchases).
+    const RK_SHOW_TESTER_CODE = true;
+    if (!RK_SHOW_TESTER_CODE) { const st = document.createElement('style'); st.textContent = '#set-tester{display:none !important}'; document.head.appendChild(st); }
     if ('serviceWorker' in navigator && !rkIsNativeShell) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js?v=100')
@@ -27414,6 +27417,7 @@ function renderHistory() {
 
     async function processReceiptFile(file) {
       if (!file || isReceiptProcessing) return;
+      if (!(await rkEnsureGeminiConsent())) { try { showCustomizeToast('Receipt scan cancelled. Nothing was sent.'); } catch (_) {} return; }
       const quota = canScanReceipt();
       if (!quota.allowed) {
         triggerHaptic([40, 40]);
@@ -27943,7 +27947,7 @@ function renderHistory() {
       const totalCount = receipt.totalFoodItems || (receipt.items ? receipt.items.length : 0);
 
       if (receiptClearedBadge) {
-        receiptClearedBadge.textContent = `${totalCount - recalledCount - allergenCount} Cleared`;
+        receiptClearedBadge.textContent = `${totalCount - recalledCount - allergenCount} no recall found`;
       }
 
       if (receiptAlertBadge) {
@@ -27963,7 +27967,7 @@ function renderHistory() {
 
       if (receiptItemsList) {
         receiptItemsList.innerHTML = latestAuditedReceiptItems.map((item, idx) => {
-          let statusBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Cleared</span>`;
+          let statusBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-700/60 text-slate-200 border border-slate-500/50">No recall found</span>`;
           let itemBorder = 'border-slate-800 bg-slate-950/70';
 
           if (item.status === 'recalled') {
@@ -27991,7 +27995,7 @@ function renderHistory() {
       }
 
       if (batchImportBtnText) {
-        batchImportBtnText.textContent = `Add ${latestAuditedReceiptItems.filter(i => i.status !== 'recalled').length} Cleared Items to 60-Day Pantry Shield`;
+        batchImportBtnText.textContent = `Add ${latestAuditedReceiptItems.filter(i => i.status !== 'recalled').length} Items to 60-Day Pantry Shield`;
       }
     }
 
@@ -28074,7 +28078,7 @@ function renderHistory() {
         // Reset modal button state for future scans
         if (importBtn && importBtnText) {
           importBtn.className = "w-full py-3 px-4 min-h-[46px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs border border-slate-700 flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-sm cursor-pointer";
-          importBtnText.textContent = `Add All Cleared Items to 60-Day Pantry Shield`;
+          importBtnText.textContent = `Add All Items to 60-Day Pantry Shield`;
         }
         
         // Show prominent toast notification
@@ -28117,6 +28121,35 @@ function renderHistory() {
     window.closePrivacyModal = closePrivacyModal;
 
   </script>
+
+
+  <!-- GEMINI RECEIPT CONSENT (shown once, before the first receipt photo is sent) -->
+  <div id="geminiConsentModal" class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="geminiConsentTitle">
+    <div class="bg-slate-900 border border-slate-700 max-w-sm w-full rounded-3xl p-5 shadow-2xl space-y-3">
+      <h3 id="geminiConsentTitle" class="font-display text-base font-bold text-slate-100">About receipt scanning</h3>
+      <p class="text-xs text-slate-300 leading-relaxed">To read your receipt, the photo is sent securely to Google&rsquo;s Gemini AI service. We don&rsquo;t keep it. Receipts can show a name or the last digits of a card, so crop out anything you want private.</p>
+      <button type="button" id="geminiConsentAllow" class="w-full min-h-[48px] rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white font-bold text-sm active:scale-95">Continue</button>
+      <button type="button" id="geminiConsentDeny" class="w-full min-h-[40px] text-xs text-slate-400 underline active:scale-95">Cancel</button>
+    </div>
+  </div>
+<script>
+  // One-time consent before any receipt photo leaves the device.
+  window.rkEnsureGeminiConsent = function () {
+    try { if (localStorage.getItem('rakka_gemini_receipt_consent') === '1') return Promise.resolve(true); } catch (_) {}
+    return new Promise(function (resolve) {
+      var m = document.getElementById('geminiConsentModal');
+      if (!m) { resolve(false); return; }
+      var done = function (ok) {
+        m.classList.add('hidden');
+        if (ok) { try { localStorage.setItem('rakka_gemini_receipt_consent', '1'); } catch (_) {} }
+        resolve(ok);
+      };
+      document.getElementById('geminiConsentAllow').onclick = function () { done(true); };
+      document.getElementById('geminiConsentDeny').onclick = function () { done(false); };
+      m.classList.remove('hidden');
+    });
+  };
+</script>
 
   <!-- PRIVACY POLICY & TERMS MODAL SHEET -->
   <div id="privacyPolicyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
