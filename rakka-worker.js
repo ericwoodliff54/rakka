@@ -1098,7 +1098,7 @@ async function alFcmAccess(env) {
 }
 
 /** Generic text only: the product never passes through Apple's or Google's push services. Returns 'ok' | 'gone' | 'skip' | 'fail'. */
-async function alSendPush(env, pushToken, count) {
+async function alSendPush(env, pushToken, count, dbg) {
   if (!pushToken || !env.FCM_SERVICE_ACCOUNT) return 'skip';
   try {
     const acc = await alFcmAccess(env);
@@ -1113,13 +1113,16 @@ async function alSendPush(env, pushToken, count) {
         apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
       } }),
     });
+    if (dbg) dbg.status = res.status;
     if (res.ok) return 'ok';
     if (res.status === 404 || res.status === 400) {
       const t = await res.text();
+      if (dbg) dbg.body = String(t).slice(0, 240);
       if (/UNREGISTERED|INVALID_ARGUMENT|NOT_FOUND/.test(t)) return 'gone';
     }
+    if (dbg) { try { dbg.body = String(await res.text()).slice(0, 240); } catch (_) {} }
     return 'fail';
-  } catch (_) { return 'fail'; }
+  } catch (e) { if (dbg) dbg.body = String(e && e.message || e).slice(0, 160); return 'fail'; }
 }
 
 /**
@@ -1293,9 +1296,10 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     if (!env.FCM_SERVICE_ACCOUNT) return reply({ success: true, result: 'no-server-key' });
     rec.tst = Date.now();
     await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
-    const result = await alSendPush(env, rec.pt, 1);
+    const dbg = {};
+    const result = await alSendPush(env, rec.pt, 1, dbg);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '' });
   }
 
   if (path === '/alerts/unregister') {
@@ -1467,7 +1471,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-20-v19-test-alert',
+        build: '2026-11-20-v20-test-alert-detail',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
