@@ -11,7 +11,7 @@ version_name = sys.argv[4] if len(sys.argv) > 4 else '1.0.0'
 mf = os.path.join(android, 'app/src/main/AndroidManifest.xml')
 s = open(mf).read()
 add = ''
-for perm in ['android.permission.CAMERA', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.VIBRATE']:
+for perm in ['android.permission.CAMERA', 'android.permission.ACCESS_NETWORK_STATE', 'android.permission.VIBRATE', 'android.permission.POST_NOTIFICATIONS']:
     if perm not in s:
         add += f'    <uses-permission android:name="{perm}" />\n'
 if 'android.hardware.camera' not in s:
@@ -79,3 +79,19 @@ t = t.replace('<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScre
 open(st, 'w').write(t)
 open(os.path.join(res, 'drawable/rk_blank.xml'), 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#00000000"/><size android:width="1dp" android:height="1dp"/></shape>\n')
 print('splash theme patched', 'windowSplashScreenBackground' in t)
+
+# --- Push notifications (Firebase). Only active when google-services.json was placed in app/ by the workflow.
+gs = os.path.join(android, 'app/google-services.json')
+if os.path.exists(gs):
+    g = open(gr).read()
+    if 'com.google.gms.google-services' not in g:
+        g += "\napply plugin: 'com.google.gms.google-services'\n"
+        open(gr, 'w').write(g)
+    rb = os.path.join(android, 'build.gradle')
+    r = open(rb).read()
+    if 'com.google.gms:google-services' not in r:
+        r = re.sub(r"(dependencies\s*\{)", r"\1\n        classpath 'com.google.gms:google-services:4.4.2'", r, count=1)
+        open(rb, 'w').write(r)
+    print('Push notifications: google-services.json found, Firebase enabled')
+else:
+    print('Push notifications: no google-services.json, building without Firebase push')
