@@ -3199,7 +3199,6 @@
       <div>
         <h2 class="font-display text-lg sm:text-xl font-extrabold text-slate-100 flex items-center gap-2">
           <span>Barcodes</span>
-          <span class="w-2 h-2 rounded-full bg-sky-400 pulse-glow"></span>
         </h2>
       </div>
 
@@ -3285,10 +3284,7 @@
       <div id="manualUpcSection" class="p-4 sm:p-5 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="font-display text-base font-bold text-slate-100 flex items-center gap-2">
-              <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-              </svg>
+            <h3 class="font-display text-lg sm:text-xl font-extrabold text-slate-100 flex items-center gap-2">
               <span>Manual UPC Entry</span>
             </h3>
           </div>
@@ -3949,9 +3945,9 @@
 
       <nav class="rk-set-jump" aria-label="Jump to a settings section">
         <button type="button" onclick="var t=document.getElementById('set-display');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Display</button>
+        <button type="button" onclick="rkOpenSetGroup('set-alerts');var t=document.getElementById('set-alerts');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Alerts</button>
         <button type="button" onclick="rkOpenSetGroup('set-household');var t=document.getElementById('set-household');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Household</button>
         <button type="button" onclick="rkOpenSetGroup('set-household');var t=document.getElementById('set-tester');if(t)t.scrollIntoView({behavior:'smooth',block:'center'})">Tester code</button>
-        <button type="button" onclick="var t=document.getElementById('set-alerts');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Alerts</button>
         <button type="button" onclick="rkOpenSetGroup('set-privacy');var t=document.getElementById('set-privacy');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Privacy</button>
       </nav>
 
@@ -4014,8 +4010,82 @@
 
       </div>
 
+      <div class="rk-set-group rk-collapsible rk-collapsed" id="set-alerts">
+        <h3 class="rk-set-title rk-set-toggle" role="button" tabindex="0" aria-expanded="false" data-rk-group="set-alerts"><span>Alerts and feedback</span><svg class="rk-set-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></h3>
+
+      <!-- HOMOGENOUS ALERTS, AUDIO & VIBRATION STACK (No Section Titles) -->
+      <div class="pt-3 border-t border-slate-800 space-y-2.5 text-xs">
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Recall Notifications</span>
+              <span id="notifStatusBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Disabled</span>
+            </div>
+            <span class="text-xs text-slate-400 block leading-tight">Show a notification when an item on your watchlist matches an FDA or USDA recall. Alerts follow public notices, which can lag behind the news.</span>
+            <span id="notifPlatformNote" class="text-xs text-amber-400/90 font-medium block leading-tight hidden">Note: On iPhone, add Rakka to your Home Screen to enable web notifications.</span>
+          </div>
+          <button 
+            type="button" 
+            id="toggleRecallNotifBtn" 
+            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+          >
+            Disabled
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm space-y-2.5" id="serverAlertsRow">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1 space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Background Recall Alerts</span>
+                <span id="serverAlertsBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Plus</span>
+              </div>
+              <span id="serverAlertsStatus" class="text-xs text-slate-400 block leading-tight">Keeps checking your watchlist while RAKKA is closed, so you are notified without opening the app. Works together with Recall Notifications above.</span>
+            </div>
+            <button type="button" id="toggleServerAlertsBtn" class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shrink-0">Turn On</button>
+          </div>
+          <details class="rk-disc rk-disc-inner">
+            <summary>
+              <span class="rk-disc-title">What gets sent to our server</span>
+              <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <p class="rk-disc-body" style="padding-left:14px">To do this, RAKKA sends the <strong>names, brands and barcodes</strong> of items on your watchlist to our server, with a random device ID. This feature never sends your allergen profiles or family profiles. Turn this off, or use Delete my data, to erase it.</p>
+          </details>
+        </div>
+
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Scan Sounds &amp; Audio Tones</span>
+            <span class="text-xs text-slate-400 block leading-tight">Play beeps on scan and audio alerts on recall hazards</span>
+          </div>
+          <button 
+            type="button" 
+            id="prefSoundBtn" 
+            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+          >
+            Enabled
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Tactile Vibration (Haptics)</span>
+            <span class="text-xs text-slate-400 block leading-tight">Vibrate phone when a barcode is recognized or hazard detected</span>
+          </div>
+          <button 
+            type="button" 
+            id="prefHapticBtn" 
+            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
+          >
+            Enabled
+          </button>
+        </div>
+      </div>
+
+      </div>
+
       <div class="rk-set-group rk-collapsible rk-collapsed" id="set-household">
-        <h3 class="rk-set-title rk-set-toggle" role="button" tabindex="0" aria-expanded="false" data-rk-group="set-household"><span>Household and Plus</span><svg class="rk-set-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></h3>
+        <h3 class="rk-set-title rk-set-toggle" role="button" tabindex="0" aria-expanded="false" data-rk-group="set-household"><span>Household Sync</span><svg class="rk-set-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg></h3>
 
       <!-- 2-PERSON HOUSEHOLD SYNC (PLUS TIER) -->
       <div class="pt-3 border-t border-slate-800/80 space-y-2.5" id="householdSyncSettingsCard">
@@ -4120,80 +4190,6 @@
               class="min-h-[44px] px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 text-white font-bold text-xs transition active:scale-95"
             >Unlock</button>
           </div>
-        </div>
-      </div>
-
-      </div>
-
-      <div class="rk-set-group" id="set-alerts">
-        <h3 class="rk-set-title">Alerts and feedback</h3>
-
-      <!-- HOMOGENOUS ALERTS, AUDIO & VIBRATION STACK (No Section Titles) -->
-      <div class="pt-3 border-t border-slate-800 space-y-2.5 text-xs">
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
-          <div class="min-w-0 flex-1 space-y-0.5">
-            <div class="flex items-center gap-2">
-              <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Watchlist Recall Alerts</span>
-              <span id="notifStatusBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Disabled</span>
-            </div>
-            <span class="text-xs text-slate-400 block leading-tight">Receive push notifications when a monitored item triggers an FDA/USDA recall. Alerts follow public notices, which can lag behind the news.</span>
-            <span id="notifPlatformNote" class="text-xs text-amber-400/90 font-medium block leading-tight hidden">Note: On iPhone, add Rakka to your Home Screen to enable web notifications.</span>
-          </div>
-          <button 
-            type="button" 
-            id="toggleRecallNotifBtn" 
-            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
-          >
-            Disabled
-          </button>
-        </div>
-
-        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm space-y-2.5" id="serverAlertsRow">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0 flex-1 space-y-0.5">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Background Recall Alerts</span>
-                <span id="serverAlertsBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Plus</span>
-              </div>
-              <span id="serverAlertsStatus" class="text-xs text-slate-400 block leading-tight">Checks new FDA and USDA recalls against your watchlist for you, even when RAKKA is closed.</span>
-            </div>
-            <button type="button" id="toggleServerAlertsBtn" class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shrink-0">Turn On</button>
-          </div>
-          <details class="rk-disc rk-disc-inner">
-            <summary>
-              <span class="rk-disc-title">What gets sent to our server</span>
-              <svg class="rk-disc-chev w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
-            </summary>
-            <p class="rk-disc-body" style="padding-left:14px">To do this, RAKKA sends the <strong>names, brands and barcodes</strong> of items on your watchlist to our server, with a random device ID. This feature never sends your allergen profiles or family profiles. Turn this off, or use Delete my data, to erase it.</p>
-          </details>
-        </div>
-
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
-          <div class="min-w-0 flex-1 space-y-0.5">
-            <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Scan Sounds &amp; Audio Tones</span>
-            <span class="text-xs text-slate-400 block leading-tight">Play beeps on scan and audio alerts on recall hazards</span>
-          </div>
-          <button 
-            type="button" 
-            id="prefSoundBtn" 
-            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
-          >
-            Enabled
-          </button>
-        </div>
-
-        <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-slate-800 gap-3 shadow-sm">
-          <div class="min-w-0 flex-1 space-y-0.5">
-            <span class="font-semibold text-slate-200 block text-xs sm:text-sm">Tactile Vibration (Haptics)</span>
-            <span class="text-xs text-slate-400 block leading-tight">Vibrate phone when a barcode is recognized or hazard detected</span>
-          </div>
-          <button 
-            type="button" 
-            id="prefHapticBtn" 
-            class="min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition active:scale-95 shadow-sm shrink-0 cursor-pointer"
-          >
-            Enabled
-          </button>
         </div>
       </div>
 
@@ -23685,7 +23681,7 @@
         badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
         btn.textContent = isPlusActive ? 'Turn On' : 'See Plus';
         btn.className = 'min-w-[104px] min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition active:scale-95 shrink-0';
-        if (status) status.textContent = 'Checks new FDA and USDA recalls against your watchlist for you, even when RAKKA is closed.';
+        if (status) status.textContent = 'Keeps checking your watchlist while RAKKA is closed, so you are notified without opening the app. Works together with Recall Notifications above.';
       }
     }
 
