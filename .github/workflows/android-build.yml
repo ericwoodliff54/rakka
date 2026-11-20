@@ -55,6 +55,17 @@ jobs:
           npm install
           npx cap add android
 
+      - name: Add the Firebase config (for push notifications)
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GSJ" ]; then
+            echo "$GSJ" > native/android/app/google-services.json
+            echo "Firebase config added."
+          else
+            echo "No GOOGLE_SERVICES_JSON secret set, building without push notifications."
+          fi
+
       - name: Add camera permission, icons and version
         run: |
           python3 -m pip install --break-system-packages pillow
@@ -74,4 +85,3 @@ jobs:
           name: rakka-android-debug
           path: native/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-

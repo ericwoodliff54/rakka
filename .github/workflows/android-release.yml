@@ -1,0 +1,113 @@
+# Builds the SIGNED release bundle (.aab) that Google Play accepts.
+# Run it from the Actions tab: "Build Android release (Google Play)" -> Run workflow.
+# When it finishes, open the run and download "rakka-android-release". Upload the .aab inside to Play Console.
+# One-time setup: add four secrets under Settings > Secrets and variables > Actions:
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+name: Build Android release (Google Play)
+on:
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Prepare the native build folder
+        run: |
+          mkdir -p native
+          cp native-package.json native/package.json
+          cp capacitor.config.json native/capacitor.config.json
+          mkdir -p native/www
+          # Only the files the app needs. The catalog is downloaded by the app itself after install.
+          cp index.html app.css manifest.json favicon.png apple-touch-icon.png icon-192.png icon-512.png splash-mascot-sm.png staples_catalog.json native/www/
+          cp -r js vendor native/www/
+
+      - name: Check the app has native-app support
+        run: grep -q "isNativePlatform" native/www/index.html
+
+      - name: Install Capacitor and create the Android project
+        working-directory: native
+        run: |
+          npm install
+          npx cap add android
+
+      - name: Add the Firebase config (for push notifications)
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GSJ" ]; then
+            echo "$GSJ" > native/android/app/google-services.json
+            echo "Firebase config added."
+          else
+            echo "No GOOGLE_SERVICES_JSON secret set, building without push notifications."
+          fi
+
+      - name: Add camera permission, icons and version
+        run: |
+          python3 -m pip install --break-system-packages pillow
+          python3 native-patch.py . native/android ${{ github.run_number }} "1.0.${{ github.run_number }}"
+
+      - name: Copy the app into the Android project
+        working-directory: native
+        run: npx cap sync android
+
+      - name: Check the signing secrets are set
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KS KSP KA KP; do
+            if [ -z "${!v}" ]; then echo "Missing signing secret ($v). See the notes at the top of this file."; exit 1; fi
+          done
+
+      - name: Set up release signing
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+          cat >> native/android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv('KEYSTORE_PATH'))
+                      storePassword System.getenv('KEYSTORE_PASSWORD')
+                      keyAlias System.getenv('KEY_ALIAS')
+                      keyPassword System.getenv('KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          GRADLE
+
+      - name: Build the release bundle
+        working-directory: native/android
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/upload-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Save the release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rakka-android-release
+          path: native/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
