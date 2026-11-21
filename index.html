@@ -4047,6 +4047,7 @@
           </div>
           <button type="button" id="sendTestAlertBtn" class="hidden w-full min-h-[40px] rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold active:scale-95">Send me a test alert</button>
           <p id="pushDiagLine" class="hidden text-xs text-slate-400 leading-snug"></p>
+          <button type="button" id="copyPushTokenBtn" class="hidden w-full min-h-[40px] rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold active:scale-95">Copy push token (for Firebase test)</button>
           <details class="rk-disc rk-disc-inner">
             <summary>
               <span class="rk-disc-title">What gets sent to our server</span>
@@ -23693,7 +23694,7 @@
       if (!badge || !btn) return;
       const on = serverAlertsOn();
       const st = readAlertState();
-      { const tb = document.getElementById('sendTestAlertBtn'); if (tb) tb.classList.toggle('hidden', !(on && window.rkIsNativeShell)); if (on && window.rkIsNativeShell) rkPushDiag(); }
+      { const show = on && window.rkIsNativeShell && (window.RK_SHOW_TESTER_CODE !== false); const tb = document.getElementById('sendTestAlertBtn'); if (tb) tb.classList.toggle('hidden', !show); const cb = document.getElementById('copyPushTokenBtn'); if (cb) cb.classList.toggle('hidden', !show); if (show) rkPushDiag(); }
       if (on) {
         badge.textContent = 'On';
         badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
@@ -23918,6 +23919,14 @@
       if (btn) btn.addEventListener('click', toggleServerAlerts);
       const tb = document.getElementById('sendTestAlertBtn');
       if (tb) tb.addEventListener('click', sendTestAlert);
+      const cb = document.getElementById('copyPushTokenBtn');
+      if (cb) cb.addEventListener('click', async () => {
+        let tok = '';
+        try { tok = localStorage.getItem('rakka_push_token') || ''; } catch (_) {}
+        if (!tok) { showCustomizeToast('No push token yet.'); return; }
+        try { await navigator.clipboard.writeText(tok); showCustomizeToast('Push token copied. Paste it into the Firebase console test message.'); }
+        catch (_) { showCustomizeToast('Could not copy the token.'); }
+      });
       const dismiss = document.getElementById('serverAlertsDismissBtn');
       if (dismiss) dismiss.addEventListener('click', () => closeServerAlertsModal(false));
       const open = document.getElementById('serverAlertsOpenBtn');
@@ -25860,6 +25869,7 @@ function renderHistory() {
     window.rkIsNativeShell = rkIsNativeShell;
     // Set to false before submitting to the Apple App Store / Google Play: hides the tester code field (paid features must use store purchases).
     const RK_SHOW_TESTER_CODE = true;
+    window.RK_SHOW_TESTER_CODE = RK_SHOW_TESTER_CODE;
     if (!RK_SHOW_TESTER_CODE) { const st = document.createElement('style'); st.textContent = '#set-tester{display:none !important}'; document.head.appendChild(st); }
     if ('serviceWorker' in navigator && !rkIsNativeShell) {
       window.addEventListener('load', () => {
