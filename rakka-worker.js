@@ -372,7 +372,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
       <div class="badge">Official Legal Notice</div>
       <h1>Privacy Policy & Terms</h1>
       <p class="subtitle">Twin Ravens Digital LLC • RAKKA Food Safety & Recall Scanner</p>
-      <p class="policy-meta">Effective Date: November 20, 2026 • Version 1.7</p>
+      <p class="policy-meta">Effective Date: November 21, 2026 • Version 1.8</p>
     </header>
 
     <div class="summary-card">
@@ -409,7 +409,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
         <tbody>
           <tr><td>Background recall alerts (Plus, optional)</td><td>The names, brands and barcodes of items on your watchlist, with a random device ID, a random alert key, your Plus token and, in the store app, a push notification token. Never your allergen profiles, family profiles, household, name or email.</td><td>Until you turn alerts off, your Plus access ends, or you use Delete my data. Refreshed each time the app opens; erased after 120 days without one.</td></tr>
           <tr><td>Household sync (Plus, optional)</td><td>Your family profiles and your watchlist (product names, brands and barcodes), encrypted on your device with a key that is shared only in your invite code or QR. We cannot read them. Receipts, photos and settings are never synced.</td><td>Up to 90 days after the last sync, or until the last member leaves.</td></tr>
-          <tr><td>Receipt scanning</td><td>The receipt photo is sent over HTTPS to our Worker, which passes it to Google's Gemini service to read the items. We do not store the image or link it to you. Google handles the image under its own terms for the Gemini API.</td><td>Not stored by us.</td></tr>
+          <tr><td>Receipt scanning and lot-code photos</td><td>The photo is sent over HTTPS to our Worker, which passes it to Google's Gemini service to read the items or the printed date and lot code. Your allergen choices are not sent. We do not store the image or link it to you. Google handles the image under its own terms for the Gemini API.</td><td>Not stored by us.</td></tr>
           <tr><td>Scan limits</td><td>A random device ID with a count of receipt scans, and a one-way hash of your network address as a backstop against abuse. No names or products.</td><td>Up to 35 days.</td></tr>
           <tr><td>Plus trial and invite codes</td><td>A random device ID with the trial start time or the invite code it used, so a trial or code can only be used as intended.</td><td>The trial marker is kept so a trial cannot be repeated. It holds no personal data. A code seat is freed by Delete my data.</td></tr>
           <tr><td>Product catalog</td><td>When a barcode is looked up, public packaging facts (product name, brand, ingredient text) may be cached for everyone. Each product also carries the date it was last looked up, which decides what is included in the offline database. This holds nothing about you or your device.</td><td>Until replaced.</td></tr>
@@ -432,7 +432,9 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
       <h2>5. Third-party services</h2>
       <ul>
         <li><strong>Federal recall data:</strong> recalls come from the public openFDA and USDA Food Safety and Inspection Service (FSIS) feeds. The app requests them directly, and our server requests them to check alerts.</li>
-        <li><strong>Google Gemini:</strong> reads receipt photos, as described above.</li>
+        <li><strong>Google Gemini:</strong> reads receipt and lot-code photos, as described above.</li>
+        <li><strong>Open Food Facts:</strong> when you scan a barcode the app, or our server, asks this public database for the product name, brand and ingredients. Only the barcode is sent, and the request comes from your network address.</li>
+        <li><strong>Fonts and code libraries:</strong> the app loads fonts from Google Fonts and its barcode and QR libraries from Cloudflare's cdnjs and jsDelivr when it opens, and its offline product list from GitHub Pages. These hosts see your network address as with any web request.</li>
         <li><strong>Cloudflare:</strong> hosts our server and storage.</li>
         <li><strong>Apple and Google push services:</strong> deliver the generic alert in the store app.</li>
         <li><strong>Subscriptions:</strong> Plus is bought through the Apple App Store or Google Play, which handle payment. We do not receive your card or payment details. We use RevenueCat to confirm that a purchase is active. RevenueCat receives your RAKKA device ID and your purchase and subscription status, and the app store account that made the purchase. Plus can also be unlocked with an invite code while RAKKA is in testing.</li>
@@ -594,11 +596,11 @@ async function enforceReceiptQuota(env, request, body) {
   const day = now.toISOString().slice(0, 10);
   const plus = await checkPlus(env, body.plusToken, deviceId);
   if (plus) {
-    const ok = await receiptQuotaSlot(env, `rq:pm:${deviceId}:${month}`, PLUS_RECEIPT_MONTHLY, scanId, 3456000);
+    const ok = await receiptQuotaSlot(env, `rq:pm:${deviceId}:${month}`, PLUS_RECEIPT_MONTHLY, scanId, 3024000);
     return ok ? { ok: true } : { ok: false, status: 429, quotaExceeded: true, plus: true,
       error: `Monthly Plus limit reached (${PLUS_RECEIPT_MONTHLY} receipt scans this month). It resets at the start of next month (UTC).` };
   }
-  const okDevice = await receiptQuotaSlot(env, `rq:m:${deviceId}:${month}`, FREE_RECEIPT_MONTHLY, scanId, 3456000);
+  const okDevice = await receiptQuotaSlot(env, `rq:m:${deviceId}:${month}`, FREE_RECEIPT_MONTHLY, scanId, 3024000);
   if (!okDevice) {
     return { ok: false, status: 429, quotaExceeded: true, plus: false,
       error: `Monthly free limit reached (${FREE_RECEIPT_MONTHLY}/${FREE_RECEIPT_MONTHLY} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_RECEIPT_MONTHLY} scans a month.` };
@@ -606,9 +608,11 @@ async function enforceReceiptQuota(env, request, body) {
   // Backstop against a fresh device ID on every scan. Only a hash of the network address is kept.
   const ip = request.headers.get('CF-Connecting-IP') || '';
   if (ip) {
-    const dig = new Uint8Array(await crypto.subtle.digest('SHA-256', plusEnc.encode('rq|' + ip)));
+    // Keyed hash: without the server's secret the stored value cannot be matched back to a network address.
+    const hk = await plusHmacKey(env);
+    const dig = new Uint8Array(hk ? await crypto.subtle.sign('HMAC', hk, plusEnc.encode('rq|' + ip)) : await crypto.subtle.digest('SHA-256', plusEnc.encode('rq|' + ip)));
     const ipKey = Array.from(dig.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('');
-    const okIp = await receiptQuotaSlot(env, `rq:ip:${ipKey}:${month}`, FREE_RECEIPT_MONTHLY_PER_NETWORK, scanId, 3456000);
+    const okIp = await receiptQuotaSlot(env, `rq:ip:${ipKey}:${month}`, FREE_RECEIPT_MONTHLY_PER_NETWORK, scanId, 3024000);
     if (!okIp) {
       return { ok: false, status: 429, quotaExceeded: true, plus: false,
         error: 'This network has used its free receipt scans for the month. Start your 7-day free Plus trial to keep scanning.' };
@@ -1187,7 +1191,13 @@ async function alRunScheduled(env) {
       try { rec = await kv.get(name, { type: 'json' }); } catch (_) { return; }
       if (!rec) return;
       // Alerts are a Plus feature: when the entitlement has lapsed or a code was revoked, erase the watchlist copy.
-      if (!(await checkPlus(env, rec.tk, deviceId))) { try { await kv.delete(name); } catch (_) {} return; }
+      // A store pass lasts only a few days, so an expired pass alone does not mean the plan ended. Ask RevenueCat before erasing,
+      // and keep the copy when RevenueCat cannot be reached, so waiting alerts are never lost to a network hiccup.
+      if (!(await checkPlus(env, rec.tk, deviceId))) {
+        const rc = await rcLookup(env, deviceId);
+        const lapsed = rc.ok ? !rc.active : rc.reason === 'not-configured';
+        if (lapsed) { try { await kv.delete(name); } catch (_) {} return; }
+      }
       const added = alProcessDevice(rec, index);
       const strong = alProcessDevice.lastStrong || 0;
       state.processed++;
@@ -2095,7 +2105,7 @@ Extract and return STRICTLY a JSON object with this exact schema (no markdown, n
   "lotAudit": {
     "hasRecallContext": true, // true if product brand/item has active or notable recall records
     "isMatch": true, // true if stamped date is within recall window, false if safe/outside window, null if date not visible
-    "verdictTitle": "Short bold badge (e.g. 'CONFIRMED RECALL MATCH', 'CLEARED - OUTSIDE RECALL WINDOW', or 'RECALL ON RECORD - CHECK STAMP')",
+    "verdictTitle": "Short bold badge (e.g. 'CONFIRMED RECALL MATCH', 'DOES NOT APPEAR TO MATCH', or 'RECALL ON RECORD - CHECK STAMP')",
     "explanation": "Clear 2-sentence explanation of whether this specific bag/lot is affected based on the stamped date.",
     "action": "Immediate directive for the consumer"
   }
@@ -2219,9 +2229,9 @@ CRITICAL RULES FOR RECALL WINDOW & LOT VERIFICATION:
    - Compare the package's stamped date and lot code strictly against this specific product's defined recall parameters: "${expectedLots}".
    - If the recall defines an affected date window (e.g., "between [Start Date] and [End Date]"):
      * If the stamped Best-By date falls ON or BETWEEN the start and end dates (or matches the affected lot code): The package is a direct match and RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
-     * If the stamped Best-By date is strictly AFTER the recall window end date (e.g., produced after the contaminated period ended or facility was sanitized): The package is CLEARED / OUTSIDE RECALL WINDOW (isMatch: false, severity: "safe", verdictTitle: "CLEARED - OUTSIDE RECALL WINDOW").
+     * If the stamped Best-By date is strictly AFTER the recall window end date (e.g., produced after the contaminated period ended or facility was sanitized): The package DOES NOT APPEAR TO MATCH (outside the recall window as read from the photo) (isMatch: false, severity: "safe", verdictTitle: "DOES NOT APPEAR TO MATCH").
      * If the recall specifies "on or before [Date]" (or dates prior to a cutoff), any stamped date on or before that cutoff is RECALLED (isMatch: true, severity: "danger", verdictTitle: "DANGER - RECALLED BATCH").
-   - If the stamped date or lot code directly matches the recalled batch parameters, you MUST mark isMatch: true and severity: "danger". Only mark as cleared (outside recall window) if the stamped date is verified to be outside/after the contaminated recall window.
+   - If the stamped date or lot code directly matches the recalled batch parameters, you MUST mark isMatch: true and severity: "danger". Only mark as not matching (outside recall window) if the stamped date is verified to be outside/after the contaminated recall window.
 2. STAMP READABILITY:
    - If the stamped date is completely illegible or cut off, set isMatch: null, severity: "warning", verdictTitle: "UNCLEAR STAMP".
 
@@ -2229,7 +2239,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
 {
   "extractedCode": "Exact date/lot text found stamped on packaging, or 'Unclear' if illegible",
   "isMatch": false, // boolean: true ONLY if within recall dates/lots, false if outside recall window / safe, null if illegible
-  "verdictTitle": "CLEARED - OUTSIDE RECALL WINDOW", // or 'CONFIRMED RECALL MATCH' or 'UNCLEAR STAMP'
+  "verdictTitle": "DOES NOT APPEAR TO MATCH", // or 'CONFIRMED RECALL MATCH' or 'UNCLEAR STAMP'
   "severity": "safe", // 'safe' if cleared/outside window, 'danger' if confirmed match, 'warning' if unclear
   "explanation": "2-3 clear sentences explaining whether the stamped date falls inside or outside the stated federal recall window.",
   "action": "Stamped date falls outside the stated federal recall window (always verify physical packaging), or discard/return immediately if recalled."

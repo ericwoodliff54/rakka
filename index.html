@@ -4289,7 +4289,7 @@
           <span class="text-xs text-rose-400 font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">Irreversible</span>
         </div>
         <p class="text-xs text-slate-400 leading-relaxed">
-          Permanently erases your scans, receipts, allergen guards, family profiles and settings from this device, and any background alert and household sync data from our server.
+          Permanently erases your scans, receipts, allergen guards, family profiles and settings from this device, and any background alert and household sync data from our server. It does not cancel a RAKKA Plus subscription: to stop billing, cancel in your store account settings.
         </p>
         <button 
           type="button" 
@@ -5677,6 +5677,13 @@
       } catch (e) {}
     }
     setTimeout(verifyPlusWithServer, 1500);
+    // The store pass is short-lived (it is re-confirmed with RevenueCat every few days), so renew it whenever the app comes back to the front, at most every 6 hours.
+    let rkLastPlusVerify = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || Date.now() - rkLastPlusVerify < 6 * 3600 * 1000) return;
+      rkLastPlusVerify = Date.now();
+      verifyPlusWithServer();
+    });
 
 
         // Pinned recalls (hand-added notices the live feeds miss). The server list is the source of truth; the last good copy is kept on the phone.
@@ -7377,6 +7384,13 @@
         allergens: ['treenuts', 'peanuts', 'gluten']
       }
     };
+
+    // Built-in entries may carry product data only. Any entry that carries a recall or an "ended recall" note is dropped,
+    // because recall status must always come from the live FDA and USDA sources.
+    Object.keys(RECALL_DATABASE).forEach((k) => {
+      const e = RECALL_DATABASE[k];
+      if (e && (e.isRecalled || e.terminatedNotice)) delete RECALL_DATABASE[k];
+    });
 
     // Resilient Multi-format UPC Lookup (Handles leading zeros, 11/12/13 digits)
     
@@ -18446,143 +18460,8 @@
     }
 
     // National & Regional Bulletins
-    const NATIONAL_BULLETINS = [
-      {
-      "id": "REC-2024-TREEHOUSE",
-      "title": "Frozen Waffles (Homestyle & Buttermilk)",
-      "brand": "TreeHouse Foods",
-      "brands": [
-            "Great Value",
-            "Good & Gather",
-            "Kroger",
-            "Simple Truth",
-            "TreeHouse"
-      ],
-      "keywords": [
-            "frozen waffles",
-            "homestyle waffles",
-            "buttermilk waffles",
-            "waffles"
-      ],
-      "upcs": [
-            "078742058031",
-            "085239128038",
-            "011110860882"
-      ],
-      "date": "Oct 22, 2024",
-      "agency": "FDA",
-      "reason": "FDA Class I Recall: Listeria monocytogenes contamination risk in frozen waffle production lines",
-      "severity": "Class I",
-      "states": [
-            "ALL"
-      ],
-      "stores": [
-            "Walmart",
-            "Target",
-            "Kroger"
-      ]
-},
-      {
-      "id": "REC-2023-QUAKER",
-      "title": "Quaker Chewy Granola Bars & Cap'n Crunch",
-      "brand": "Quaker",
-      "brands": [
-            "Quaker",
-            "Cap'n Crunch"
-      ],
-      "keywords": [
-            "chewy granola bars",
-            "chocolate chip granola bar",
-            "crunch berries",
-            "quaker chewy"
-      ],
-      "upcs": [
-            "030000311826",
-            "030000311840",
-            "030000065224"
-      ],
-      "date": "Dec 15, 2023",
-      "agency": "FDA",
-      "reason": "FDA Class I Nationwide Recall: Potential Salmonella enterica contamination",
-      "severity": "Class I",
-      "states": [
-            "ALL"
-      ],
-      "stores": [
-            "Walmart",
-            "Kroger",
-            "Meijer",
-            "Target",
-            "Costco"
-      ]
-},
-      {
-      "id": "REC-2024-BRUCEPAC",
-      "title": "Ready-to-Eat Poultry Meals & Salads",
-      "brand": "BrucePac",
-      "brands": [
-            "Trader Joe's",
-            "Great Value",
-            "Dole",
-            "BrucePac"
-      ],
-      "keywords": [
-            "lemon chicken",
-            "orzo soup",
-            "caesar salad bowl",
-            "chicken salad"
-      ],
-      "upcs": [
-            "00674251",
-            "078742226294"
-      ],
-      "date": "Oct 12, 2024",
-      "agency": "USDA-FSIS",
-      "reason": "USDA-FSIS Class I Recall: Listeria monocytogenes detection in 11.8M lbs of pre-cooked poultry",
-      "severity": "Class I",
-      "states": [
-            "ALL"
-      ],
-      "stores": [
-            "Trader Joe's",
-            "Walmart",
-            "Kroger",
-            "Target"
-      ]
-},
-      {
-      "id": "REC-2024-RIZOLOPEZ",
-      "title": "Cotija & Queso Fresco Mexican Style Cheese",
-      "brand": "Rizo-López Foods",
-      "brands": [
-            "Don Francisco",
-            "Rizo Bros",
-            "El Huache"
-      ],
-      "keywords": [
-            "queso fresco",
-            "cotija",
-            "cotija cheese",
-            "crema mexicana"
-      ],
-      "upcs": [
-            "727242000021",
-            "727242001400"
-      ],
-      "date": "Feb 05, 2024",
-      "agency": "FDA",
-      "reason": "FDA Class I Multi-State Outbreak: Listeria monocytogenes contamination in dairy facility",
-      "severity": "Class I",
-      "states": [
-            "ALL"
-      ],
-      "stores": [
-            "Walmart",
-            "Kroger",
-            "Target"
-      ]
-},
-    ];
+    // Built-in recall notices were removed. Recall status comes only from live FDA and USDA sources.
+    const NATIONAL_BULLETINS = [];
 
     let currentActiveProductScanData = null;
     let scanHistory = [];
@@ -19213,6 +19092,8 @@
       } catch (_) { showCustomizeToast('Could not restore purchases. Check your connection and try again.'); }
       finally { if (b) b.disabled = false; }
     }
+    // Start the store billing library at launch so purchases made outside the app (or renewals) are noticed; a failure here is harmless.
+    setTimeout(() => { try { if (rkBillingOn()) rkRcInit(); } catch (_) {} }, 3000);
     (function wireStoreBilling() {
       const a = document.getElementById('storePlanAnnualBtn'), m = document.getElementById('storePlanMonthlyBtn'), r = document.getElementById('restorePurchasesBtn');
       if (a) a.addEventListener('click', () => rkBuyPlan('annual'));
@@ -20843,6 +20724,7 @@
         let isRecalled = false;
         let recallRecord = findRecallRecord(code);
         let terminatedNotice = null;
+        let recallSourceAnswered = false; // true once a live recall source (our server or openFDA) actually replied
         let detectedAllergenIds = [];
         let declaredAllergenIds = [];
         let ingredientsSummary = "";
@@ -21344,15 +21226,15 @@
 
         // 3b. Ask our server whether this barcode is on an active recall. It reads barcodes printed with spaces or hyphens
         // in the notice (which a plain openFDA text search misses). Failing or slow: the checks below still run.
-        if (!isDeviceOffline && !isRecalled && !terminatedNotice && String(code || '').replace(/\D/g, '').length >= 8) {
+        if (!isDeviceOffline && !isRecalled && String(code || '').replace(/\D/g, '').length >= 8) {
           try {
             const rcBase = (localStorage.getItem('rakka_cloudflare_hook') || 'https://rakka-edge.ericwoodliff.workers.dev').trim().replace(/\/+$/, '');
             const rcCtrl = new AbortController();
             const rcTimer = setTimeout(() => rcCtrl.abort(), 2500);
             let rcJson = null;
             try {
-              const rcRes = await fetch(`${rcBase}/recall-check?upc=${encodeURIComponent(String(code).replace(/\D/g, ''))}`, { signal: rcCtrl.signal, cache: 'no-store' });
-              if (rcRes.ok) rcJson = await rcRes.json();
+              const rcRes = await fetch(`${rcBase}/recall-check?upc=${encodeURIComponent(String(code).replace(/\D/g, ''))}${(productName && !/^Retail Grocery Item|Packaged Food Item/.test(productName)) ? '&name=' + encodeURIComponent(String(productName).slice(0, 160)) : ''}${(brandName && brandName !== 'Grocery Brand') ? '&brand=' + encodeURIComponent(String(brandName).slice(0, 80)) : ''}`, { signal: rcCtrl.signal, cache: 'no-store' });
+              if (rcRes.ok) { rcJson = await rcRes.json(); recallSourceAnswered = true; }
             } finally { clearTimeout(rcTimer); }
             const rcHit = rcJson && Array.isArray(rcJson.matches) ? rcJson.matches.find(m => m.confidence === 'exact') : null;
             if (rcHit) {
@@ -21373,7 +21255,7 @@
         }
 
         // 4. Query Official Live openFDA Food Enforcement API (Archived Recalls 2004–Present)
-        if (!isDeviceOffline && !isRecalled && !terminatedNotice) {
+        if (!isDeviceOffline && !isRecalled) {
           try {
             const fdaQueries = [];
             if (code.length >= 8) {
@@ -21397,6 +21279,7 @@
                 clearTimeout(fdaTimer);
               }
 
+              if (fdaRes.ok || fdaRes.status === 404) recallSourceAnswered = true; // 404 means openFDA answered: no matching record
               if (fdaRes.ok) {
                 const fdaData = await fdaRes.json();
                 if (fdaData && fdaData.results && fdaData.results.length > 0) {
@@ -21517,6 +21400,8 @@
           }
         }
 
+        if (isRecalled) terminatedNotice = null; // an active recall always wins over an old or ended note
+        const recallCheckIncomplete = !isRecalled && !recallSourceAnswered;
         checkPlusStatus();
         let triggeredFamilyMatches = [];
         let detectedAdditivesList = auditFoodAdditives(ingredientsSummary, productAdditivesTags, productName);
@@ -21623,6 +21508,7 @@
             severity: 'No Match on File'
           },
           terminatedNotice: terminatedNotice,
+          recallCheckIncomplete: recallCheckIncomplete,
 
           // 2. Household Allergen Guardrail Category
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
@@ -21672,6 +21558,7 @@
           isRecalled: isRecalled,
           recallRecord: recallRecord,
           terminatedNotice: terminatedNotice,
+          recallCheckIncomplete: recallCheckIncomplete,
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
           traces: (offProductData && offProductData.traces_tags) || [],
           familyMatches: triggeredFamilyMatches,
@@ -21798,7 +21685,11 @@
           </div>
         </div>`);
       } else if (data.terminatedNotice) {
-        out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub">A past recall for this product has ended. Check the package for the current lot.</div></div>`);
+        const olderNotice = /older, not marked terminated/i.test(String((data.terminatedNotice && data.terminatedNotice.agency) || ''));
+        out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub">${olderNotice ? 'An older FDA recall is on record for this product and is not marked as ended. Check the lot code and best-by date against the notice.' : 'A past recall for this product has ended. Check the package for the current lot.'}</div></div>`);
+      }
+      if (!isRecalled && data.recallCheckIncomplete) {
+        out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub"><b>Recall check didn't finish.</b> We couldn't reach the recall sources, so this result does not mean the product is free of recalls. Check your connection and scan again.</div></div>`);
       }
 
       // ALLERGENS (amber)
@@ -23585,7 +23476,9 @@
 
       // 2. Rolling Capacity Enforcer with Recall Immunity (FIFO)
       // When exceeding MAX_WATCHLIST_ITEMS (100), pop the oldest CLEARED item from the bottom
-      const effectiveCap = isPlusActive ? MAX_WATCHLIST_ITEMS : 50;
+      // Never permanently trim the list just because a Plus check is late or the pass lapsed for a moment: anyone with a saved Plus record keeps the larger list.
+      let hadPlusRecord = false; try { hadPlusRecord = !!readPlusEntitlement(); } catch (_) {}
+      const effectiveCap = (isPlusActive || hadPlusRecord) ? MAX_WATCHLIST_ITEMS : 50;
       while (scanHistory.length > effectiveCap) {
         let oldestClearedIdx = -1;
         for (let idx = scanHistory.length - 1; idx >= 0; idx--) {
@@ -25388,9 +25281,9 @@ function renderHistory() {
         filteredCountNotice.textContent = `Found ${totalCount} active recall notice(s) matching "${searchQuery}"`;
       } else if (selectedState === 'ALL' && selectedStore === 'ALL') {
         if (currentlyShownCount < totalCount) {
-          filteredCountNotice.textContent = `Showing ${currentlyShownCount} of ${totalCount} active notices (${filtered.length} priority + ${displayedFda.length} of ${fdaFiltered.length} FDA wire reports)`;
+          filteredCountNotice.textContent = NATIONAL_BULLETINS.length ? `Showing ${currentlyShownCount} of ${totalCount} active notices (${filtered.length} priority + ${displayedFda.length} of ${fdaFiltered.length} FDA wire reports)` : `Showing ${currentlyShownCount} of ${totalCount} active notices`;
         } else {
-          filteredCountNotice.textContent = `Showing all ${totalCount} active notices (${filtered.length} priority retail alerts + ${fdaFiltered.length} FDA wire reports)`;
+          filteredCountNotice.textContent = NATIONAL_BULLETINS.length ? `Showing all ${totalCount} active notices (${filtered.length} priority retail alerts + ${fdaFiltered.length} FDA wire reports)` : `Showing all ${totalCount} active notices`;
         }
       } else {
         if (currentlyShownCount < totalCount) {
@@ -25574,7 +25467,7 @@ function renderHistory() {
         </div>
       `;
 
-      bulletinFeedList.innerHTML = `<div class="space-y-3.5">${priorityWindowHtml}${fdaWindowHtml}</div>`;
+      bulletinFeedList.innerHTML = `<div class="space-y-3.5">${NATIONAL_BULLETINS.length ? priorityWindowHtml : ''}${fdaWindowHtml}</div>`;
 
       const loadMoreBtn = document.getElementById('loadMoreBulletinsBtn');
       if (loadMoreBtn) {
@@ -27199,6 +27092,11 @@ function renderHistory() {
       if (!lotAuditResultBox) return;
       lotAuditResultBox.classList.remove('hidden');
 
+      // A photo reading can be wrong, so "outside the window" is never shown as a clearance.
+      if (audit.severity === 'safe' || audit.isMatch === false) {
+        audit.verdictTitle = 'Does not appear to match';
+        audit.explanation = String(audit.explanation || '') + ' This is read from a photo and can be wrong. Compare the printed code and date on the package with the recall notice yourself.';
+      }
       if (lotVerdictTitle) lotVerdictTitle.textContent = audit.verdictTitle;
       if (lotExtractedCodeText) lotExtractedCodeText.textContent = `Stamped Date Spotted: ${audit.extractedCode || 'Not detected'}`;
       if (lotVerdictExplanation) lotVerdictExplanation.textContent = audit.explanation;
@@ -27219,9 +27117,8 @@ function renderHistory() {
         if (lotVerdictActionBox) lotVerdictActionBox.className = "hidden";
       } else if (audit.severity === 'safe' || audit.isMatch === false) {
         triggerHaptic([30, 40]);
-        sound.playClearChime();
-        lotVerdictBanner.className = "p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-200 flex items-start gap-2.5 shadow-lg shadow-emerald-950/50";
-        lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.checkCircle + `</span>`;
+        lotVerdictBanner.className = "p-3.5 rounded-2xl border border-sky-500/60 bg-slate-900/80 text-sky-200 flex items-start gap-2.5";
+        lotVerdictIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center justify-center shrink-0">` + UI_ICONS.info + `</span>`;
         if (lotPhysicalNote) {
           lotPhysicalNote.textContent = 'Always Verify Physical Packaging';
           lotPhysicalNote.classList.remove('hidden');
@@ -27666,7 +27563,7 @@ function renderHistory() {
           body: JSON.stringify({
             imageBase64: sliceDataUrl,
             mimeType: mimeType,
-            activeAllergens: activeAllergens,
+            activeAllergens: [],   // allergen choices stay on the phone; the reader flags every common allergen and the app compares them locally
             clientApiKey: clientApiKey,
             deviceId: getRakkaDeviceId(),
             scanId: currentReceiptScanId,
@@ -28245,7 +28142,6 @@ function renderHistory() {
         } else {
           receiptAlertBadge.classList.add('hidden');
           triggerHaptic([30, 40]);
-          sound.playClearChime();
         }
       }
 
@@ -28272,12 +28168,12 @@ function renderHistory() {
               </div>
               <div class="flex items-center justify-between text-xs text-slate-400">
                 <span class="truncate">${esc(item.brand || 'Store Item')}</span>
-                ${item.allergens && item.allergens.length > 0 ? `<span class="text-xs font-medium text-amber-300">Contains: ${esc(item.allergens.join(', '))}</span>` : ''}
+                ${item.allergens && item.allergens.length > 0 ? `<span class="text-xs font-medium text-amber-300">May contain (guessed from the name): ${esc(item.allergens.join(', '))}</span>` : ''}
               </div>
               ${item.warning ? `<p class="text-xs font-medium text-rose-300 pt-0.5 leading-snug">${esc(item.warning)}</p>` : ''}
             </div>
           `;
-        }).join('');
+        }).join('') + `<p class="text-xs text-slate-400 leading-snug pt-1">Allergens and additives are not checked from a receipt, only recalls. Scan an item's barcode to see its ingredient details.</p>`;
       }
 
       if (batchImportBtnText) {
