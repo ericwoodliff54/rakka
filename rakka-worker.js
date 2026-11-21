@@ -1229,7 +1229,7 @@ function alCleanItems(raw) {
 const alSecretOk = (rec, secret) => !!(rec && rec.sec && typeof secret === 'string' && secret.length >= 16 && secret === rec.sec);
 
 /** Handles /alerts/* and /data/delete. Returns a Response, or null when the path is not ours. */
-async function alHandleRequest(request, env, url, replyHeaders) {
+async function alHandleRequest(request, env, url, replyHeaders, ctx) {
   const path = url.pathname;
   const isAlerts = path.startsWith('/alerts/');
   if (!(request.method === 'POST' && (isAlerts || path === '/data/delete'))) return null;
@@ -1302,7 +1302,16 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
     const dbg = {};
     const wait = Math.min(15, Math.max(0, Number(b.delay) || 0));
-    if (wait) await new Promise((r) => setTimeout(r, wait * 1000));
+    if (wait && ctx && typeof ctx.waitUntil === 'function') {
+      // Reply at once and send later in the background, so closing the app does not cancel the send.
+      const pt = rec.pt;
+      ctx.waitUntil((async () => {
+        await new Promise((r) => setTimeout(r, wait * 1000));
+        const res2 = await alSendPush(env, pt, 1, {}, true);
+        console.log('alerts/test delayed push result: ' + res2);
+      })());
+      return reply({ success: true, result: 'ok', fcmStatus: 0, fcmDetail: 'sending in ' + wait + ' seconds', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v27-bg-delay' });
+    }
     const result = await alSendPush(env, rec.pt, 1, dbg, true);
     console.log('alerts/test push result: ' + result);
     return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v26-delay' });
@@ -2619,7 +2628,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         return new Response(JSON.stringify({ success: false, error: `Too many requests. Please wait ${rlAlerts.retryAfterSec}s.` }),
           { status: 429, headers: { ...corsHeaders, ...rlAlerts.headers, 'Cache-Control': 'no-store' } });
       }
-      const alertsResponse = await alHandleRequest(request, env, url, corsHeaders);
+      const alertsResponse = await alHandleRequest(request, env, url, corsHeaders, ctx);
       if (alertsResponse) return alertsResponse;
     }
 
