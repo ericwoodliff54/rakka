@@ -1,6 +1,7 @@
 # Builds the SIGNED release bundle (.aab) that Google Play accepts.
 # Run it from the Actions tab: "Build Android release (Google Play)" -> Run workflow.
 # When it finishes, open the run and download "rakka-android-release". Upload the .aab inside to Play Console.
+# Before a public release also add the REVENUECAT_ANDROID_KEY secret (the RevenueCat Android public key, starts with goog_).
 # One-time setup: add four secrets under Settings > Secrets and variables > Actions:
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
 name: Build Android release (Google Play)
@@ -37,11 +38,16 @@ jobs:
           sed -i 's/const RK_SHOW_TESTER_CODE = true;/const RK_SHOW_TESTER_CODE = false;/' native/www/index.html
           grep -q "const RK_SHOW_TESTER_CODE = false;" native/www/index.html || { echo "Tester controls are still on in the release build"; exit 1; }
           # Store build: turn on store purchases (RevenueCat) and fill in the public key from the GitHub secret.
-          test -n "$RC_KEY" || { echo "The REVENUECAT_ANDROID_KEY secret is missing"; exit 1; }
-          sed -i 's/const RK_STORE_BILLING = false;/const RK_STORE_BILLING = true;/' native/www/index.html
-          sed -i "s|const RK_RC_KEY = '';|const RK_RC_KEY = '$RC_KEY';|" native/www/index.html
-          grep -q "const RK_STORE_BILLING = true;" native/www/index.html || { echo "Store billing is still off in the release build"; exit 1; }
-          grep -q "const RK_RC_KEY = 'goog_" native/www/index.html || { echo "The RevenueCat key does not look like an Android public key (goog_...)"; exit 1; }
+          # Until the REVENUECAT_ANDROID_KEY secret exists, purchases stay off (fine for the first test upload to Play, not for a public release).
+          if [ -n "$RC_KEY" ]; then
+            sed -i 's/const RK_STORE_BILLING = false;/const RK_STORE_BILLING = true;/' native/www/index.html
+            sed -i "s|const RK_RC_KEY = '';|const RK_RC_KEY = '$RC_KEY';|" native/www/index.html
+            grep -q "const RK_STORE_BILLING = true;" native/www/index.html || { echo "Store billing is still off in the release build"; exit 1; }
+            grep -q "const RK_RC_KEY = 'goog_" native/www/index.html || { echo "The RevenueCat key does not look like an Android public key (goog_...)"; exit 1; }
+            echo "Store purchases are ON in this build."
+          else
+            echo "::warning::REVENUECAT_ANDROID_KEY is not set. Store purchases are OFF in this build. Do not release it publicly."
+          fi
 
       - name: Check the app has native-app support
         run: grep -q "isNativePlatform" native/www/index.html
