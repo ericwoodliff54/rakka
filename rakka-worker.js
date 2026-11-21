@@ -1115,7 +1115,7 @@ async function alSendPush(env, pushToken, count, dbg, bare) {
       } }),
     });
     if (dbg) dbg.status = res.status;
-    if (res.ok) return 'ok';
+    if (res.ok) { if (dbg) { try { dbg.body = String(await res.text()).slice(0, 200); } catch (_) {} } return 'ok'; }
     if (res.status === 404 || res.status === 400) {
       const t = await res.text();
       if (dbg) dbg.body = String(t).slice(0, 240);
@@ -1302,7 +1302,7 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     const dbg = {};
     const result = await alSendPush(env, rec.pt, 1, dbg, true);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v23-bare-test' });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v24-body' });
   }
 
   if (path === '/alerts/unregister') {
