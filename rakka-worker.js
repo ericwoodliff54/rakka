@@ -1301,9 +1301,11 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     rec.tst = Date.now();
     await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
     const dbg = {};
+    const wait = Math.min(15, Math.max(0, Number(b.delay) || 0));
+    if (wait) await new Promise((r) => setTimeout(r, wait * 1000));
     const result = await alSendPush(env, rec.pt, 1, dbg, true);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v25-high' });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v26-delay' });
   }
 
   if (path === '/alerts/unregister') {

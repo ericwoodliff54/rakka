@@ -23890,9 +23890,10 @@
       try {
         const ent = readPlusEntitlement() || {};
         let ptok = ''; try { ptok = localStorage.getItem('rakka_push_token') || ''; } catch (_) {}
-        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '', pushToken: ptok });
+        showCustomizeToast('Close RAKKA now (go to the home screen). The test alert is sent in about 12 seconds.');
+        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '', pushToken: ptok, delay: 12 }, 30000);
         const res = r.data && r.data.result;
-        if (res === 'ok') showCustomizeToast('Test alert sent. Close RAKKA and it should arrive in a few seconds.');
+        if (res === 'ok') showCustomizeToast('Test alert sent. It should be on your phone now.');
         else if (res === 'no-token') showCustomizeToast('This phone has not given the server a push token yet. Turn alerts off and on again, and allow notifications.');
         else if (res === 'no-server-key') showCustomizeToast('The server has no Firebase key yet (FCM_SERVICE_ACCOUNT).');
         else if (res === 'wait') showCustomizeToast('Please wait a few seconds between tests.');
