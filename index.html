@@ -2742,7 +2742,7 @@
           <div class="flex items-start gap-2.5">
             <span class="p-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0"><svg class="w-4 h-4 text-amber-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0"></path></svg></span>
             <div>
-              <span class="font-bold text-white block">Background recall alerts <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-semibold">Coming soon</span></span>
+              <span class="font-bold text-white block">Background recall alerts</span>
               <span class="text-xs text-slate-400">Get a notification when something in your watchlist is recalled, even when the app is closed.</span>
             </div>
           </div>
@@ -2787,7 +2787,7 @@
           </div>
         </div>
 
-        <p class="text-xs text-amber-200/90 text-center leading-snug">
+        <p class="rk-tester-only text-xs text-amber-200/90 text-center leading-snug">
           Plus is free for testers: start the 7-day trial below, or enter a tester code in Settings. Paid plans arrive with the app store release.
         </p>
 
@@ -3948,7 +3948,7 @@
         <button type="button" onclick="var t=document.getElementById('set-display');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Display</button>
         <button type="button" onclick="rkOpenSetGroup('set-alerts');var t=document.getElementById('set-alerts');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Alerts</button>
         <button type="button" onclick="rkOpenSetGroup('set-household');var t=document.getElementById('set-household');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Household</button>
-        <button type="button" onclick="rkOpenSetGroup('set-household');var t=document.getElementById('set-tester');if(t)t.scrollIntoView({behavior:'smooth',block:'center'})">Tester code</button>
+        <button type="button" class="rk-tester-only" onclick="rkOpenSetGroup('set-household');var t=document.getElementById('set-tester');if(t)t.scrollIntoView({behavior:'smooth',block:'center'})">Tester code</button>
         <button type="button" onclick="rkOpenSetGroup('set-privacy');var t=document.getElementById('set-privacy');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})">Privacy</button>
       </nav>
 
@@ -25895,7 +25895,7 @@ function renderHistory() {
     // Set to false before submitting to the Apple App Store / Google Play: hides the tester code field (paid features must use store purchases).
     const RK_SHOW_TESTER_CODE = true;
     window.RK_SHOW_TESTER_CODE = RK_SHOW_TESTER_CODE;
-    if (!RK_SHOW_TESTER_CODE) { const st = document.createElement('style'); st.textContent = '#set-tester{display:none !important}'; document.head.appendChild(st); }
+    if (!RK_SHOW_TESTER_CODE) { const st = document.createElement('style'); st.textContent = '#set-tester,.rk-tester-only,#sendTestAlertBtn,#copyPushTokenBtn,#simulateRecallBtn,#pushDiagLine{display:none !important}'; document.head.appendChild(st); }
     if ('serviceWorker' in navigator && !rkIsNativeShell) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js?v=100')
