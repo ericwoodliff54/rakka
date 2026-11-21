@@ -19069,6 +19069,19 @@
       else if (!quietIfNone) showCustomizeToast('No active Plus subscription was found for this account.');
       return false;
     }
+    // The store has taken payment, so a slow or failed confirmation must never leave the person without Plus: retry a few times,
+    // and if it still fails keep a flag so the next app open confirms it quietly.
+    async function rkConfirmWithRetry() {
+      const waits = [0, 2500, 6000, 12000];
+      for (let i = 0; i < waits.length; i++) {
+        if (waits[i]) await new Promise(res => setTimeout(res, waits[i]));
+        let ok = false;
+        try { ok = await rkConfirmPurchase(true); } catch (_) {}
+        if (ok) { try { localStorage.removeItem('rakka_plus_pending'); } catch (_) {} return true; }
+      }
+      showCustomizeToast('Your purchase went through, but we could not confirm it yet. Reopen RAKKA in a minute, or tap Restore purchases. You have not been charged twice.');
+      return false;
+    }
     async function rkBuyPlan(kind) {
       const pkg = rkRcPkgs[kind];
       if (!pkg || !rkBillingOn()) return;
@@ -19077,7 +19090,8 @@
       btns.forEach(b => { if (b) b.disabled = true; });
       try {
         await window.Capacitor.Plugins.Purchases.purchasePackage({ aPackage: pkg });
-        await rkConfirmPurchase(false);
+        try { localStorage.setItem('rakka_plus_pending', String(Date.now())); } catch (_) {}
+        await rkConfirmWithRetry();
       } catch (e) {
         if (!(e && (e.userCancelled || /cancel/i.test(String(e.message || e.code || ''))))) showCustomizeToast('The purchase could not be completed. You have not been charged unless the store says so.');
       } finally { btns.forEach(b => { if (b) b.disabled = false; }); }
@@ -19094,6 +19108,7 @@
     }
     // Start the store billing library at launch so purchases made outside the app (or renewals) are noticed; a failure here is harmless.
     setTimeout(() => { try { if (rkBillingOn()) rkRcInit(); } catch (_) {} }, 3000);
+    setTimeout(() => { try { if (rkBillingOn() && localStorage.getItem('rakka_plus_pending')) rkConfirmWithRetry().then(ok => { if (ok) { try { localStorage.removeItem('rakka_plus_pending'); } catch (_) {} } }); } catch (_) {} }, 5000);
     (function wireStoreBilling() {
       const a = document.getElementById('storePlanAnnualBtn'), m = document.getElementById('storePlanMonthlyBtn'), r = document.getElementById('restorePurchasesBtn');
       if (a) a.addEventListener('click', () => rkBuyPlan('annual'));
@@ -20724,6 +20739,7 @@
         let isRecalled = false;
         let recallRecord = findRecallRecord(code);
         let terminatedNotice = null;
+        let possibleRecallMatch = null;
         let recallSourceAnswered = false; // true once a live recall source (our server or openFDA) actually replied
         let detectedAllergenIds = [];
         let declaredAllergenIds = [];
@@ -21237,6 +21253,12 @@
               if (rcRes.ok) { rcJson = await rcRes.json(); recallSourceAnswered = true; }
             } finally { clearTimeout(rcTimer); }
             const rcHit = rcJson && Array.isArray(rcJson.matches) ? rcJson.matches.find(m => m.confidence === 'exact') : null;
+            // No exact barcode match, but the server found a likely one (same brand and product words, or a barcode off by a digit).
+            // Shown as a "possible match" note, never as a confirmed recall. Looser matches ("related") are ignored here to avoid false alarms.
+            if (!rcHit && rcJson && Array.isArray(rcJson.matches)) {
+              const pm = rcJson.matches.find(m => m.confidence === 'possible' || m.confidence === 'near');
+              if (pm) possibleRecallMatch = { product: String(pm.product || '').slice(0, 140), firm: String(pm.firm || '').slice(0, 80), reason: String(pm.reason || '').slice(0, 200), why: String(pm.why || '').slice(0, 200), agency: pm.agency || 'FDA', date: pm.date || '' };
+            }
             if (rcHit) {
               isRecalled = true;
               recallRecord = {
@@ -21509,6 +21531,7 @@
           },
           terminatedNotice: terminatedNotice,
           recallCheckIncomplete: recallCheckIncomplete,
+          possibleRecallMatch: (!isRecalled ? possibleRecallMatch : null),
 
           // 2. Household Allergen Guardrail Category
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
@@ -21559,6 +21582,7 @@
           recallRecord: recallRecord,
           terminatedNotice: terminatedNotice,
           recallCheckIncomplete: recallCheckIncomplete,
+          possibleRecallMatch: (!isRecalled ? possibleRecallMatch : null),
           detectedAllergens: Array.from(new Set(detectedAllergenIds)),
           traces: (offProductData && offProductData.traces_tags) || [],
           familyMatches: triggeredFamilyMatches,
@@ -21687,6 +21711,17 @@
       } else if (data.terminatedNotice) {
         const olderNotice = /older, not marked terminated/i.test(String((data.terminatedNotice && data.terminatedNotice.agency) || ''));
         out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub">${olderNotice ? 'An older FDA recall is on record for this product and is not marked as ended. Check the lot code and best-by date against the notice.' : 'A past recall for this product has ended. Check the package for the current lot.'}</div></div>`);
+      }
+      if (!isRecalled && data.possibleRecallMatch) {
+        const pmx = data.possibleRecallMatch;
+        out.push(`<div class="rk-sec rk-sec-recall">
+          <div class="rk-sec-h">Possible recall match</div>
+          <div class="rk-sec-main">${e(pmx.product || 'A recall notice may apply to this product')}</div>
+          <div class="rk-sec-sub">${e([pmx.firm, pmx.agency, pmx.date].filter(Boolean).join(' · '))}</div>
+          ${pmx.reason ? `<div class="rk-sec-sub">${e(pmx.reason)}</div>` : ''}
+          <div class="rk-sec-sub"><b>Not confirmed.</b> ${e(pmx.why || 'The name or barcode is close to a recall notice.')} Check the package against the notice before eating it.</div>
+          <div class="rk-sec-btns"><button type="button" onclick="openLotAuditorForCurrentProduct()" class="rk-btn-audit">Audit lot code</button></div>
+        </div>`);
       }
       if (!isRecalled && data.recallCheckIncomplete) {
         out.push(`<div class="rk-sec rk-sec-note"><div class="rk-sec-sub"><b>Recall check didn't finish.</b> We couldn't reach the recall sources, so this result does not mean the product is free of recalls. Check your connection and scan again.</div></div>`);
