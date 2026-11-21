@@ -1108,6 +1108,7 @@ async function alSendPush(env, pushToken, count, dbg, bare) {
       body: JSON.stringify({ message: {
         token: pushToken,
         notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
+        android: { priority: 'HIGH' },
         ...(bare ? {} : {
           data: { type: 'recall', count: String(count) },
           apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
@@ -1302,7 +1303,7 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     const dbg = {};
     const result = await alSendPush(env, rec.pt, 1, dbg, true);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v24-body' });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v25-high' });
   }
 
   if (path === '/alerts/unregister') {
