@@ -38,7 +38,7 @@ jobs:
           sed -i 's/const RK_SHOW_TESTER_CODE = true;/const RK_SHOW_TESTER_CODE = false;/' native/www/index.html
           grep -q "const RK_SHOW_TESTER_CODE = false;" native/www/index.html || { echo "Tester controls are still on in the release build"; exit 1; }
           # Store build: turn on store purchases (RevenueCat) and fill in the public key from the GitHub secret.
-          # Until the REVENUECAT_ANDROID_KEY secret exists, purchases stay off (fine for the first test upload to Play, not for a public release).
+          # The build stops if the REVENUECAT_ANDROID_KEY secret is missing, so a release can never ship with purchases off.
           if [ -n "$RC_KEY" ]; then
             sed -i 's/const RK_STORE_BILLING = false;/const RK_STORE_BILLING = true;/' native/www/index.html
             sed -i "s|const RK_RC_KEY = '';|const RK_RC_KEY = '$RC_KEY';|" native/www/index.html
@@ -46,7 +46,8 @@ jobs:
             grep -q "const RK_RC_KEY = 'goog_" native/www/index.html || { echo "The RevenueCat key does not look like an Android public key (goog_...)"; exit 1; }
             echo "Store purchases are ON in this build."
           else
-            echo "::warning::REVENUECAT_ANDROID_KEY is not set. Store purchases are OFF in this build. Do not release it publicly."
+            echo "::error::REVENUECAT_ANDROID_KEY is not set. Add it under Settings > Secrets and variables > Actions, then run the build again."
+            exit 1
           fi
 
       - name: Check the app has native-app support
