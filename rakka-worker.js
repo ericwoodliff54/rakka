@@ -1322,6 +1322,43 @@ async function alHandleRequest(request, env, url, replyHeaders, ctx) {
     return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v26-delay' });
   }
 
+  if (path === '/alerts/simulate') {
+    // Plus testers: pretends a NEW recall was just issued for one watchlist item, and sends it through the real match, queue and push path.
+    const rec = await kv.get(key, { type: 'json' });
+    if (!alSecretOk(rec, secret)) return reply({ success: false, error: 'Not registered.' }, 403);
+    const plus = await checkPlus(env, b.plusToken, deviceId);
+    if (!plus) return reply({ success: false, error: 'Plus required.', needsPlus: true }, 403);
+    if (Date.now() - (rec.tst || 0) < 30000) return reply({ success: false, result: 'wait', error: 'Please wait a few seconds between tests.' }, 429);
+    const items = Array.isArray(rec.items) ? rec.items : [];
+    const pick = items.find((x) => x && x.u) || items[0];
+    if (!pick) return reply({ success: true, result: 'no-items' });
+    if (typeof b.pushToken === 'string' && b.pushToken.length >= 20 && b.pushToken.length <= 400) rec.pt = b.pushToken;
+    const simId = 'SIM-' + Date.now();
+    const fake = alMakeRecall({
+      id: simId, product: [pick.b, pick.n].filter(Boolean).join(' ') || 'Watchlist item', firm: pick.b || '', reason: 'TEST ONLY: simulated recall, not a real recall.',
+      classification: 'Test', status: 'Ongoing', date: new Date().toISOString().slice(0, 10), agency: 'TEST', codesText: pick.u || '',
+    });
+    const added = alProcessDevice(rec, alBuildIndex([fake]));
+    const strong = alProcessDevice.lastStrong || 0;
+    rec.tst = Date.now();
+    await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
+    const wait = Math.min(15, Math.max(0, Number(b.delay) || 0));
+    if (rec.pt && env.FCM_SERVICE_ACCOUNT && added > 0 && strong > 0) {
+      const pt = rec.pt;
+      const send = async () => {
+        if (wait) await new Promise((r) => setTimeout(r, wait * 1000));
+        const d2 = {};
+        const res2 = await alSendPush(env, pt, strong, d2);
+        try {
+          const cur = await kv.get(key, { type: 'json' });
+          if (cur) { cur.tres = 'simulate ' + res2 + ' ' + (d2.status || '') + ' at ' + new Date().toISOString().slice(11, 19) + ' UTC'; await kv.put(key, JSON.stringify(cur), { expirationTtl: AL_TTL_SECONDS }); }
+        } catch (_) {}
+      };
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(send()); else await send();
+    }
+    return reply({ success: true, result: added > 0 ? 'ok' : 'no-match', added, strong, item: String(pick.n || pick.b || '').slice(0, 60), pushQueued: !!(rec.pt && added > 0 && strong > 0), build: 'v31-simulate', lastResult: rec.tres || 'none yet' });
+  }
+
   if (path === '/alerts/unregister') {
     const rec = await kv.get(key, { type: 'json' });
     if (rec && !alSecretOk(rec, secret)) return reply({ success: false, error: 'Not authorised.' }, 403);

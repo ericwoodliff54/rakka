@@ -4047,6 +4047,7 @@
           </div>
           <button type="button" id="sendTestAlertBtn" class="hidden w-full min-h-[40px] rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold active:scale-95">Send me a test alert</button>
           <p id="pushDiagLine" class="hidden text-xs text-slate-400 leading-snug"></p>
+          <button type="button" id="simulateRecallBtn" class="hidden w-full min-h-[40px] rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold active:scale-95">Simulate a new recall for my watchlist (test)</button>
           <button type="button" id="copyPushTokenBtn" class="hidden w-full min-h-[40px] rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold active:scale-95">Copy push token (for Firebase test)</button>
           <details class="rk-disc rk-disc-inner">
             <summary>
@@ -23694,7 +23695,7 @@
       if (!badge || !btn) return;
       const on = serverAlertsOn();
       const st = readAlertState();
-      { const show = on && window.rkIsNativeShell && (window.RK_SHOW_TESTER_CODE !== false); const tb = document.getElementById('sendTestAlertBtn'); if (tb) tb.classList.toggle('hidden', !show); const cb = document.getElementById('copyPushTokenBtn'); if (cb) cb.classList.toggle('hidden', !show); if (show) rkPushDiag(); }
+      { const show = on && window.rkIsNativeShell && (window.RK_SHOW_TESTER_CODE !== false); const tb = document.getElementById('sendTestAlertBtn'); if (tb) tb.classList.toggle('hidden', !show); const cb = document.getElementById('copyPushTokenBtn'); if (cb) cb.classList.toggle('hidden', !show); const sb = document.getElementById('simulateRecallBtn'); if (sb) sb.classList.toggle('hidden', !show); if (show) rkPushDiag(); }
       if (on) {
         badge.textContent = 'On';
         badge.className = 'text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
@@ -23906,6 +23907,25 @@
       } finally { if (btn) btn.disabled = false; }
     }
 
+    async function simulateRecall() {
+      const btn = document.getElementById('simulateRecallBtn');
+      if (btn) btn.disabled = true;
+      try {
+        const ent = readPlusEntitlement() || {};
+        let ptok = ''; try { ptok = localStorage.getItem('rakka_push_token') || ''; } catch (_) {}
+        showCustomizeToast('Close RAKKA now (go to the home screen). A pretend recall for one watchlist item is sent in about 20 seconds.');
+        const r = await alertsPost('/alerts/simulate', { plusToken: ent.token || '', pushToken: ptok, delay: 20 }, 30000);
+        const d = r.data || {};
+        if (d.result === 'ok') rkPushDiag('Simulated recall for "' + (d.item || 'item') + '": ' + (d.pushQueued ? 'push queued' : 'matched, but no push (match not strong enough or no token)') + '. Worker ' + d.build + '.');
+        else if (d.result === 'no-items') showCustomizeToast('Your watchlist is empty on the server. Add an item first.');
+        else if (d.result === 'wait') showCustomizeToast('Please wait a few seconds between tests.');
+        else showCustomizeToast('The server could not simulate a recall (' + (d.result || r.status) + ').');
+        try { serverAlertsLastTick = 0; serverAlertsTick(true); } catch (_) {}
+      } catch (_) {
+        showCustomizeToast('Could not reach the server. Check your connection.');
+      } finally { if (btn) btn.disabled = false; }
+    }
+
     window.RakkaPush = {
       setToken(token, platform) {
         try {
@@ -23922,6 +23942,8 @@
       if (btn) btn.addEventListener('click', toggleServerAlerts);
       const tb = document.getElementById('sendTestAlertBtn');
       if (tb) tb.addEventListener('click', sendTestAlert);
+      const sm = document.getElementById('simulateRecallBtn');
+      if (sm) sm.addEventListener('click', simulateRecall);
       const cb = document.getElementById('copyPushTokenBtn');
       if (cb) cb.addEventListener('click', async () => {
         let tok = '';
@@ -28032,6 +28054,10 @@ function renderHistory() {
         } else {
           showCustomizeToast(`🎉 Auto-loaded all ${importedCount} receipt items into your Watchlist!`);
         }
+        try {
+          const rkNewRecalled = (scanHistory || []).slice(0, importedCount).filter(i => i && i.receiptId === receiptId && (i.status === 'recalled' || i.isRecalled));
+          if (rkNewRecalled.length && typeof window.rkShowReceiptRecallPopup === 'function') window.rkShowReceiptRecallPopup(rkNewRecalled);
+        } catch (_) {}
       }, 700);
     }
 
@@ -28256,6 +28282,16 @@ function renderHistory() {
   </script>
 
 
+  <!-- RECEIPT RECALL POPUP (shown after a receipt scan when an item matches an active recall) -->
+  <div id="receiptRecallModal" class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="receiptRecallTitle">
+    <div class="bg-slate-900 border border-red-500/50 max-w-sm w-full rounded-3xl p-5 shadow-2xl space-y-3">
+      <h3 id="receiptRecallTitle" class="font-display text-base font-bold text-red-300">Possible recall found</h3>
+      <p id="receiptRecallIntro" class="text-xs text-slate-300 leading-relaxed"></p>
+      <ul id="receiptRecallList" class="space-y-2 max-h-48 overflow-y-auto"></ul>
+      <p class="text-[11px] text-slate-400 leading-relaxed">Check the package and the FDA or USDA recall page before deciding. This is not a safety guarantee.</p>
+      <button type="button" id="receiptRecallOk" class="w-full min-h-[48px] rounded-xl bg-gradient-to-r from-red-600 to-red-500 text-white font-bold text-sm active:scale-95">View my watchlist</button>
+    </div>
+  </div>
   <!-- GEMINI RECEIPT CONSENT (shown once, before the first receipt photo is sent) -->
   <div id="geminiConsentModal" class="hidden fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="geminiConsentTitle">
     <div class="bg-slate-900 border border-slate-700 max-w-sm w-full rounded-3xl p-5 shadow-2xl space-y-3">
@@ -28265,6 +28301,30 @@ function renderHistory() {
       <button type="button" id="geminiConsentDeny" class="w-full min-h-[40px] text-xs text-slate-400 underline active:scale-95">Cancel</button>
     </div>
   </div>
+<script>
+  // After a receipt scan, tells the person right away when a scanned item matches an active recall (same alert as a barcode scan).
+  window.rkShowReceiptRecallPopup = function (items) {
+    try {
+      if (!items || !items.length) return;
+      var m = document.getElementById('receiptRecallModal'); if (!m) return;
+      var intro = document.getElementById('receiptRecallIntro');
+      var list = document.getElementById('receiptRecallList');
+      intro.textContent = items.length === 1 ? 'An item on your receipt matches an active recall record.' : items.length + ' items on your receipt match active recall records.';
+      list.innerHTML = '';
+      items.slice(0, 8).forEach(function (it) {
+        var li = document.createElement('li');
+        li.className = 'rounded-xl bg-red-950/40 border border-red-500/30 p-2.5';
+        var a = document.createElement('div'); a.className = 'text-xs font-bold text-slate-100'; a.textContent = it.productName || it.product || 'Receipt item';
+        var b = document.createElement('div'); b.className = 'text-[11px] text-slate-300 mt-0.5'; b.textContent = String(it.activeRecallHazard || 'Active recall on file').slice(0, 140);
+        li.appendChild(a); li.appendChild(b); list.appendChild(li);
+      });
+      try { triggerHaptic([150, 100, 200]); } catch (_) {}
+      try { sound.playAlertSiren(); } catch (_) {}
+      document.getElementById('receiptRecallOk').onclick = function () { m.classList.add('hidden'); };
+      m.classList.remove('hidden');
+    } catch (_) {}
+  };
+</script>
 <script>
   // One-time consent before any receipt photo leaves the device.
   window.rkEnsureGeminiConsent = function () {
