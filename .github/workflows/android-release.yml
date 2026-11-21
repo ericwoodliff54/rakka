@@ -23,6 +23,8 @@ jobs:
           java-version: 21
 
       - name: Prepare the native build folder
+        env:
+          RC_KEY: ${{ secrets.REVENUECAT_ANDROID_KEY }}
         run: |
           mkdir -p native
           cp native-package.json native/package.json
@@ -31,6 +33,15 @@ jobs:
           # Only the files the app needs. The catalog is downloaded by the app itself after install.
           cp index.html app.css manifest.json favicon.png apple-touch-icon.png icon-192.png icon-512.png splash-mascot-sm.png staples_catalog.json native/www/
           cp -r js vendor native/www/
+          # Store build: hide tester code, test-alert buttons and diagnostics.
+          sed -i 's/const RK_SHOW_TESTER_CODE = true;/const RK_SHOW_TESTER_CODE = false;/' native/www/index.html
+          grep -q "const RK_SHOW_TESTER_CODE = false;" native/www/index.html || { echo "Tester controls are still on in the release build"; exit 1; }
+          # Store build: turn on store purchases (RevenueCat) and fill in the public key from the GitHub secret.
+          test -n "$RC_KEY" || { echo "The REVENUECAT_ANDROID_KEY secret is missing"; exit 1; }
+          sed -i 's/const RK_STORE_BILLING = false;/const RK_STORE_BILLING = true;/' native/www/index.html
+          sed -i "s|const RK_RC_KEY = '';|const RK_RC_KEY = '$RC_KEY';|" native/www/index.html
+          grep -q "const RK_STORE_BILLING = true;" native/www/index.html || { echo "Store billing is still off in the release build"; exit 1; }
+          grep -q "const RK_RC_KEY = 'goog_" native/www/index.html || { echo "The RevenueCat key does not look like an Android public key (goog_...)"; exit 1; }
 
       - name: Check the app has native-app support
         run: grep -q "isNativePlatform" native/www/index.html
