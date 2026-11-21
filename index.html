@@ -23898,7 +23898,7 @@
         else if (res === 'wait') showCustomizeToast('Please wait a few seconds between tests.');
         else if (res === 'gone') showCustomizeToast('Firebase says this phone token is no longer valid. Turn alerts off and on again.');
         else showCustomizeToast('The server could not send the test alert (' + (res || r.status) + ').');
-        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '. Token ends ' + (ptok ? ptok.slice(-6) : 'none') + (r.data && r.data.serverTail ? ', server used ' + r.data.serverTail : '') + (r.data && r.data.tokenUpdated ? ' (server token was out of date and has been updated)' : '') + '.');
+        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '. Token ends ' + (ptok ? ptok.slice(-6) : 'none') + (r.data && r.data.build ? ' Worker ' + r.data.build + '.' : ' Worker is an older version.') + (r.data && r.data.serverTail ? ', server used ' + r.data.serverTail : '') + (r.data && r.data.tokenUpdated ? ' (server token was out of date and has been updated)' : '') + '.');
       } catch (_) {
         showCustomizeToast('Could not reach the server. Check your connection.');
       } finally { if (btn) btn.disabled = false; }

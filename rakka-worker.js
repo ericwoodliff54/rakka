@@ -1098,7 +1098,7 @@ async function alFcmAccess(env) {
 }
 
 /** Generic text only: the product never passes through Apple's or Google's push services. Returns 'ok' | 'gone' | 'skip' | 'fail'. */
-async function alSendPush(env, pushToken, count, dbg) {
+async function alSendPush(env, pushToken, count, dbg, bare) {
   if (!pushToken || !env.FCM_SERVICE_ACCOUNT) return 'skip';
   try {
     const acc = await alFcmAccess(env);
@@ -1108,8 +1108,10 @@ async function alSendPush(env, pushToken, count, dbg) {
       body: JSON.stringify({ message: {
         token: pushToken,
         notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
-        data: { type: 'recall', count: String(count) },
-        apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
+        ...(bare ? {} : {
+          data: { type: 'recall', count: String(count) },
+          apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
+        }),
       } }),
     });
     if (dbg) dbg.status = res.status;
@@ -1298,9 +1300,9 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     rec.tst = Date.now();
     await kv.put(key, JSON.stringify(rec), { expirationTtl: AL_TTL_SECONDS });
     const dbg = {};
-    const result = await alSendPush(env, rec.pt, 1, dbg);
+    const result = await alSendPush(env, rec.pt, 1, dbg, true);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v23-bare-test' });
   }
 
   if (path === '/alerts/unregister') {
