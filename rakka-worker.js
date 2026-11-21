@@ -1109,7 +1109,6 @@ async function alSendPush(env, pushToken, count, dbg) {
         token: pushToken,
         notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
         data: { type: 'recall', count: String(count) },
-        android: { priority: 'HIGH', notification: { channel_id: 'recall_alerts' } },
         apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
       } }),
     });
@@ -1473,7 +1472,7 @@ export default {
         status: 'online',
         service: 'RAKKA Cloud Edge Hook',
         version: '1.4.2',
-        build: '2026-11-20-v21-alert-channel',
+        build: '2026-11-20-v22-plain-push',
         ai_vision_key_configured: hasKey,
         key_source: source,
         key_preview: hasKey ? 'configured' : 'NONE',
