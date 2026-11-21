@@ -1292,6 +1292,8 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     const plus = await checkPlus(env, b.plusToken, deviceId);
     if (!plus) return reply({ success: false, error: 'Plus required.', needsPlus: true }, 403);
     if (Date.now() - (rec.tst || 0) < 30000) return reply({ success: false, result: 'wait', error: 'Please wait a few seconds between tests.' }, 429);
+    let tokenUpdated = false;
+    if (typeof b.pushToken === 'string' && b.pushToken.length >= 20 && b.pushToken.length <= 400 && b.pushToken !== rec.pt) { rec.pt = b.pushToken; tokenUpdated = true; }
     if (!rec.pt) return reply({ success: true, result: 'no-token' });
     if (!env.FCM_SERVICE_ACCOUNT) return reply({ success: true, result: 'no-server-key' });
     rec.tst = Date.now();
@@ -1299,7 +1301,7 @@ async function alHandleRequest(request, env, url, replyHeaders) {
     const dbg = {};
     const result = await alSendPush(env, rec.pt, 1, dbg);
     console.log('alerts/test push result: ' + result);
-    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '' });
+    return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated });
   }
 
   if (path === '/alerts/unregister') {

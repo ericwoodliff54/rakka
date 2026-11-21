@@ -23889,7 +23889,8 @@
       if (btn) btn.disabled = true;
       try {
         const ent = readPlusEntitlement() || {};
-        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '' });
+        let ptok = ''; try { ptok = localStorage.getItem('rakka_push_token') || ''; } catch (_) {}
+        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '', pushToken: ptok });
         const res = r.data && r.data.result;
         if (res === 'ok') showCustomizeToast('Test alert sent. Close RAKKA and it should arrive in a few seconds.');
         else if (res === 'no-token') showCustomizeToast('This phone has not given the server a push token yet. Turn alerts off and on again, and allow notifications.');
@@ -23897,7 +23898,7 @@
         else if (res === 'wait') showCustomizeToast('Please wait a few seconds between tests.');
         else if (res === 'gone') showCustomizeToast('Firebase says this phone token is no longer valid. Turn alerts off and on again.');
         else showCustomizeToast('The server could not send the test alert (' + (res || r.status) + ').');
-        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '.');
+        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '. Token ends ' + (ptok ? ptok.slice(-6) : 'none') + (r.data && r.data.serverTail ? ', server used ' + r.data.serverTail : '') + (r.data && r.data.tokenUpdated ? ' (server token was out of date and has been updated)' : '') + '.');
       } catch (_) {
         showCustomizeToast('Could not reach the server. Check your connection.');
       } finally { if (btn) btn.disabled = false; }
