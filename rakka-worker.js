@@ -1108,7 +1108,7 @@ async function alSendPush(env, pushToken, count, dbg, bare) {
       body: JSON.stringify({ message: {
         token: pushToken,
         notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
-        android: { priority: 'HIGH', notification: { channel_id: 'recall_alerts', default_sound: true, default_vibrate_timings: true, notification_priority: 'PRIORITY_MAX', visibility: 'PUBLIC' } },
+        android: { priority: 'HIGH', notification: { channel_id: 'recall_alerts_v2', default_sound: true, default_vibrate_timings: true, notification_priority: 'PRIORITY_MAX', visibility: 'PUBLIC' } },
         ...(bare ? {} : {
           data: { type: 'recall', count: String(count) },
           apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
@@ -1315,7 +1315,7 @@ async function alHandleRequest(request, env, url, replyHeaders, ctx) {
           if (cur) { cur.tres = res2 + ' ' + (d2.status || '') + ' at ' + new Date().toISOString().slice(11, 19) + ' UTC'; await kv.put(key, JSON.stringify(cur), { expirationTtl: AL_TTL_SECONDS }); }
         } catch (_) {}
       })());
-      return reply({ success: true, result: 'ok', fcmStatus: 0, fcmDetail: 'sending in ' + wait + ' seconds', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v29-channel', lastResult: rec.tres || 'none yet' });
+      return reply({ success: true, result: 'ok', fcmStatus: 0, fcmDetail: 'sending in ' + wait + ' seconds', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v30-channel2', lastResult: rec.tres || 'none yet' });
     }
     const result = await alSendPush(env, rec.pt, 1, dbg);
     console.log('alerts/test push result: ' + result);

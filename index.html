@@ -23811,7 +23811,8 @@
         // A high-importance channel makes recall alerts pop up on screen and make a sound, instead of landing silently in the shade.
         try {
           if (PN.createChannel && (!window.Capacitor.getPlatform || window.Capacitor.getPlatform() === 'android')) {
-            await PN.createChannel({ id: 'recall_alerts', name: 'Recall alerts', description: 'Notices that a recall may affect your watchlist', importance: 5, visibility: 1, vibration: true });
+            try { if (PN.deleteChannel) await PN.deleteChannel({ id: 'recall_alerts' }); } catch (_) {}
+            await PN.createChannel({ id: 'recall_alerts_v2', name: 'Recall alerts', description: 'Notices that a recall may affect your watchlist', importance: 5, visibility: 1, vibration: true, lights: true });
           }
         } catch (_) {}
         if (!rkPushWired) {
@@ -23890,8 +23891,8 @@
       try {
         const ent = readPlusEntitlement() || {};
         let ptok = ''; try { ptok = localStorage.getItem('rakka_push_token') || ''; } catch (_) {}
-        showCustomizeToast('Close RAKKA now (go to the home screen). The test alert is sent in about 12 seconds.');
-        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '', pushToken: ptok, delay: 12 }, 30000);
+        showCustomizeToast('Close RAKKA now (go to the home screen). The test alert is sent in about 20 seconds.');
+        const r = await alertsPost('/alerts/test', { plusToken: ent.token || '', pushToken: ptok, delay: 20 }, 30000);
         const res = r.data && r.data.result;
         if (res === 'ok') showCustomizeToast('Test alert sent. It should be on your phone now.');
         else if (res === 'no-token') showCustomizeToast('This phone has not given the server a push token yet. Turn alerts off and on again, and allow notifications.');
@@ -23899,7 +23900,7 @@
         else if (res === 'wait') showCustomizeToast('Please wait a few seconds between tests.');
         else if (res === 'gone') showCustomizeToast('Firebase says this phone token is no longer valid. Turn alerts off and on again.');
         else showCustomizeToast('The server could not send the test alert (' + (res || r.status) + ').');
-        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '. Token ends ' + (ptok ? ptok.slice(-6) : 'none') + (r.data && r.data.build ? ' Worker ' + r.data.build + '.' : ' Worker is an older version.') + (r.data && r.data.serverTail ? ', server used ' + r.data.serverTail : '') + (r.data && r.data.tokenUpdated ? ' (server token was out of date and has been updated)' : '') + '.');
+        rkPushDiag('Server: ' + (res || 'no answer') + (r.data && r.data.fcmStatus ? ', Firebase status ' + r.data.fcmStatus : '') + (r.data && r.data.fcmDetail ? ' (' + r.data.fcmDetail + ')' : '') + '. Token ends ' + (ptok ? ptok.slice(-6) : 'none') + (r.data && r.data.lastResult ? ' Previous test result: ' + r.data.lastResult + '.' : '') + (r.data && r.data.build ? ' Worker ' + r.data.build + '.' : ' Worker is an older version.') + (r.data && r.data.serverTail ? ', server used ' + r.data.serverTail : '') + (r.data && r.data.tokenUpdated ? ' (server token was out of date and has been updated)' : '') + '.');
       } catch (_) {
         showCustomizeToast('Could not reach the server. Check your connection.');
       } finally { if (btn) btn.disabled = false; }
