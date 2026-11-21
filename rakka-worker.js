@@ -539,12 +539,12 @@ async function checkPlus(env, token, deviceId) {
 // ============================================================================
 // RECEIPT SCAN QUOTA (server-side, so clearing browser data cannot reset it)
 // Free: 5 receipt scans / month per device (+ a generous per-network backstop).
-// Plus (invite code or trial): 15 receipt scans / day per device.
+// Plus (invite code or trial): 60 receipt scans / month per device.
 // One receipt photo is sent as up to 3 slices; the app tags them with one scanId so they count once.
 // ============================================================================
 const FREE_RECEIPT_MONTHLY = 5;
 const FREE_RECEIPT_MONTHLY_PER_NETWORK = 150; // phone carriers put many people behind one address, so keep this loose
-const PLUS_RECEIPT_DAILY = 15;
+const PLUS_RECEIPT_MONTHLY = 60;
 
 async function receiptQuotaSlot(env, key, limit, scanId, ttlSeconds) {
   let ids = [];
@@ -572,14 +572,14 @@ async function enforceReceiptQuota(env, request, body) {
   const day = now.toISOString().slice(0, 10);
   const plus = await checkPlus(env, body.plusToken, deviceId);
   if (plus) {
-    const ok = await receiptQuotaSlot(env, `rq:d:${deviceId}:${day}`, PLUS_RECEIPT_DAILY, scanId, 172800);
+    const ok = await receiptQuotaSlot(env, `rq:pm:${deviceId}:${month}`, PLUS_RECEIPT_MONTHLY, scanId, 3456000);
     return ok ? { ok: true } : { ok: false, status: 429, quotaExceeded: true, plus: true,
-      error: `Daily fair-use limit reached (${PLUS_RECEIPT_DAILY} receipt scans today). It resets at midnight UTC.` };
+      error: `Monthly Plus limit reached (${PLUS_RECEIPT_MONTHLY} receipt scans this month). It resets at the start of next month (UTC).` };
   }
   const okDevice = await receiptQuotaSlot(env, `rq:m:${deviceId}:${month}`, FREE_RECEIPT_MONTHLY, scanId, 3456000);
   if (!okDevice) {
     return { ok: false, status: 429, quotaExceeded: true, plus: false,
-      error: `Monthly free limit reached (${FREE_RECEIPT_MONTHLY}/${FREE_RECEIPT_MONTHLY} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_RECEIPT_DAILY} scans a day.` };
+      error: `Monthly free limit reached (${FREE_RECEIPT_MONTHLY}/${FREE_RECEIPT_MONTHLY} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_RECEIPT_MONTHLY} scans a month.` };
   }
   // Backstop against a fresh device ID on every scan. Only a hash of the network address is kept.
   const ip = request.headers.get('CF-Connecting-IP') || '';

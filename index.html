@@ -2764,7 +2764,7 @@
             <span class="p-1 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30 shrink-0"><svg class="w-4 h-4 text-teal-400 shrink-0 inline-block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></span>
             <div>
               <span class="font-bold text-white block">More room for groceries</span>
-              <span class="text-xs text-slate-400">A 500-item watchlist and up to 15 receipt scans a day.</span>
+              <span class="text-xs text-slate-400">A 500-item watchlist and up to 60 receipt scans a month.</span>
             </div>
           </div>
           <div class="flex items-start gap-2.5">
@@ -27141,29 +27141,29 @@ function renderHistory() {
         localStorage.setItem('rakka_receipt_free_count', '0');
       }
 
-      const savedDay = localStorage.getItem('rakka_receipt_day') || '';
-      let proDailyCount = parseInt(localStorage.getItem('rakka_receipt_pro_daily') || '0', 10);
-      if (savedDay !== todayKey) {
-        proDailyCount = 0;
-        localStorage.setItem('rakka_receipt_day', todayKey);
-        localStorage.setItem('rakka_receipt_pro_daily', '0');
+      const savedProMonth = localStorage.getItem('rakka_receipt_pro_month_key') || '';
+      let proMonthCount = parseInt(localStorage.getItem('rakka_receipt_pro_month') || '0', 10);
+      if (savedProMonth !== currentMonthKey) {
+        proMonthCount = 0;
+        localStorage.setItem('rakka_receipt_pro_month_key', currentMonthKey);
+        localStorage.setItem('rakka_receipt_pro_month', '0');
       }
 
-      return { currentMonthKey, todayKey, freeCount, proDailyCount };
+      return { currentMonthKey, todayKey, freeCount, proMonthCount };
     }
 
     const FREE_MONTHLY_RECEIPT_LIMIT = 5;
-    const PLUS_DAILY_RECEIPT_LIMIT = 15;
+    const PLUS_MONTHLY_RECEIPT_LIMIT = 60;
 
     function canScanReceipt() {
-      const { freeCount, proDailyCount } = getReceiptUsageData();
+      const { freeCount, proMonthCount } = getReceiptUsageData();
       if (isPlusActive) {
-        const remaining = Math.max(0, PLUS_DAILY_RECEIPT_LIMIT - proDailyCount);
+        const remaining = Math.max(0, PLUS_MONTHLY_RECEIPT_LIMIT - proMonthCount);
         return {
-          allowed: proDailyCount < PLUS_DAILY_RECEIPT_LIMIT,
+          allowed: proMonthCount < PLUS_MONTHLY_RECEIPT_LIMIT,
           remaining,
-          limit: PLUS_DAILY_RECEIPT_LIMIT,
-          reason: `Daily fair-use limit reached (${PLUS_DAILY_RECEIPT_LIMIT}/${PLUS_DAILY_RECEIPT_LIMIT} receipt scans today). Resets at midnight.`
+          limit: PLUS_MONTHLY_RECEIPT_LIMIT,
+          reason: `Monthly Plus limit reached (${PLUS_MONTHLY_RECEIPT_LIMIT}/${PLUS_MONTHLY_RECEIPT_LIMIT} receipt scans this month). It resets at the start of next month.`
         };
       }
       const remaining = Math.max(0, FREE_MONTHLY_RECEIPT_LIMIT - freeCount);
@@ -27171,7 +27171,7 @@ function renderHistory() {
         allowed: freeCount < FREE_MONTHLY_RECEIPT_LIMIT,
         remaining,
         limit: FREE_MONTHLY_RECEIPT_LIMIT,
-        reason: `Monthly free limit reached (${FREE_MONTHLY_RECEIPT_LIMIT}/${FREE_MONTHLY_RECEIPT_LIMIT} receipt scans used). Start your 7-day free Plus trial for up to 15 scans/day!`
+        reason: `Monthly free limit reached (${FREE_MONTHLY_RECEIPT_LIMIT}/${FREE_MONTHLY_RECEIPT_LIMIT} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_MONTHLY_RECEIPT_LIMIT} scans a month!`
       };
     }
 
@@ -27180,9 +27180,9 @@ function renderHistory() {
       if (!badge) return;
       const q = canScanReceipt();
       if (isPlusActive) {
-        badge.textContent = `Plus • ${q.remaining} left today`;
+        badge.textContent = `Plus • ${q.remaining} left this month`;
         badge.onclick = null;
-        badge.title = `${q.remaining} of ${q.limit} daily Plus receipt scans remaining`;
+        badge.title = `${q.remaining} of ${q.limit} monthly Plus receipt scans remaining`;
         badge.className = q.remaining > 0
           ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0'
           : 'text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0';
@@ -27200,9 +27200,9 @@ function renderHistory() {
     window.updateReceiptQuotaUI = updateReceiptQuotaUI;
 
     function recordReceiptScanUsage() {
-      const { freeCount, proDailyCount } = getReceiptUsageData();
+      const { freeCount, proMonthCount } = getReceiptUsageData();
       if (isPlusActive) {
-        localStorage.setItem('rakka_receipt_pro_daily', String(proDailyCount + 1));
+        localStorage.setItem('rakka_receipt_pro_month', String(proMonthCount + 1));
       } else {
         localStorage.setItem('rakka_receipt_free_count', String(freeCount + 1));
       }
