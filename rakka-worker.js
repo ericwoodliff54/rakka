@@ -1108,7 +1108,7 @@ async function alSendPush(env, pushToken, count, dbg, bare) {
       body: JSON.stringify({ message: {
         token: pushToken,
         notification: { title: 'RAKKA recall alert', body: count > 1 ? `${count} recalls may affect items on your watchlist. Open RAKKA to check.` : 'A recall may affect an item on your watchlist. Open RAKKA to check.' },
-        android: { priority: 'HIGH' },
+        android: { priority: 'HIGH', notification: { channel_id: 'recall_alerts', default_sound: true, default_vibrate_timings: true, notification_priority: 'PRIORITY_MAX', visibility: 'PUBLIC' } },
         ...(bare ? {} : {
           data: { type: 'recall', count: String(count) },
           apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
@@ -1307,12 +1307,17 @@ async function alHandleRequest(request, env, url, replyHeaders, ctx) {
       const pt = rec.pt;
       ctx.waitUntil((async () => {
         await new Promise((r) => setTimeout(r, wait * 1000));
-        const res2 = await alSendPush(env, pt, 1, {}, true);
+        const d2 = {};
+        const res2 = await alSendPush(env, pt, 1, d2);
         console.log('alerts/test delayed push result: ' + res2);
+        try {
+          const cur = await kv.get(key, { type: 'json' });
+          if (cur) { cur.tres = res2 + ' ' + (d2.status || '') + ' at ' + new Date().toISOString().slice(11, 19) + ' UTC'; await kv.put(key, JSON.stringify(cur), { expirationTtl: AL_TTL_SECONDS }); }
+        } catch (_) {}
       })());
-      return reply({ success: true, result: 'ok', fcmStatus: 0, fcmDetail: 'sending in ' + wait + ' seconds', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v27-bg-delay' });
+      return reply({ success: true, result: 'ok', fcmStatus: 0, fcmDetail: 'sending in ' + wait + ' seconds', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v29-channel', lastResult: rec.tres || 'none yet' });
     }
-    const result = await alSendPush(env, rec.pt, 1, dbg, true);
+    const result = await alSendPush(env, rec.pt, 1, dbg);
     console.log('alerts/test push result: ' + result);
     return reply({ success: true, result, fcmStatus: dbg.status || 0, fcmDetail: dbg.body || '', serverTail: String(rec.pt).slice(-6), tokenUpdated, build: 'v26-delay' });
   }
