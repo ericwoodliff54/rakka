@@ -20,6 +20,8 @@ if 'android.hardware.camera' not in s:
 if 'android.media.action.IMAGE_CAPTURE' not in s:
     add += '    <queries>\n        <intent>\n            <action android:name="android.media.action.IMAGE_CAPTURE" />\n        </intent>\n    </queries>\n'
 s = s.replace('</manifest>', add + '</manifest>')
+# RevenueCat's purchase screen needs the main screen to start as singleTop (or standard), not singleTask.
+s = s.replace('android:launchMode="singleTask"', 'android:launchMode="singleTop"')
 open(mf, 'w').write(s)
 
 # --- Version numbers
