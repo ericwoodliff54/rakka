@@ -2791,6 +2791,18 @@
           Plus is free for testers: start the 7-day trial below, or enter a tester code in Settings. Paid plans arrive with the app store release.
         </p>
 
+        <!-- STORE PURCHASE (shown only in the store build) -->
+        <div id="storePlansBox" class="hidden space-y-2.5">
+          <p id="storePlanDisclosure" class="text-[11px] text-slate-300 leading-snug text-center"></p>
+          <button type="button" id="storePlanAnnualBtn" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-950/60 transition active:scale-[0.98] flex flex-col items-center justify-center"><span id="storePlanAnnualTitle">Yearly</span><span id="storePlanAnnualSub" class="text-[11px] font-semibold opacity-80"></span></button>
+          <button type="button" id="storePlanMonthlyBtn" class="w-full py-3 px-4 rounded-xl bg-slate-800 border border-slate-600 text-slate-100 font-bold text-sm transition active:scale-[0.98] flex flex-col items-center justify-center"><span id="storePlanMonthlyTitle">Monthly</span><span id="storePlanMonthlySub" class="text-[11px] font-semibold opacity-80"></span></button>
+          <div class="flex items-center justify-center gap-4 text-[11px]">
+            <button type="button" id="restorePurchasesBtn" class="underline text-slate-300 min-h-[36px]">Restore purchases</button>
+            <button type="button" onclick="openPrivacyModal()" class="underline text-slate-300 min-h-[36px]">Terms and Privacy</button>
+            <a href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener" id="manageSubLink" class="underline text-slate-300 min-h-[36px] inline-flex items-center">Manage subscription</a>
+          </div>
+        </div>
+
         <!-- Dynamic CTA Button -->
         <button 
           type="button" 
@@ -3503,10 +3515,10 @@
           <span id="allergensPlusBannerTitle" class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
             <svg class="w-3 h-3 text-amber-400 shrink-0 inline-block" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> <span>RAKKA Plus Required</span>
           </span>
-          <p id="allergensPlusBannerSub" class="text-xs text-slate-300">Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening (7-day free trial, no card needed).</p>
+          <p id="allergensPlusBannerSub" class="text-xs text-slate-300">Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening.</p>
         </div>
         <button type="button" id="unlockAllergensBannerBtn" class="shrink-0 min-h-[44px] px-4 py-2.5 rounded-xl flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-950/40 hover:opacity-95 transition active:scale-95">
-          Start 7-Day Trial
+          See Plus
         </button>
       </div>
 
@@ -4232,6 +4244,7 @@
           <p class="text-xs text-slate-300 leading-relaxed"><strong>Your data stays on your device by default.</strong> Only optional features use our server:</p>
           <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Household Sync (Plus):</strong> family profiles and your watchlist are encrypted, and we cannot read them.</p>
           <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Recall Alerts (Plus):</strong> your watchlist names, brands and barcodes are stored so we can check recalls for you.</p>
+          <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Plus purchases:</strong> the store handles payment and we never see your card. RevenueCat confirms your plan using your RAKKA device ID and your purchase status.</p>
           <p class="text-xs text-slate-300 leading-relaxed" style="padding-left:14px;text-indent:-14px">&bull;&nbsp;&nbsp;<strong>Receipt scans:</strong> photos go through our server to Google Gemini to be read, and we do not store them.</p>
           <p class="text-xs text-slate-300 leading-relaxed">We never sell your data. <strong>Delete my data</strong> erases it all.</p>
           <div class="space-y-2 pt-1">
@@ -5578,7 +5591,7 @@
     // safeKey() keeps only characters that cannot break out of a quoted handler argument or element id.
     function safeKey(v) { return String(v == null ? '' : v).replace(/[^a-zA-Z0-9_-]/g, '_'); }
 
-    const PLUS_ENT_KEY = 'rakka_plus_ent';       // { token, kind: 'code'|'trial', exp }
+    const PLUS_ENT_KEY = 'rakka_plus_ent';       // { token, kind: 'code'|'trial'|'sub', exp }
     const PLUS_HH_KEY = 'rakka_hh_plus_until';   // household plus (hosted by a partner), expiry in ms
     const PLUS_PREVIEW_FREE_KEY = 'rakka_preview_free'; // session only: preview the Free tier
 
@@ -5652,7 +5665,7 @@
       const ent = readPlusEntitlement();
       if (!ent) return;
       try {
-        const r = await plusServerCall('status', { token: ent.token });
+        const r = ent.kind === 'sub' ? await plusServerCall('subscription', {}) : await plusServerCall('status', { token: ent.token });
         if (!r.ok || !r.data || r.data.success === false) return;
         if (r.data.active) {
           writePlusEntitlement({ token: r.data.token || ent.token, kind: r.data.kind, exp: r.data.exp });
@@ -19008,6 +19021,7 @@
     function openPaywall() {
       triggerHaptic([30]);
       plusPaywallModal.classList.remove('hidden');
+      try { if (typeof rkPrepareStorePlans === 'function') rkPrepareStorePlans(); } catch (_) {}
       BackNav.pushModal('plusPaywallModal', () => closePaywall(true));
     }
 
@@ -19097,6 +19111,115 @@
       }
     });
 
+    // ==========================================================
+    // STORE BILLING (RevenueCat). Active only in the store build, where RK_STORE_BILLING is switched on by the release workflow.
+    // The device ID is the RevenueCat user ID. After a purchase the Worker asks RevenueCat to confirm it and signs the Plus token.
+    // ==========================================================
+    let rkRcReady = false, rkRcPkgs = { annual: null, monthly: null };
+    function rkBillingOn() {
+      return !!(window.RK_STORE_BILLING && window.rkIsNativeShell && window.RK_RC_KEY && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Purchases);
+    }
+    async function rkRcInit() {
+      if (rkRcReady) return true;
+      try {
+        await window.Capacitor.Plugins.Purchases.configure({ apiKey: window.RK_RC_KEY, appUserID: getRakkaDeviceId() });
+        rkRcReady = true;
+      } catch (_) { rkRcReady = false; }
+      return rkRcReady;
+    }
+    function rkPlanText(pkg, perWord) {
+      const pr = pkg && pkg.product || {};
+      const price = pr.priceString || '';
+      let trial = '';
+      try {
+        const ip = pr.introPrice;
+        if (ip && Number(ip.price) === 0 && ip.periodNumberOfUnits) {
+          const unit = String(ip.periodUnit || 'DAY').toLowerCase();
+          const n = Number(ip.periodNumberOfUnits);
+          trial = n + ' ' + unit + (n === 1 ? '' : 's') + ' free, then ';
+        }
+      } catch (_) {}
+      return { price, trial, line: (trial + price + ' per ' + perWord).trim() };
+    }
+    async function rkPrepareStorePlans() {
+      const box = document.getElementById('storePlansBox');
+      const old = document.getElementById('activatePlusTrialBtn');
+      if (!box) return;
+      if (!rkBillingOn()) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      if (old) old.classList.add('hidden');
+      const dis = document.getElementById('storePlanDisclosure');
+      const mng = document.getElementById('manageSubLink');
+      try { if (mng && window.Capacitor.getPlatform() === 'ios') mng.href = 'https://apps.apple.com/account/subscriptions'; } catch (_) {}
+      if (dis) dis.textContent = 'Loading prices…';
+      try {
+        if (!(await rkRcInit())) throw new Error('init');
+        const o = await window.Capacitor.Plugins.Purchases.getOfferings();
+        const cur = o && o.current;
+        const list = (cur && cur.availablePackages) || [];
+        rkRcPkgs.annual = (cur && cur.annual) || list.find(x => /ANNUAL/i.test(String(x.packageType))) || null;
+        rkRcPkgs.monthly = (cur && cur.monthly) || list.find(x => /MONTHLY/i.test(String(x.packageType))) || null;
+        const a = rkRcPkgs.annual, m = rkRcPkgs.monthly;
+        const store = (window.Capacitor.getPlatform() === 'ios') ? 'Apple ID' : 'Google Play';
+        const ab = document.getElementById('storePlanAnnualBtn'), mb = document.getElementById('storePlanMonthlyBtn');
+        if (ab) ab.classList.toggle('hidden', !a);
+        if (mb) mb.classList.toggle('hidden', !m);
+        if (a) { const t = rkPlanText(a, 'year'); document.getElementById('storePlanAnnualTitle').textContent = 'Yearly: ' + t.price + ' per year'; document.getElementById('storePlanAnnualSub').textContent = t.trial ? t.trial.replace(/, then $/, '') : 'Best value'; }
+        if (m) { const t = rkPlanText(m, 'month'); document.getElementById('storePlanMonthlyTitle').textContent = 'Monthly: ' + t.price + ' per month'; document.getElementById('storePlanMonthlySub').textContent = t.trial ? t.trial.replace(/, then $/, '') : ''; }
+        const anyTrial = [a, m].some(x => x && rkPlanText(x, 'x').trial);
+        if (dis) dis.textContent = (a || m)
+          ? (anyTrial ? 'A payment method is required to start the free trial. Payment is charged to your ' + store + ' account when the trial ends. ' : 'Payment is charged to your ' + store + ' account when you confirm your purchase. ')
+            + 'The subscription renews automatically until you cancel in your ' + store + ' settings. Taxes and prices in other countries can differ.'
+          : 'Plans are not available right now. Please try again later.';
+      } catch (_) {
+        if (dis) dis.textContent = 'Could not load plans. Check your connection and try again.';
+      }
+    }
+    // After a purchase or restore: the Worker confirms it with RevenueCat and returns a short-lived token.
+    async function rkConfirmPurchase(quietIfNone) {
+      const r = await plusServerCall('subscription', {});
+      if (r.ok && r.data && r.data.success && r.data.active && r.data.token) {
+        writePlusEntitlement({ token: r.data.token, kind: r.data.kind, exp: r.data.exp });
+        sessionStorage.removeItem(PLUS_PREVIEW_FREE_KEY);
+        try { sound.playClearChime(); } catch (_) {}
+        checkPlusStatus(); refreshPlusUi(); closePaywall();
+        showCustomizeToast('RAKKA Plus is active. Thank you!');
+        return true;
+      }
+      if (r.data && r.data.error) showCustomizeToast(r.data.error);
+      else if (!quietIfNone) showCustomizeToast('No active Plus subscription was found for this account.');
+      return false;
+    }
+    async function rkBuyPlan(kind) {
+      const pkg = rkRcPkgs[kind];
+      if (!pkg || !rkBillingOn()) return;
+      triggerHaptic([40]);
+      const btns = ['storePlanAnnualBtn', 'storePlanMonthlyBtn', 'restorePurchasesBtn'].map(id => document.getElementById(id));
+      btns.forEach(b => { if (b) b.disabled = true; });
+      try {
+        await window.Capacitor.Plugins.Purchases.purchasePackage({ aPackage: pkg });
+        await rkConfirmPurchase(false);
+      } catch (e) {
+        if (!(e && (e.userCancelled || /cancel/i.test(String(e.message || e.code || ''))))) showCustomizeToast('The purchase could not be completed. You have not been charged unless the store says so.');
+      } finally { btns.forEach(b => { if (b) b.disabled = false; }); }
+    }
+    async function rkRestorePurchases() {
+      if (!rkBillingOn()) return;
+      const b = document.getElementById('restorePurchasesBtn'); if (b) b.disabled = true;
+      try {
+        if (!(await rkRcInit())) throw new Error('init');
+        await window.Capacitor.Plugins.Purchases.restorePurchases();
+        await rkConfirmPurchase(false);
+      } catch (_) { showCustomizeToast('Could not restore purchases. Check your connection and try again.'); }
+      finally { if (b) b.disabled = false; }
+    }
+    (function wireStoreBilling() {
+      const a = document.getElementById('storePlanAnnualBtn'), m = document.getElementById('storePlanMonthlyBtn'), r = document.getElementById('restorePurchasesBtn');
+      if (a) a.addEventListener('click', () => rkBuyPlan('annual'));
+      if (m) m.addEventListener('click', () => rkBuyPlan('monthly'));
+      if (r) r.addEventListener('click', rkRestorePurchases);
+    })();
+
     function updatePlusUI() {
       checkPlusStatus();
       const topBadge = document.getElementById('headerTopTierBadge');
@@ -19150,7 +19273,7 @@
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "TRIAL EXPIRED";
         plusActiveBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40";
-        openPaywallBtn.innerHTML = `<span>Unlock RAKKA Plus (invite code or free trial)</span>`;
+        openPaywallBtn.innerHTML = `<span>${window.RK_STORE_BILLING ? 'Unlock RAKKA Plus' : 'Unlock RAKKA Plus (invite code or free trial)'}</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
           additiveBadge.textContent = "LOCKED (PLUS)";
@@ -19165,7 +19288,7 @@
         if (headerPlusBadgeBtn) headerPlusBadgeBtn.className = "text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1";
         plusActiveBadge.textContent = "FREE TIER";
         plusActiveBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
-        openPaywallBtn.innerHTML = `<span>Start 7-Day Free Trial</span>`;
+        openPaywallBtn.innerHTML = `<span>${window.RK_STORE_BILLING ? 'Unlock RAKKA Plus' : 'Start 7-Day Free Trial'}</span>`;
         openPaywallBtn.className = "w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5";
         if (additiveBadge) {
           additiveBadge.textContent = "LOCKED (PLUS)";
@@ -22665,9 +22788,9 @@
           allergensPlusBannerTitle.className = "text-xs font-bold text-amber-300 flex items-center gap-1.5";
           allergensPlusBannerSub.textContent = plusStatusType === 'expired'
             ? "Your 7-day trial has ended. You keep one profile with all 12 allergen guards. Plus adds family profiles & additive screening."
-            : "Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening (7-day free trial, no card needed).";
+            : "Your profile and all 12 allergen guards are free. Plus adds family profiles & additive screening.";
           unlockAllergensBannerBtn.classList.remove('hidden');
-          unlockAllergensBannerBtn.textContent = plusStatusType === 'expired' ? "Upgrade to Plus" : "Start 7-Day Trial";
+          unlockAllergensBannerBtn.textContent = plusStatusType === 'expired' ? "Upgrade to Plus" : "See Plus";
         }
       }
 
@@ -25895,6 +26018,10 @@ function renderHistory() {
     // Set to false before submitting to the Apple App Store / Google Play: hides the tester code field (paid features must use store purchases).
     const RK_SHOW_TESTER_CODE = true;
     window.RK_SHOW_TESTER_CODE = RK_SHOW_TESTER_CODE;
+    // Store build only: the release workflow switches billing on and fills in the RevenueCat public key.
+    const RK_STORE_BILLING = false;
+    const RK_RC_KEY = '';
+    window.RK_STORE_BILLING = RK_STORE_BILLING; window.RK_RC_KEY = RK_RC_KEY;
     if (!RK_SHOW_TESTER_CODE) { const st = document.createElement('style'); st.textContent = '#set-tester,.rk-tester-only,#sendTestAlertBtn,#copyPushTokenBtn,#simulateRecallBtn,#pushDiagLine{display:none !important}'; document.head.appendChild(st); }
     if ('serviceWorker' in navigator && !rkIsNativeShell) {
       window.addEventListener('load', () => {
@@ -27171,7 +27298,7 @@ function renderHistory() {
         allowed: freeCount < FREE_MONTHLY_RECEIPT_LIMIT,
         remaining,
         limit: FREE_MONTHLY_RECEIPT_LIMIT,
-        reason: `Monthly free limit reached (${FREE_MONTHLY_RECEIPT_LIMIT}/${FREE_MONTHLY_RECEIPT_LIMIT} receipt scans used). Start your 7-day free Plus trial for up to ${PLUS_MONTHLY_RECEIPT_LIMIT} scans a month!`
+        reason: `Monthly free limit reached (${FREE_MONTHLY_RECEIPT_LIMIT}/${FREE_MONTHLY_RECEIPT_LIMIT} receipt scans used). ${window.RK_STORE_BILLING ? 'Upgrade to Plus' : 'Start your 7-day free Plus trial'} for up to ${PLUS_MONTHLY_RECEIPT_LIMIT} scans a month!`
       };
     }
 
@@ -27189,7 +27316,7 @@ function renderHistory() {
       } else {
         badge.textContent = q.remaining > 0 ? `${q.remaining} of ${q.limit} Free Left` : `0 of ${q.limit} Left • Upgrade`;
         badge.onclick = q.remaining === 0 ? openPaywall : null;
-        badge.title = q.remaining > 0 ? `${q.remaining} free AI receipt scans remaining this month` : 'Tap to start 7-day free Plus trial';
+        badge.title = q.remaining > 0 ? `${q.remaining} free AI receipt scans remaining this month` : (window.RK_STORE_BILLING ? 'Tap to see RAKKA Plus' : 'Tap to start 7-day free Plus trial');
         badge.className = q.remaining > 1
           ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0'
           : (q.remaining === 1

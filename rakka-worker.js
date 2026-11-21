@@ -372,7 +372,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
       <div class="badge">Official Legal Notice</div>
       <h1>Privacy Policy & Terms</h1>
       <p class="subtitle">Twin Ravens Digital LLC • RAKKA Food Safety & Recall Scanner</p>
-      <p class="policy-meta">Effective Date: November 17, 2026 • Version 1.6</p>
+      <p class="policy-meta">Effective Date: November 20, 2026 • Version 1.7</p>
     </header>
 
     <div class="summary-card">
@@ -435,7 +435,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
         <li><strong>Google Gemini:</strong> reads receipt photos, as described above.</li>
         <li><strong>Cloudflare:</strong> hosts our server and storage.</li>
         <li><strong>Apple and Google push services:</strong> deliver the generic alert in the store app.</li>
-        <li><strong>Subscriptions:</strong> while RAKKA is in testing, Plus is available by invite code or a one-time 7-day trial. When paid plans start in the Apple App Store and Google Play, payment is handled by Apple or Google and we do not receive your payment details.</li>
+        <li><strong>Subscriptions:</strong> Plus is bought through the Apple App Store or Google Play, which handle payment. We do not receive your card or payment details. We use RevenueCat to confirm that a purchase is active. RevenueCat receives your RAKKA device ID and your purchase and subscription status, and the app store account that made the purchase. Plus can also be unlocked with an invite code while RAKKA is in testing.</li>
       </ul>
     </section>
 
@@ -484,6 +484,7 @@ const PRIVACY_POLICY_HTML = `<!DOCTYPE html>
 // ============================================================================
 const PLUS_TOKEN_DAYS = 30;
 const PLUS_TRIAL_DAYS = 7;
+const PLUS_SUB_TOKEN_DAYS = 3;   // store subscriptions are re-checked with RevenueCat at least this often, so a cancelled or refunded plan stops within days
 const plusEnc = new TextEncoder();
 const plusB64u = (bytes) => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
 const plusFromB64u = (str) => { const p = String(str).replace(/-/g, '+').replace(/_/g, '/'); const s = atob(p + '='.repeat((4 - (p.length % 4)) % 4)); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
@@ -512,6 +513,27 @@ function parsePlusCodes(env) {
   return map;
 }
 
+// Asks RevenueCat (secret REVENUECAT_SECRET_KEY) whether this device's purchase is active. The app uses the device ID as the RevenueCat user ID.
+// Returns { ok:false } when RevenueCat cannot be reached (callers keep an existing valid token), else { ok:true, active, exp }.
+async function rcLookup(env, deviceId) {
+  const key = env && env.REVENUECAT_SECRET_KEY;
+  if (!key || !deviceId) return { ok: false, reason: 'not-configured' };
+  try {
+    const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(String(deviceId))}`, {
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) return { ok: false, reason: 'status-' + res.status };
+    const j = await res.json();
+    const ents = (j && j.subscriber && j.subscriber.entitlements) || {};
+    const e = ents[String((env && env.REVENUECAT_ENTITLEMENT) || 'plus')];
+    if (!e) return { ok: true, active: false };
+    const ends = [e.expires_date, e.grace_period_expires_date].filter(Boolean).map((x) => Date.parse(x)).filter((x) => x > 0);
+    const exp = ends.length ? Math.max(...ends) : null;   // no end date = a lifetime grant
+    if (exp !== null && !(exp > Date.now())) return { ok: true, active: false };
+    return { ok: true, active: true, exp: exp === null ? Date.now() + 365 * 86400000 : exp };
+  } catch (_) { return { ok: false, reason: 'network' }; }
+}
+
 // Returns the token payload if the token is genuine, unexpired, for this device, and (for codes) not revoked.
 async function checkPlus(env, token, deviceId) {
   try {
@@ -528,7 +550,7 @@ async function checkPlus(env, token, deviceId) {
       if (!parsePlusCodes(env).has(String(p.c))) return null;
       const devs = await env.RAKKA_COMMUNITY_DB.get(`plusdev:${p.c}`, { type: 'json' });
       if (!Array.isArray(devs) || !devs.includes(String(deviceId))) return null;
-    } else if (p.k !== 'trial') {
+    } else if (p.k !== 'trial' && p.k !== 'sub') {
       return null;
     }
     return p;
@@ -2704,6 +2726,7 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
       }
 
       if (url.pathname === '/plus/trial') {
+        if (String(env.PLUS_TRIAL_DISABLED || '') === '1') return plusReply({ success: false, error: 'Free trials now start from the purchase screen in the store version of RAKKA.' }, 403);
         const tKey = `plustrial:${pDevice}`;
         if (await env.RAKKA_COMMUNITY_DB.get(tKey)) return plusReply({ success: false, error: 'The free trial has already been used on this device.' }, 403);
         const exp = Date.now() + PLUS_TRIAL_DAYS * 86400000;
@@ -2712,9 +2735,27 @@ Respond STRICTLY with a valid JSON object matching this schema (raw JSON only, n
         return plusReply({ success: true, active: true, kind: 'trial', exp, token });
       }
 
+      if (url.pathname === '/plus/subscription') {
+        // Called after a purchase or Restore purchases: confirms the plan with RevenueCat, then hands out a short-lived token.
+        const rc = await rcLookup(env, pDevice);
+        if (!rc.ok) return plusReply({ success: false, error: 'Could not confirm your purchase yet. Check your connection and try Restore purchases.' }, 503);
+        if (!rc.active) return plusReply({ success: true, active: false });
+        const exp = Math.min(rc.exp, Date.now() + PLUS_SUB_TOKEN_DAYS * 86400000);
+        const token = await signPlusToken(env, { d: pDevice, k: 'sub', exp });
+        return plusReply({ success: true, active: true, kind: 'sub', exp, token });
+      }
+
       if (url.pathname === '/plus/status') {
         const p = await checkPlus(env, pb.token, pDevice);
         if (!p) return plusReply({ success: true, active: false });
+        if (p.k === 'sub') {
+          const rc = await rcLookup(env, pDevice);
+          if (!rc.ok) return plusReply({ success: true, active: true, kind: 'sub', exp: p.exp, token: pb.token });   // RevenueCat unreachable: keep the current token until it expires
+          if (!rc.active) return plusReply({ success: true, active: false });
+          const exp = Math.min(rc.exp, Date.now() + PLUS_SUB_TOKEN_DAYS * 86400000);
+          const token = await signPlusToken(env, { d: pDevice, k: 'sub', exp });
+          return plusReply({ success: true, active: true, kind: 'sub', exp, token });
+        }
         if (p.k === 'code') {
           const exp = Date.now() + PLUS_TOKEN_DAYS * 86400000;
           const token = await signPlusToken(env, { d: pDevice, k: 'code', c: p.c, exp });
