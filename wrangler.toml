@@ -7,6 +7,10 @@ kv_namespaces = [
   { binding = "RAKKA_COMMUNITY_DB", id = "13e138ca5e594e778782a18c622b2781" }
 ]
 
+# Free trials now start from the purchase screen in the store version (Google Play), so turn off the old no-card trial.
+[vars]
+PLUS_TRIAL_DISABLED = "1"
+
 [triggers]
 crons = ["*/10 * * * *"]
 
